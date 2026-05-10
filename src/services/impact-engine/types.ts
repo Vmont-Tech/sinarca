@@ -3,6 +3,7 @@ export type ProfileType = 'PF' | 'PJ' | 'ONG' | 'GOV' | 'INDUSTRIAL_LIGHT' | 'GE
 export interface RawInput {
     // Basic
     profileType?: ProfileType; // Explicit override
+    profile?: ProfileType;     // Alias used in some layers
     region?: string;           // Brazil state code or GLOBAL
 
     // Transport (Scope 1/3 depending on ownership)
