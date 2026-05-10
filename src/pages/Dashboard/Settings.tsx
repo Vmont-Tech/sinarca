@@ -42,17 +42,17 @@ export default function Settings() {
                             </button>
                         </div>
                         <h3 className="text-xl font-bold text-black uppercase tracking-tight">{name}</h3>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">
                             {user?.role === 'producer' ? 'Produtor Rural' : user?.role === 'company' ? 'Empresa Compradora' : 'Auditor Ambiental'}
                         </p>
                         
                         <div className="w-full mt-8 pt-8 border-t border-gray-50 space-y-4">
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-400 font-bold uppercase tracking-widest">ID Usuário</span>
+                                <span className="text-gray-500 font-bold uppercase tracking-widest">ID Usuário</span>
                                 <span className="text-black font-mono font-bold">#USR-2024-9981</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-400 font-bold uppercase tracking-widest">Status</span>
+                                <span className="text-gray-500 font-bold uppercase tracking-widest">Status</span>
                                 <span className="text-primary font-bold uppercase tracking-widest flex items-center gap-1.5">
                                     <ShieldCheck className="w-3 h-3" /> Verificado
                                 </span>
@@ -80,7 +80,7 @@ export default function Settings() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Nome Completo</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Nome Completo</label>
                                 <div className="relative">
                                     <input 
                                         type="text" 
@@ -91,7 +91,7 @@ export default function Settings() {
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">E-mail Corporativo</label>
                                 <div className="relative">
                                     <input 
                                         type="email" 
@@ -102,7 +102,7 @@ export default function Settings() {
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Organização / Razão Social</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Organização / Razão Social</label>
                                 <div className="relative">
                                     <input 
                                         type="text" 
@@ -113,7 +113,7 @@ export default function Settings() {
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Telefone de Contato</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Telefone de Contato</label>
                                 <div className="relative">
                                     <input 
                                         type="text" 

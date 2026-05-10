@@ -32,7 +32,7 @@ export function ProjectCardMRCA({ data, compact = false }: ProjectCardMRCAProps)
             <div className="p-8 flex-1 flex flex-col">
                 <div className="mb-6">
                     <h3 className="text-xl font-bold text-black tracking-tight leading-tight group-hover:text-primary transition-colors">{data.project.name}</h3>
-                    <div className="flex items-center gap-1.5 text-gray-400 text-xs mt-2 font-medium">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-xs mt-2 font-medium">
                         <MapPin className="w-3.5 h-3.5" /> {data.project.location}
                     </div>
                 </div>
@@ -40,7 +40,7 @@ export function ProjectCardMRCA({ data, compact = false }: ProjectCardMRCAProps)
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                        <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mb-1">Volume</p>
+                        <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Volume</p>
                         <div className="flex items-baseline gap-1">
                             <span className="text-lg font-black text-black">{data.quantity.toLocaleString()}</span>
                             <span className="text-[9px] text-gray-500 font-bold">tCO2e</span>

@@ -30,7 +30,7 @@ export default function CertifierPanel() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-black tracking-tight">Gestão de Projetos</h1>
-                    <p className="text-sm text-gray-400">Administre seu inventário de ativos ambientais e acompanhe certificações.</p>
+                    <p className="text-sm text-gray-500">Administre seu inventário de ativos ambientais e acompanhe certificações.</p>
                 </div>
                 <button 
                     onClick={() => navigate('/painel/registrar-inventario')}
@@ -44,7 +44,7 @@ export default function CertifierPanel() {
             {/* Filters & Search */}
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="relative flex-1 w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input 
                         type="text" 
                         placeholder="Buscar projeto por nome, local ou ID..."
@@ -67,11 +67,11 @@ export default function CertifierPanel() {
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-gray-50/50 border-b border-gray-100">
-                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nome do Projeto</th>
-                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Créditos</th>
-                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Última Atualização</th>
-                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Ações</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nome do Projeto</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Créditos</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Última Atualização</th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
