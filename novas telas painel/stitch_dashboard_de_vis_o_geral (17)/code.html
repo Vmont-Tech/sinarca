@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Finalizar Aposentadoria - SINARCA</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3df53d",
+                        "primary-hover": "#32c932",
+                        "background-light": "#f5f8f5",
+                        "background-dark": "#0a1f0a", // Sinarca Verde Floresta
+                        "surface-dark": "#112d11", // Verde Profundo
+                        "surface-darker": "#0d240d",
+                        "text-secondary": "#9cba9c",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased transition-colors duration-200">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-white/10 backdrop-blur-md bg-background-dark/80 px-6 py-4 lg:px-10">
+<div class="flex items-center gap-4 text-white">
+<div class="size-8 text-primary">
+<svg class="h-full w-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-white text-xl font-bold tracking-tight">SINARCA</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center gap-2 text-sm text-text-secondary mr-4">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">lock</span> Ambiente Seguro</span>
+</div>
+<button class="flex items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-surface-dark border border-white/10 text-white text-sm font-medium hover:bg-white/5 transition-colors">
+<span class="truncate">Suporte</span>
+</button>
+<div class="size-9 rounded-full bg-surface-dark border border-white/10 flex items-center justify-center text-primary cursor-pointer hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined">person</span>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col items-center py-10 px-4 md:px-8">
+<div class="w-full max-w-[1024px] flex flex-col gap-8">
+<!-- Breadcrumbs -->
+<nav class="flex text-sm text-text-secondary">
+<ol class="flex items-center gap-2">
+<li><a class="hover:text-primary transition-colors" href="#">Painel</a></li>
+<li><span class="material-symbols-outlined text-[16px]">chevron_right</span></li>
+<li><a class="hover:text-primary transition-colors" href="#">Carteira de Ativos</a></li>
+<li><span class="material-symbols-outlined text-[16px]">chevron_right</span></li>
+<li class="text-white">Aposentar Crédito</li>
+</ol>
+</nav>
+<!-- Page Heading -->
+<div class="flex flex-col gap-2">
+<h1 class="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
+                        Finalizar Aposentadoria de Créditos
+                    </h1>
+<p class="text-text-secondary text-lg max-w-2xl">
+                        Confirme os dados abaixo para processar a baixa definitiva dos ativos ambientais na blockchain Algorand.
+                    </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Left Column: Details -->
+<div class="lg:col-span-2 flex flex-col gap-6">
+<!-- Stats Card -->
+<div class="bg-gradient-to-br from-surface-dark to-surface-darker rounded-xl border border-white/10 p-6 md:p-8 shadow-lg relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-9xl">eco</span>
+</div>
+<div class="relative z-10">
+<p class="text-text-secondary text-sm font-medium uppercase tracking-wider mb-2">Volume Total a Aposentar</p>
+<div class="flex items-baseline gap-2">
+<span class="text-5xl md:text-6xl font-bold text-primary font-display tracking-tight">5.000</span>
+<span class="text-xl md:text-2xl text-white font-medium">tCO2e</span>
+</div>
+<div class="mt-6 flex flex-wrap gap-3">
+<span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary border border-primary/20">
+<span class="material-symbols-outlined text-[16px]">verified</span> Verificado
+                                    </span>
+<span class="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-white border border-white/10">
+                                        Safra 2023
+                                    </span>
+</div>
+</div>
+</div>
+<!-- Info Grid -->
+<div class="bg-surface-dark rounded-xl border border-white/10 overflow-hidden">
+<div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+<h3 class="text-white font-semibold">Detalhes da Operação</h3>
+<span class="material-symbols-outlined text-text-secondary">info</span>
+</div>
+<div class="divide-y divide-white/5">
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Código MRCA</span>
+<div class="flex items-center gap-2 group cursor-pointer">
+<span class="text-white font-mono text-base">BR-SINARCA-2023-9821-X</span>
+<span class="material-symbols-outlined text-[16px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">content_copy</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Blockchain Network</span>
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="text-white font-medium">Algorand Mainnet</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Origem do Projeto</span>
+<span class="text-white font-medium">Reflorestamento Amazônia Legal (Lote 4B)</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Beneficiário da Aposentadoria</span>
+<span class="text-white font-medium">Empresa Exemplo S.A.</span>
+</div>
+</div>
+<div class="p-6 bg-surface-darker/50">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-secondary uppercase tracking-wider">Hash da Transação (Burn)</span>
+<span class="text-white/50 font-mono text-sm break-all">Gerado após confirmação...</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Irreversible Action Warning -->
+<div class="rounded-xl border border-red-500/20 bg-red-900/10 p-5 flex gap-4 items-start">
+<div class="p-2 bg-red-500/10 rounded-lg text-red-500 shrink-0">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<h4 class="text-red-400 font-bold text-base mb-1">Atenção: Ação Irreversível</h4>
+<p class="text-red-200/70 text-sm leading-relaxed">
+                                    Ao confirmar, estes créditos serão "queimados" (burn) permanentemente na blockchain e retirados de circulação. Esta ação não pode ser desfeita e os créditos não poderão ser transacionados novamente.
+                                </p>
+</div>
+</div>
+</div>
+<!-- Right Column: Action Panel -->
+<div class="lg:col-span-1">
+<div class="sticky top-24 flex flex-col gap-4">
+<div class="bg-surface-dark rounded-xl border border-white/10 p-6 shadow-xl flex flex-col gap-6">
+<div>
+<h3 class="text-white font-serif font-semibold text-xl mb-1">Confirmação de Segurança</h3>
+<p class="text-text-secondary text-sm">Autenticação de dois fatores necessária.</p>
+</div>
+<form class="flex flex-col gap-5" onsubmit="event.preventDefault();">
+<!-- 2FA Input -->
+<div class="space-y-2">
+<label class="block text-xs font-medium text-text-secondary uppercase tracking-wider" for="2fa-code">
+                                            Código 2FA (Authenticator)
+                                        </label>
+<div class="relative">
+<input class="block w-full rounded-lg border-white/10 bg-surface-darker py-3 pl-10 pr-4 text-white placeholder-white/20 focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm font-mono tracking-widest text-center" id="2fa-code" placeholder="000 000" type="text"/>
+<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+<span class="material-symbols-outlined text-text-secondary">lock</span>
+</div>
+</div>
+</div>
+<!-- Password Confirmation -->
+<div class="space-y-2">
+<label class="block text-xs font-medium text-text-secondary uppercase tracking-wider" for="password-confirm">
+                                            Senha de Assinatura
+                                        </label>
+<div class="relative">
+<input class="block w-full rounded-lg border-white/10 bg-surface-darker py-3 pl-10 pr-4 text-white placeholder-white/20 focus:border-primary focus:ring-1 focus:ring-primary sm:text-sm" id="password-confirm" type="password"/>
+<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+<span class="material-symbols-outlined text-text-secondary">key</span>
+</div>
+</div>
+</div>
+<!-- Checkbox Confirmation -->
+<label class="flex gap-3 items-start cursor-pointer group">
+<input class="mt-1 rounded border-white/20 bg-surface-darker text-primary focus:ring-offset-surface-dark focus:ring-primary cursor-pointer" type="checkbox"/>
+<span class="text-sm text-text-secondary group-hover:text-white transition-colors">
+                                            Li e concordo com a <a class="text-primary hover:underline" href="#">Política de Aposentadoria de Ativos</a> e confirmo a veracidade da operação.
+                                        </span>
+</label>
+<div class="h-px w-full bg-white/10 my-1"></div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-3">
+<button class="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-3 px-4 text-background-dark font-bold hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-dark transition-all transform active:scale-[0.98]" type="submit">
+<span class="material-symbols-outlined">local_fire_department</span>
+                                            Confirmar e Aposentar
+                                        </button>
+<button class="w-full flex items-center justify-center gap-2 rounded-lg bg-transparent border border-white/10 py-3 px-4 text-white font-medium hover:bg-white/5 transition-colors" type="button">
+                                            Cancelar Operação
+                                        </button>
+</div>
+</form>
+</div>
+<div class="bg-surface-dark/50 rounded-lg border border-white/5 p-4 flex gap-3 items-center">
+<div class="bg-primary/10 p-2 rounded text-primary shrink-0">
+<span class="material-symbols-outlined">workspace_premium</span>
+</div>
+<div class="text-xs text-text-secondary">
+<p class="font-bold text-white mb-0.5">Certificado de Neutralização</p>
+                                    Será gerado automaticamente após a confirmação.
+                                </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

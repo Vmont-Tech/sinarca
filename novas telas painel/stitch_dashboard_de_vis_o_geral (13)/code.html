@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login/Cadastro - SINARCA</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3df53d",
+                        "primary-dark": "#2cc22c",
+                        "background-light": "#f5f8f5",
+                        "background-dark": "#102210",
+                        "surface-dark": "#1b271b",
+                        "border-green": "#3b543b",
+                        "text-muted": "#9cba9c",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for better aesthetics in dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111811; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #283928; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b543b; 
+        }
+        
+        /* Subtle background pattern animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .floating-element {
+            animation: float 10s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col text-slate-900 dark:text-white overflow-hidden">
+<!-- Top Navigation (Minimal version for Login) -->
+<header class="fixed top-0 w-full z-50 px-6 py-4 flex items-center justify-between border-b border-border-green/30 bg-background-dark/80 backdrop-blur-md">
+<div class="flex items-center gap-3">
+<div class="size-8 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">forest</span>
+</div>
+<h2 class="text-white text-lg font-bold tracking-tight">SINARCA</h2>
+</div>
+<div class="flex items-center gap-4">
+<a class="text-sm font-medium text-text-muted hover:text-white transition-colors" href="#">Ajuda</a>
+<a class="hidden sm:flex items-center justify-center rounded-lg bg-surface-dark border border-border-green px-4 py-2 text-sm font-bold text-primary hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined mr-2 text-[18px]">verified_user</span>
+                Gov.br
+            </a>
+</div>
+</header>
+<main class="flex-grow flex relative">
+<!-- Background Imagery Area (Left) -->
+<div class="hidden lg:flex w-1/2 relative bg-[#0a160a] overflow-hidden items-center justify-center">
+<!-- Abstract topographic lines or leaves -->
+<div class="absolute inset-0 opacity-20" data-alt="Abstract dark green leaves background texture" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC0_4U4YBQzKhAtBbND_dDRlLkaeoGDZFH8v98OvxXFyykGNAGEsGw-9zk694ELKioP5IS1hioTbkbRODq21RjjM_gubAmCXx_XCJ66wSNofaDk5VYTq1IsJUBLWo3g3KYwp0hTsHpHtjnrukNEG0Ny2aRjNJ0Ds56RYR_9FGOZh-s_4sPF8oCPZWMOsUVipjUxgvolmEVjoDeaBXJdI4mUyGyLbqyIp87q-fsaqHlbjfz0O180y3d8XFZLzsAeB9c2efK90-AaUDY'); background-size: cover; background-position: center;">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-background-dark opacity-90"></div>
+<div class="relative z-10 max-w-md px-12 text-left">
+<div class="mb-8 size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 flex items-center justify-center backdrop-blur-sm">
+<span class="material-symbols-outlined text-primary text-4xl">eco</span>
+</div>
+<h1 class="font-serif text-5xl text-white mb-6 leading-tight">
+                    Transparência para o futuro ambiental.
+                </h1>
+<p class="text-lg text-text-muted leading-relaxed">
+                    O Sistema Nacional de Rastreabilidade de Créditos Ambientais garante a segurança e integridade de cada ativo preservado.
+                </p>
+<div class="mt-12 flex gap-4">
+<div class="flex flex-col gap-1 border-l-2 border-primary pl-4">
+<span class="text-2xl font-bold text-white">12.4k</span>
+<span class="text-sm text-text-muted">Projetos Ativos</span>
+</div>
+<div class="flex flex-col gap-1 border-l-2 border-primary/50 pl-4">
+<span class="text-2xl font-bold text-white">85M+</span>
+<span class="text-sm text-text-muted">Créditos Gerados</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Form Area (Right/Center) -->
+<div class="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-12 py-24 relative z-10 bg-background-dark">
+<!-- Mobile Background hint -->
+<div class="absolute inset-0 lg:hidden opacity-10 pointer-events-none" style="background-image: radial-gradient(circle at center, #3df53d 0%, transparent 70%);">
+</div>
+<div class="w-full max-w-[480px] flex flex-col">
+<!-- Header for Form -->
+<div class="mb-8 text-center sm:text-left">
+<h2 class="font-serif text-3xl sm:text-4xl text-white font-bold mb-2">Bem-vindo</h2>
+<p class="text-text-muted">Acesse o painel para gerenciar seus ativos.</p>
+</div>
+<!-- Tabs -->
+<div class="mb-8 border-b border-border-green flex gap-8">
+<button class="relative pb-3 px-1 text-primary font-bold text-sm sm:text-base border-b-2 border-primary transition-colors focus:outline-none">
+                        Entrar
+                    </button>
+<button class="relative pb-3 px-1 text-text-muted font-medium text-sm sm:text-base border-b-2 border-transparent hover:text-white hover:border-white/30 transition-colors focus:outline-none">
+                        Cadastrar
+                    </button>
+</div>
+<!-- Login Form Content -->
+<form class="flex flex-col gap-5">
+<!-- Email Input -->
+<label class="flex flex-col gap-2">
+<span class="text-sm font-medium text-white">E-mail ou Usuário</span>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors">person</span>
+<input class="w-full bg-surface-dark border border-border-green rounded-lg py-3.5 pl-11 pr-4 text-white placeholder-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="seu@email.com ou CPF/CNPJ" type="text"/>
+</div>
+</label>
+<!-- Password Input -->
+<label class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="text-sm font-medium text-white">Senha</span>
+<a class="text-xs font-medium text-primary hover:text-primary-dark hover:underline" href="#">Esqueceu a senha?</a>
+</div>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors">lock</span>
+<input class="w-full bg-surface-dark border border-border-green rounded-lg py-3.5 pl-11 pr-12 text-white placeholder-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Digite sua senha" type="password"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-white rounded-md focus:outline-none" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</label>
+<!-- Submit Button -->
+<button class="mt-2 w-full bg-primary hover:bg-primary-dark text-background-dark font-bold text-base py-3.5 rounded-lg shadow-[0_0_15px_rgba(61,245,61,0.3)] hover:shadow-[0_0_20px_rgba(61,245,61,0.5)] transition-all duration-300 transform active:scale-[0.99] flex items-center justify-center gap-2" type="button">
+                        Acessar Painel
+                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<!-- Divider -->
+<div class="relative flex py-2 items-center">
+<div class="flex-grow border-t border-border-green"></div>
+<span class="flex-shrink mx-4 text-text-muted text-xs uppercase tracking-wider">Ou acesse com</span>
+<div class="flex-grow border-t border-border-green"></div>
+</div>
+<!-- Social Login -->
+<button class="w-full bg-surface-dark border border-border-green hover:bg-surface-dark/80 text-white font-medium text-sm py-3 rounded-lg transition-colors flex items-center justify-center gap-2" type="button">
+<img alt="Gov.br Logo" class="h-4 brightness-0 invert" data-alt="Logotipo Gov.br em branco" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4JFxo_HYfIfvQvE50ooFUkw6Sbd3nOb8Kg-KtlSBUW803bjIlq8QW-QMvBB1DGFvFpp3kUfF713aR9_wXIxfjn_1JhYqR6JqQs9ix2JAt_jQSeSk2q8FfmghXe7mGtsRUAgFGx9owCTYhLBEJggq-NWp9cRzOa4wP33RbVkUrw6g8i5v4wlyZ0OqaFcfU5XCMOrswkHNR7RBzeEgUDbexJi9xa-YgZg0yW_vVgzd4UB3OBHFCOrXcznF8M8Q9SznyvC9oHi6SR6E"/>
+                         Entrar com Gov.br
+                    </button>
+</form>
+<!-- Footer Links -->
+<div class="mt-8 flex items-center justify-center gap-6 text-xs text-text-muted">
+<a class="hover:text-white transition-colors" href="#">Termos de Uso</a>
+<span class="size-1 rounded-full bg-border-green"></span>
+<a class="hover:text-white transition-colors" href="#">Política de Privacidade</a>
+</div>
+</div>
+</div>
+</main>
+<!-- Registration Form Template (Hidden but structured for demonstration of components) -->
+<!-- This section represents what would be seen if "Cadastrar" tab was active. 
+         Normally handled by JS, but rendered here invisibly to show component styling 
+         if you wanted to inspect the code structure. In a real single-page app, this would swap. -->
+<div style="display:none;">
+<form class="flex flex-col gap-4">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<label class="flex flex-col gap-2">
+<span class="text-sm font-medium text-white">Nome Completo</span>
+<input class="form-input" placeholder="Seu nome" type="text"/>
+</label>
+<label class="flex flex-col gap-2">
+<span class="text-sm font-medium text-white">CPF / CNPJ</span>
+<input class="form-input" placeholder="000.000.000-00" type="text"/>
+</label>
+</div>
+<label class="flex flex-col gap-2">
+<span class="text-sm font-medium text-white">E-mail Corporativo</span>
+<input class="form-input" placeholder="nome@empresa.com" type="email"/>
+</label>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<label class="flex flex-col gap-2">
+<span class="text-sm font-medium text-white">Senha</span>
+<input class="form-input" placeholder="Mínimo 8 caracteres" type="password"/>
+</label>
+<label class="flex flex-col gap-2">
+<span class="text-sm font-medium text-white">Confirmar Senha</span>
+<input class="form-input" placeholder="Repita a senha" type="password"/>
+</label>
+</div>
+<div class="flex items-start gap-3 mt-2">
+<div class="flex items-center h-5">
+<input class="w-4 h-4 rounded border-border-green text-primary focus:ring-primary focus:ring-offset-background-dark bg-surface-dark" id="terms" type="checkbox"/>
+</div>
+<label class="text-sm text-text-muted" for="terms">
+                    Li e concordo com os <a class="text-primary hover:underline" href="#">Termos de Uso</a> e <a class="text-primary hover:underline" href="#">Política de Privacidade</a> do SINARCA.
+                </label>
+</div>
+<button class="btn-primary">Criar Conta</button>
+</form>
+</div>
+</body></html>

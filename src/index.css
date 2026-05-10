@@ -1,0 +1,245 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #050a05;
+    --foreground: #FFFFFF;
+
+    --card: #0a0f0a;
+    --card-foreground: #FFFFFF;
+
+    --popover: #0a0f0a;
+    --popover-foreground: #FFFFFF;
+
+    --primary: #16a34a;
+    --primary-foreground: #000000;
+
+    --secondary: #1a2e22;
+    --secondary-foreground: #00ff94;
+
+    --muted: #111b11;
+    --muted-foreground: #9cba9c;
+
+    --accent: #16a34a;
+    --accent-foreground: #FFFFFF;
+
+    --destructive: #ff4d4d;
+    --destructive-foreground: #FFFFFF;
+
+    --border: #1a2e22;
+    --input: #1a2e22;
+    --ring: #16a34a;
+
+    --radius: 1rem;
+  }
+}
+
+/* Design System Themes */
+:root {
+  --bg-main: #050a05;
+  --bg-deep: #000000;
+  --border-color: rgba(0, 255, 148, 0.1);
+  --text-main: #FFFFFF;
+  --text-muted: #9cba9c;
+  --accent-color: #16a34a;
+}
+
+.theme-producer {
+  --bg-main: #050a05;
+  --bg-deep: #000000;
+  --border-color: rgba(0, 255, 148, 0.15);
+  --text-main: #FFFFFF;
+  --text-muted: #9cba9c;
+  --accent-color: #16a34a;
+}
+
+.theme-auditor {
+  --bg-main: #F8FAFC;
+  --bg-deep: #FFFFFF;
+  --border-color: rgba(37, 99, 235, 0.1);
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --accent-color: #2563EB;
+}
+
+.theme-company {
+  --bg-main: #000000;
+  --bg-deep: #0A0A0A;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-main: #FFFFFF;
+  --text-muted: #94A3B8;
+  --accent-color: #FFFFFF;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    @apply bg-[var(--bg-main)] text-[var(--bg-main)] font-sans antialiased;
+    font-family: 'Open Sans', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-display {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+  }
+}
+
+/* Custom Landing Page Styles */
+.glass-effect {
+  background: rgba(5, 38, 24, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(0, 224, 133, 0.3);
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.typing-wrapper::after {
+  content: "transparente";
+  animation: typingCycle 10s linear infinite;
+  color: #81C784;
+  text-shadow: 0 0 20px rgba(129, 199, 132, 0.5);
+}
+
+@keyframes typingCycle {
+
+  0%,
+  18% {
+    content: "transparente";
+    opacity: 1;
+  }
+
+  19%,
+  20% {
+    content: "transparente";
+    opacity: 0;
+  }
+
+  21%,
+  38% {
+    content: "rastreável";
+    opacity: 1;
+  }
+
+  39%,
+  40% {
+    content: "rastreável";
+    opacity: 0;
+  }
+
+  41%,
+  58% {
+    content: "auditável";
+    opacity: 1;
+  }
+
+  59%,
+  60% {
+    content: "auditável";
+    opacity: 0;
+  }
+
+  61%,
+  78% {
+    content: "imutável";
+    opacity: 1;
+  }
+
+  79%,
+  80% {
+    content: "imutável";
+    opacity: 0;
+  }
+
+  81%,
+  98% {
+    content: "soberano";
+    opacity: 1;
+  }
+
+  99%,
+  100% {
+    content: "soberano";
+    opacity: 0;
+  }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.tech-bg-animate {
+  background-size: 200% 200%;
+  animation: gradientMove 15s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes scan {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}

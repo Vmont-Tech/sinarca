@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Gerenciamento de Auditores Delegados - SINARCA</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0df20d", /* Sinarca Neon */
+                        "background-light": "#f5f8f5",
+                        "background-dark": "#111811", /* Sinarca Verde Floresta */
+                        "surface-dark": "#1a261a", /* Verde Profundo */
+                        "surface-highlight": "#283928", /* Verde Card */
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for the table if needed */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111811; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #283928; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a4f3a; 
+        }
+        .font-serif-display {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-display text-white overflow-hidden">
+<div class="relative flex h-screen w-full bg-[#111811] overflow-hidden">
+<!-- SideNavBar -->
+<div class="flex h-full w-[280px] flex-col border-r border-[#283928] bg-[#111811] flex-shrink-0">
+<div class="flex h-full flex-col justify-between p-4">
+<div class="flex flex-col gap-8">
+<div class="flex gap-3 items-center px-2">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border border-[#0df20d]/30" data-alt="Abstract green geometric logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjKlXshpm8ZXrFO9HLNnGoRAb0iQ8moULKo3xCnLT9WVh7JZPCbW4Lv9-dvMTlwocwifbFWptU-zmH-ipSKdMFeN-niMLriRcKdI15qc9fvOjVmfBps_u6jFwKkOp9O35hM_JqYeVpBTsTFaVWSNEHaQIEbNWowRohjX62GfJ7g8Q0M3MKBg3ldwGZjwB9IBnqZOzhZb_tNsu_Fj2M3pJufSYIqN7KP5hAxlZFsR04RLa5aEpqBiLwV4P8EsPhgroyVVUcQmvalqE");'></div>
+<div class="flex flex-col">
+<h1 class="text-white text-lg font-bold leading-normal tracking-wider">SINARCA</h1>
+<p class="text-[#9cba9c] text-xs font-normal leading-normal tracking-wide">Painel Corporativo</p>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#283928] cursor-pointer transition-colors group">
+<span class="material-symbols-outlined text-[#9cba9c] group-hover:text-white transition-colors">dashboard</span>
+<p class="text-[#9cba9c] group-hover:text-white text-sm font-medium leading-normal transition-colors">Visão Geral</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#283928] cursor-pointer transition-colors group">
+<span class="material-symbols-outlined text-[#9cba9c] group-hover:text-white transition-colors">forest</span>
+<p class="text-[#9cba9c] group-hover:text-white text-sm font-medium leading-normal transition-colors">Projetos</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#283928] cursor-pointer transition-colors group">
+<span class="material-symbols-outlined text-[#9cba9c] group-hover:text-white transition-colors">currency_exchange</span>
+<p class="text-[#9cba9c] group-hover:text-white text-sm font-medium leading-normal transition-colors">Créditos</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#283928] border-l-4 border-primary">
+<span class="material-symbols-outlined text-white">verified_user</span>
+<p class="text-white text-sm font-bold leading-normal">Auditores Delegados</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#283928] cursor-pointer transition-colors group">
+<span class="material-symbols-outlined text-[#9cba9c] group-hover:text-white transition-colors">settings</span>
+<p class="text-[#9cba9c] group-hover:text-white text-sm font-medium leading-normal transition-colors">Configurações</p>
+</div>
+</div>
+</div>
+<!-- Bottom User Profile -->
+<div class="border-t border-[#283928] pt-4 mt-4">
+<div class="flex items-center gap-3 px-2">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-8 border border-white/20" data-alt="User profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD0YxqnZNV7-h8CAOg3c0j9Bhhl-qnjLvDcJjddkUMT7aE3BAKRx2wu4tHfbbwFyjCvb4zGs5LCu0xoDZa5ve-iyYOnoONuPFrPPznZpnZW4i0efYgvZo-2yknc26FyXWBBT3DUv2PUkn_gePs9VWk2DdYXqbU0Marwcy3iHczDgD_JSvQVdJ95S2Y3-Q6sBPt_zAc13Apo5x4jofBdrI8P_bc5mGZV17b-KJ5gM4d5nB9mtpKW5-jyAC-Sbiip7SiMzidKXrqmRYQ");'></div>
+<div class="flex flex-col">
+<p class="text-white text-sm font-medium">Carlos Mendes</p>
+<p class="text-[#9cba9c] text-xs">BioCarbon Corp</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="flex flex-1 flex-col h-full overflow-hidden relative">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#283928] bg-[#111811]/95 backdrop-blur-sm px-8 py-4 sticky top-0 z-20">
+<div class="flex items-center gap-4 text-white">
+<button class="text-[#9cba9c] hover:text-white transition-colors lg:hidden">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">token</span>
+<h2 class="text-white text-sm font-mono uppercase tracking-widest text-opacity-80">Portal de Créditos Ambientais</h2>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center rounded-lg size-10 hover:bg-[#283928] text-[#9cba9c] hover:text-white transition-colors relative">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-primary rounded-full"></span>
+</button>
+<button class="flex items-center justify-center rounded-lg size-10 hover:bg-[#283928] text-[#9cba9c] hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">help</span>
+</button>
+<div class="h-6 w-px bg-[#283928] mx-2"></div>
+<div class="flex items-center gap-2 text-[#0df20d] bg-[#0df20d]/10 px-3 py-1.5 rounded-full border border-[#0df20d]/20">
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="text-xs font-mono font-bold">REDE OPERACIONAL</span>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<main class="flex-1 overflow-y-auto p-8 scroll-smooth">
+<div class="max-w-[1200px] mx-auto flex flex-col gap-8">
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-6">
+<div class="flex max-w-2xl flex-col gap-3">
+<div class="flex items-center gap-2 mb-1">
+<span class="bg-[#283928] text-[#9cba9c] text-xs font-mono px-2 py-0.5 rounded border border-[#3a4f3a]">BLOCK #8920192</span>
+<span class="text-[#9cba9c] text-xs font-mono">Última atualização: 14:02:45</span>
+</div>
+<h1 class="text-white text-4xl font-serif-display font-medium leading-tight tracking-tight">Gerenciamento de Auditores</h1>
+<p class="text-[#9cba9c] text-base font-normal leading-relaxed max-w-xl">
+                            Conceda e monitore permissões de acesso para auditoria de campo. Todas as ações geram um registro imutável na rede blockchain SINARCA.
+                        </p>
+</div>
+<div class="flex gap-3">
+<button class="flex cursor-pointer items-center justify-center rounded-lg h-11 px-5 border border-[#283928] hover:bg-[#283928] text-[#9cba9c] hover:text-white transition-all text-sm font-semibold tracking-wide">
+<span class="material-symbols-outlined mr-2 text-[18px]">history</span>
+                           Histórico de Logs
+                        </button>
+<button class="flex cursor-pointer items-center justify-center rounded-lg h-11 px-6 bg-primary hover:bg-[#0be00b] text-black shadow-[0_0_15px_rgba(13,242,13,0.3)] transition-all text-sm font-bold tracking-wide">
+<span class="material-symbols-outlined mr-2 text-[20px]">person_add</span>
+                            Conceder Nova Permissão
+                        </button>
+</div>
+</div>
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<div class="flex flex-col gap-1 rounded-xl p-6 bg-[#1a261a] border border-[#283928] relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-white">group</span>
+</div>
+<p class="text-[#9cba9c] text-sm font-medium uppercase tracking-wider">Auditores Ativos</p>
+<div class="flex items-baseline gap-2 mt-2">
+<p class="text-white text-4xl font-mono font-bold">8</p>
+<span class="text-primary text-sm font-medium flex items-center bg-primary/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] mr-0.5">trending_up</span>+1
+                            </span>
+</div>
+<div class="w-full bg-[#283928] h-1 mt-4 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[70%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1 rounded-xl p-6 bg-[#1a261a] border border-[#283928] relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-white">pending_actions</span>
+</div>
+<p class="text-[#9cba9c] text-sm font-medium uppercase tracking-wider">Permissões Pendentes</p>
+<div class="flex items-baseline gap-2 mt-2">
+<p class="text-white text-4xl font-mono font-bold">2</p>
+</div>
+<div class="w-full bg-[#283928] h-1 mt-4 rounded-full overflow-hidden">
+<div class="bg-yellow-500 h-full w-[20%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1 rounded-xl p-6 bg-[#1a261a] border border-[#283928] relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-white">fact_check</span>
+</div>
+<p class="text-[#9cba9c] text-sm font-medium uppercase tracking-wider">Auditorias em Campo</p>
+<div class="flex items-baseline gap-2 mt-2">
+<p class="text-white text-4xl font-mono font-bold">145</p>
+<span class="text-primary text-sm font-medium flex items-center bg-primary/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] mr-0.5">calendar_month</span>Este mês
+                            </span>
+</div>
+<div class="w-full bg-[#283928] h-1 mt-4 rounded-full overflow-hidden">
+<div class="bg-blue-500 h-full w-[45%]"></div>
+</div>
+</div>
+</div>
+<!-- Filters & Search -->
+<div class="flex flex-col md:flex-row gap-4 bg-[#1a261a] p-4 rounded-xl border border-[#283928]">
+<div class="relative flex-1">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-[#9cba9c]">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-2.5 border border-[#283928] rounded-lg leading-5 bg-[#111811] text-white placeholder-[#5a705a] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all" placeholder="Buscar por CNPJ, CPF, Nome ou Hash da credencial..." type="text"/>
+</div>
+<div class="flex gap-3">
+<select class="block w-40 pl-3 pr-10 py-2.5 text-base border border-[#283928] focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg bg-[#111811] text-white">
+<option>Todos Status</option>
+<option>Ativo</option>
+<option>Revogado</option>
+<option>Pendente</option>
+</select>
+<select class="block w-40 pl-3 pr-10 py-2.5 text-base border border-[#283928] focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg bg-[#111811] text-white">
+<option>Todos Projetos</option>
+<option>Reflorestamento Norte</option>
+<option>Mata Atlântica Sul</option>
+</select>
+</div>
+</div>
+<!-- Main Table List -->
+<div class="bg-[#1a261a] border border-[#283928] rounded-xl overflow-hidden shadow-lg">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#1e2e1e] border-b border-[#283928]">
+<th class="py-4 px-6 text-xs font-mono uppercase tracking-wider text-[#9cba9c] font-medium">Auditor / Entidade</th>
+<th class="py-4 px-6 text-xs font-mono uppercase tracking-wider text-[#9cba9c] font-medium">Credencial (Hash)</th>
+<th class="py-4 px-6 text-xs font-mono uppercase tracking-wider text-[#9cba9c] font-medium">Projeto Designado</th>
+<th class="py-4 px-6 text-xs font-mono uppercase tracking-wider text-[#9cba9c] font-medium">Data Concessão</th>
+<th class="py-4 px-6 text-xs font-mono uppercase tracking-wider text-[#9cba9c] font-medium">Status</th>
+<th class="py-4 px-6 text-xs font-mono uppercase tracking-wider text-[#9cba9c] font-medium text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#283928]">
+<!-- Row 1 -->
+<tr class="hover:bg-[#203020] transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 border border-blue-800">
+<span class="material-symbols-outlined text-[18px]">business</span>
+</div>
+<div>
+<p class="text-white text-sm font-semibold">EcoCertificadora Ltda.</p>
+<p class="text-[#9cba9c] text-xs font-mono">CNPJ: 45.123.001/0001-99</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2 group-hover:text-white text-[#9cba9c] transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">fingerprint</span>
+<span class="font-mono text-xs truncate max-w-[120px]">0x7f3...a29b</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100">content_copy</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="text-white text-sm">Reflorestamento Amazônia B</span>
+</td>
+<td class="py-4 px-6">
+<span class="text-[#9cba9c] text-sm">24 Out 2023</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+<span class="size-1.5 rounded-full bg-primary animate-pulse"></span>
+                                            Ativo
+                                        </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-red-400 hover:text-red-300 hover:bg-red-400/10 px-3 py-1.5 rounded text-xs font-bold transition-colors border border-transparent hover:border-red-400/20">
+                                            REVOGAR
+                                        </button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-[#203020] transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-purple-900/30 flex items-center justify-center text-purple-400 border border-purple-800">
+<span class="material-symbols-outlined text-[18px]">person</span>
+</div>
+<div>
+<p class="text-white text-sm font-semibold">Ana Beatriz Silva</p>
+<p class="text-[#9cba9c] text-xs font-mono">CPF: ***.456.789-**</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2 group-hover:text-white text-[#9cba9c] transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">fingerprint</span>
+<span class="font-mono text-xs truncate max-w-[120px]">0x9a1...c45f</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100">content_copy</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="text-white text-sm">Mata Atlântica Sul - Lote 4</span>
+</td>
+<td class="py-4 px-6">
+<span class="text-[#9cba9c] text-sm">10 Nov 2023</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+<span class="size-1.5 rounded-full bg-yellow-500"></span>
+                                            Pendente
+                                        </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-[#9cba9c] hover:text-white hover:bg-[#283928] px-3 py-1.5 rounded text-xs font-bold transition-colors border border-transparent hover:border-[#3a4f3a]">
+                                            REENVIAR
+                                        </button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-[#203020] transition-colors group opacity-60 hover:opacity-100">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-gray-700/30 flex items-center justify-center text-gray-400 border border-gray-600">
+<span class="material-symbols-outlined text-[18px]">domain_disabled</span>
+</div>
+<div>
+<p class="text-white text-sm font-semibold decoration-slate-500 line-through decoration-1">VerdeTotal Auditoria</p>
+<p class="text-[#9cba9c] text-xs font-mono">CNPJ: 12.345.678/0001-00</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2 text-[#9cba9c] transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">fingerprint</span>
+<span class="font-mono text-xs truncate max-w-[120px]">0x1b2...d90e</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="text-white text-sm">Todos os Projetos</span>
+</td>
+<td class="py-4 px-6">
+<span class="text-[#9cba9c] text-sm">15 Ago 2023</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500 border border-red-500/20">
+<span class="material-symbols-outlined text-[12px]">block</span>
+                                            Revogado
+                                        </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-[#9cba9c] hover:text-white hover:bg-[#283928] px-3 py-1.5 rounded text-xs font-bold transition-colors border border-transparent hover:border-[#3a4f3a]">
+                                            DETALHES
+                                        </button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-[#203020] transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400 border border-blue-800">
+<span class="material-symbols-outlined text-[18px]">business</span>
+</div>
+<div>
+<p class="text-white text-sm font-semibold">Global Standards Inc.</p>
+<p class="text-[#9cba9c] text-xs font-mono">CNPJ: 99.888.777/0001-22</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-2 group-hover:text-white text-[#9cba9c] transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">fingerprint</span>
+<span class="font-mono text-xs truncate max-w-[120px]">0x4c8...f12a</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100">content_copy</span>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="text-white text-sm">Reflorestamento Amazônia B</span>
+</td>
+<td class="py-4 px-6">
+<span class="text-[#9cba9c] text-sm">02 Dez 2023</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+<span class="size-1.5 rounded-full bg-primary animate-pulse"></span>
+                                            Ativo
+                                        </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-red-400 hover:text-red-300 hover:bg-red-400/10 px-3 py-1.5 rounded text-xs font-bold transition-colors border border-transparent hover:border-red-400/20">
+                                            REVOGAR
+                                        </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="bg-[#1a261a] px-6 py-4 border-t border-[#283928] flex items-center justify-between">
+<span class="text-sm text-[#9cba9c]">Mostrando 1-4 de 12 auditores</span>
+<div class="flex gap-2">
+<button class="flex items-center justify-center size-8 rounded hover:bg-[#283928] text-[#9cba9c] disabled:opacity-50">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="flex items-center justify-center size-8 rounded bg-[#283928] text-primary font-bold text-sm">1</button>
+<button class="flex items-center justify-center size-8 rounded hover:bg-[#283928] text-[#9cba9c] text-sm hover:text-white">2</button>
+<button class="flex items-center justify-center size-8 rounded hover:bg-[#283928] text-[#9cba9c] text-sm hover:text-white">3</button>
+<button class="flex items-center justify-center size-8 rounded hover:bg-[#283928] text-[#9cba9c]">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Blockchain Activity Feed -->
+<div class="bg-[#1a261a] border border-[#283928] rounded-xl p-6 mt-4">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">hub</span>
+<h3 class="text-white text-lg font-serif-display font-medium">Registro de Atividade em Blockchain</h3>
+<div class="h-px bg-[#283928] flex-1"></div>
+</div>
+<div class="space-y-4">
+<div class="flex gap-4 items-start group">
+<div class="flex flex-col items-center mt-1">
+<div class="size-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(13,242,13,0.6)]"></div>
+<div class="w-px h-10 bg-[#283928] mt-1 group-last:hidden"></div>
+</div>
+<div class="flex-1 bg-[#111811] p-3 rounded-lg border border-[#283928] group-hover:border-[#3a4f3a] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div>
+<p class="text-sm text-white font-medium">Permissão Concedida <span class="text-[#5a705a] mx-2">→</span> <span class="text-[#9cba9c]">EcoCertificadora Ltda.</span></p>
+<p class="text-xs text-[#5a705a] mt-1">Projeto: Reflorestamento Amazônia B</p>
+</div>
+<div class="text-right">
+<div class="flex items-center gap-2 justify-end text-xs font-mono text-primary bg-primary/5 px-2 py-1 rounded border border-primary/10">
+<span class="material-symbols-outlined text-[12px]">link</span>
+                                        TX: 0x8a7...b391
+                                    </div>
+<p class="text-[10px] text-[#5a705a] mt-1 uppercase">14:02 PM • Bloco #8920192</p>
+</div>
+</div>
+</div>
+<div class="flex gap-4 items-start group">
+<div class="flex flex-col items-center mt-1">
+<div class="size-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"></div>
+<div class="w-px h-10 bg-[#283928] mt-1 group-last:hidden"></div>
+</div>
+<div class="flex-1 bg-[#111811] p-3 rounded-lg border border-[#283928] group-hover:border-[#3a4f3a] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div>
+<p class="text-sm text-white font-medium">Permissão Revogada <span class="text-[#5a705a] mx-2">→</span> <span class="text-[#9cba9c] line-through decoration-red-500/50">VerdeTotal Auditoria</span></p>
+<p class="text-xs text-[#5a705a] mt-1">Motivo: Vencimento Contratual</p>
+</div>
+<div class="text-right">
+<div class="flex items-center gap-2 justify-end text-xs font-mono text-[#9cba9c] bg-[#283928]/50 px-2 py-1 rounded border border-[#3a4f3a]">
+<span class="material-symbols-outlined text-[12px]">link</span>
+                                        TX: 0x3d2...c104
+                                    </div>
+<p class="text-[10px] text-[#5a705a] mt-1 uppercase">Ontem • 09:15 AM</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<footer class="mt-12 py-6 border-t border-[#283928] text-center">
+<p class="text-[#5a705a] text-xs">
+                    SINARCA © 2024. Todos os direitos reservados. Sistema operando na rede principal.
+                </p>
+</footer>
+</main>
+</div>
+</div>
+</body></html>

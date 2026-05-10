@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ajuda e Contato - SINARCA</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#40f320",
+                        "primary-hover": "#36d61b",
+                        "background-light": "#f6f8f5",
+                        "background-dark": "#121811", // Forest Green / Dark Charcoal
+                        "surface-dark": "#1C2A1A", // Deep Green for cards
+                        "surface-highlight": "#2a3928", // Slightly lighter for inputs/hover
+                        "text-main": "#ffffff",
+                        "text-muted": "#a0ba9c",
+                    },
+                    fontFamily: {
+                        "display": ["Playfair Display", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem", 
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem", 
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Playfair Display', serif;
+        }
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121811; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a3928; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #40f320; 
+        }
+        
+        /* Accordion transition */
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col overflow-x-hidden text-text-main selection:bg-primary selection:text-background-dark">
+<!-- Top Navigation -->
+<header class="w-full border-b border-[#2a3928] bg-background-dark sticky top-0 z-50">
+<div class="max-w-[1280px] mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+<div class="flex items-center gap-4 text-white">
+<div class="size-6 text-primary">
+<span class="material-symbols-outlined text-3xl">forest</span>
+</div>
+<h2 class="text-white text-xl font-bold leading-tight tracking-wider">SINARCA</h2>
+</div>
+<div class="hidden lg:flex flex-1 justify-end items-center gap-8">
+<nav class="flex items-center gap-9">
+<a class="text-white hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Início</a>
+<a class="text-white hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Consulta Pública</a>
+<a class="text-white hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Painel de Créditos</a>
+<a class="text-primary text-sm font-bold leading-normal border-b-2 border-primary pb-0.5" href="#">Ajuda</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center overflow-hidden rounded-lg h-9 px-5 bg-primary hover:bg-primary-hover transition-colors text-[#121811] text-sm font-bold leading-normal">
+<span>Login</span>
+</button>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-9 border border-[#2a3928]" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDXVjd9acb2ZyEgrJNpoufl-nO2Uz9YYa7Ll3FSJpVRKzsvM3DIPEJ5Tjtvq-xp2cKFaHUBdsKdSp-O53zQFQOYU0d3HoM7kE5vni-5cy-iXTONI9x0J-I4-lbZeKH7dcvrfgPylRlR1-RpBTUgxpbNN81oa5IvQ1yZuR4_mt9Pon0ulEq4tca_9_gfLQjEjTs2UrV6rWxHdS4TTYLJydkpVeQYrVWshB4ErDT99GvkodhROiGu99eNxblDCkZL7zfKiV99ZH4tySk");'></div>
+</div>
+</div>
+<!-- Mobile Menu Icon -->
+<div class="lg:hidden text-white cursor-pointer">
+<span class="material-symbols-outlined">menu</span>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col items-center py-8 px-4 md:px-10">
+<div class="w-full max-w-[1080px] flex flex-col gap-8">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 items-center text-sm">
+<a class="text-text-muted hover:text-primary transition-colors font-medium" href="#">Início</a>
+<span class="material-symbols-outlined text-text-muted text-[16px]">chevron_right</span>
+<span class="text-white font-medium">Ajuda e Contato</span>
+</div>
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-[#2a3928] pb-8">
+<div class="flex flex-col gap-3 max-w-2xl">
+<h1 class="text-white text-4xl md:text-5xl font-black leading-tight tracking-tight">Como podemos ajudar você?</h1>
+<p class="text-text-muted text-lg font-normal leading-relaxed">Encontre respostas rápidas em nosso FAQ ou entre em contato diretamente com nossa equipe de suporte especializado em créditos ambientais.</p>
+</div>
+<!-- Search Bar -->
+<div class="w-full md:w-auto md:min-w-[320px]">
+<label class="flex flex-col w-full">
+<div class="flex w-full items-center rounded-lg bg-surface-highlight border border-transparent focus-within:border-primary transition-colors h-12 overflow-hidden">
+<div class="flex items-center justify-center pl-4 text-text-muted">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full bg-transparent border-none text-white placeholder:text-text-muted focus:ring-0 px-3 h-full text-base" placeholder="Pesquisar dúvidas..."/>
+</div>
+</label>
+</div>
+</div>
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mt-4">
+<!-- Left Column: FAQ -->
+<div class="lg:col-span-7 flex flex-col gap-6">
+<div>
+<h2 class="text-white text-3xl font-bold mb-6">Perguntas Frequentes</h2>
+<div class="flex flex-col gap-4">
+<!-- FAQ Item 1 -->
+<details class="group bg-surface-dark rounded-xl border border-[#2a3928] open:border-primary/30 transition-all duration-300">
+<summary class="flex justify-between items-center cursor-pointer list-none p-5">
+<span class="text-white text-lg font-medium group-hover:text-primary transition-colors">Como registrar um crédito de carbono?</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</span>
+</summary>
+<div class="text-text-muted px-5 pb-5 text-base leading-relaxed border-t border-[#2a3928] mt-2 pt-4">
+                                    Para registrar um crédito, acesse o painel "Meus Créditos", clique em "Novo Registro" e faça o upload da documentação técnica (DCP e relatórios de validação). O processo de homologação leva até 5 dias úteis.
+                                </div>
+</details>
+<!-- FAQ Item 2 -->
+<details class="group bg-surface-dark rounded-xl border border-[#2a3928] open:border-primary/30 transition-all duration-300">
+<summary class="flex justify-between items-center cursor-pointer list-none p-5">
+<span class="text-white text-lg font-medium group-hover:text-primary transition-colors">Qual a validade dos créditos ambientais?</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</span>
+</summary>
+<div class="text-text-muted px-5 pb-5 text-base leading-relaxed border-t border-[#2a3928] mt-2 pt-4">
+                                    A validade depende da tipologia do projeto. Créditos de reflorestamento geralmente possuem validade de 20 a 30 anos, enquanto projetos de energia podem ter ciclos menores. Consulte a norma técnica 14.2 para detalhes.
+                                </div>
+</details>
+<!-- FAQ Item 3 -->
+<details class="group bg-surface-dark rounded-xl border border-[#2a3928] open:border-primary/30 transition-all duration-300">
+<summary class="flex justify-between items-center cursor-pointer list-none p-5">
+<span class="text-white text-lg font-medium group-hover:text-primary transition-colors">Como funciona a auditoria de terceiros?</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</span>
+</summary>
+<div class="text-text-muted px-5 pb-5 text-base leading-relaxed border-t border-[#2a3928] mt-2 pt-4">
+                                    Todas as submissões acima de 10.000 tCO2e requerem auditoria de uma entidade credenciada pelo SINARCA. Você pode selecionar um auditor na lista de parceiros dentro do seu dashboard.
+                                </div>
+</details>
+<!-- FAQ Item 4 -->
+<details class="group bg-surface-dark rounded-xl border border-[#2a3928] open:border-primary/30 transition-all duration-300">
+<summary class="flex justify-between items-center cursor-pointer list-none p-5">
+<span class="text-white text-lg font-medium group-hover:text-primary transition-colors">Esqueci minha senha de acesso</span>
+<span class="transition group-open:rotate-180">
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</span>
+</summary>
+<div class="text-text-muted px-5 pb-5 text-base leading-relaxed border-t border-[#2a3928] mt-2 pt-4">
+                                    Na tela de login, clique em "Recuperar Senha". Um link seguro será enviado para o e-mail cadastrado. Se não tiver mais acesso ao e-mail, entre em contato via formulário.
+                                </div>
+</details>
+</div>
+</div>
+</div>
+<!-- Right Column: Contact & Info -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<!-- Contact Form Card -->
+<div class="bg-surface-dark rounded-xl p-6 lg:p-8 border border-[#2a3928] shadow-lg shadow-black/20">
+<h3 class="text-2xl font-bold text-white mb-1">Fale Conosco</h3>
+<p class="text-text-muted mb-6 text-sm">Preencha o formulário abaixo para entrar em contato com nossa equipe.</p>
+<form class="flex flex-col gap-4">
+<div class="space-y-1">
+<label class="text-sm font-medium text-white ml-1">Nome Completo</label>
+<input class="w-full rounded-lg bg-[#121811] border border-[#2a3928] text-white focus:border-primary focus:ring-1 focus:ring-primary px-4 py-3 placeholder:text-white/20" placeholder="Seu nome" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="text-sm font-medium text-white ml-1">E-mail Institucional</label>
+<input class="w-full rounded-lg bg-[#121811] border border-[#2a3928] text-white focus:border-primary focus:ring-1 focus:ring-primary px-4 py-3 placeholder:text-white/20" placeholder="voce@empresa.com" type="email"/>
+</div>
+<div class="space-y-1">
+<label class="text-sm font-medium text-white ml-1">Assunto</label>
+<div class="relative">
+<select class="w-full rounded-lg bg-[#121811] border border-[#2a3928] text-white focus:border-primary focus:ring-1 focus:ring-primary px-4 py-3 appearance-none">
+<option>Suporte Técnico</option>
+<option>Dúvidas sobre Legislação</option>
+<option>Denúncias</option>
+<option>Outros</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-text-muted">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<div class="space-y-1">
+<label class="text-sm font-medium text-white ml-1">Mensagem</label>
+<textarea class="w-full rounded-lg bg-[#121811] border border-[#2a3928] text-white focus:border-primary focus:ring-1 focus:ring-primary px-4 py-3 placeholder:text-white/20 resize-none" placeholder="Descreva sua solicitação..." rows="4"></textarea>
+</div>
+<button class="mt-2 w-full bg-primary hover:bg-primary-hover text-[#121811] font-bold py-3.5 rounded-lg transition-all shadow-lg shadow-primary/10 hover:shadow-primary/30 flex items-center justify-center gap-2" type="button">
+<span>Enviar Mensagem</span>
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</form>
+</div>
+<!-- Additional Info Card -->
+<div class="bg-[#121811] rounded-xl p-6 border border-[#2a3928] relative overflow-hidden">
+<!-- Decorative gradient overlay -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10"></div>
+<h4 class="text-lg font-bold text-white mb-4 font-display">Canais de Atendimento</h4>
+<div class="flex flex-col gap-4">
+<div class="flex items-start gap-3">
+<div class="bg-surface-highlight p-2 rounded-lg text-primary shrink-0">
+<span class="material-symbols-outlined">mail</span>
+</div>
+<div>
+<p class="text-xs text-text-muted uppercase tracking-wider font-semibold">E-mail</p>
+<a class="text-white hover:text-primary transition-colors font-medium" href="mailto:suporte@sinarca.gov.br">suporte@sinarca.gov.br</a>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="bg-surface-highlight p-2 rounded-lg text-primary shrink-0">
+<span class="material-symbols-outlined">call</span>
+</div>
+<div>
+<p class="text-xs text-text-muted uppercase tracking-wider font-semibold">Telefone</p>
+<a class="text-white hover:text-primary transition-colors font-medium" href="tel:+5508001234567">0800 123 4567</a>
+<p class="text-sm text-text-muted mt-0.5">Seg - Sex, 08h às 18h</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="bg-surface-highlight p-2 rounded-lg text-primary shrink-0">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div>
+<p class="text-xs text-text-muted uppercase tracking-wider font-semibold">Documentação</p>
+<a class="text-white hover:text-primary transition-colors font-medium underline decoration-text-muted/50 underline-offset-4" href="#">Acessar Portal de Normas</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Map / Location Highlight (Abstract representation of coverage) -->
+<div class="w-full h-48 md:h-64 rounded-xl mt-4 relative overflow-hidden group">
+<div class="absolute inset-0 bg-black/40 z-10"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-[#121811] to-transparent z-10"></div>
+<div class="bg-cover bg-center absolute inset-0 transition-transform duration-700 group-hover:scale-105" data-alt="Aerial view of a dense green forest representing environmental credits" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCIAA7veW_Jugjq_MjPC-79lWXBl89SDfxK7gB3v7qZetBxsYw28AkkVQOh9zyTzYpConphO4Ohqxr-FdWg-eXaW3jNGDj3TsJX9JAmq5h9oSbb9mNPuiBsOiviAzJA_lrId0ogiRWg9avu_WyjbNBgz7KrSI_cbFpIfpGqVHv21BaHNLJfdRivEWiZVXXhXqVAGHWnGioO1uDLbkeGwjEriWYRlJwRk8xV-2UQACy5tIY_pEVdcpESiu9qWuNO1fDWNEeznyKd2rU");'>
+</div>
+<div class="relative z-20 h-full flex flex-col justify-end p-6 md:p-8">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">public</span>
+<span class="text-primary text-sm font-bold tracking-wider uppercase">Cobertura Nacional</span>
+</div>
+<h3 class="text-white text-2xl font-bold max-w-xl">Sede Administrativa em Brasília, DF</h3>
+<p class="text-text-muted mt-1">Setor de Autarquias Norte, Quadra 5, Bloco C</p>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-[#0b0f0a] border-t border-[#2a3928] py-8 mt-12">
+<div class="max-w-[1280px] mx-auto px-6 lg:px-10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
+<div class="text-text-muted">
+                © 2023 SINARCA - Sistema Nacional de Rastreabilidade de Créditos Ambientais.
+            </div>
+<div class="flex gap-6">
+<a class="text-text-muted hover:text-primary transition-colors" href="#">Termos de Uso</a>
+<a class="text-text-muted hover:text-primary transition-colors" href="#">Política de Privacidade</a>
+<a class="text-text-muted hover:text-primary transition-colors" href="#">Ouvidoria</a>
+</div>
+</div>
+</footer>
+</body></html>

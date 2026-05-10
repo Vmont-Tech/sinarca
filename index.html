@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sinarca</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+</head>
+
+<body>
+  <div id="root">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#002B1C;color:#00FF94;font-family:sans-serif;">
+       <h1>INICIALIZANDO SINARCA...</h1>
+       <p>Se esta mensagem persistir, verifique o console ou reinicie o servidor.</p>
+    </div>
+  </div>
+  <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      if (typeof msg === 'string' && msg.includes('ResizeObserver')) return; // Ignora erro comum de ResizeObserver
+      var div = document.createElement("div");
+      div.style.cssText = "position:fixed;top:0;left:0;background:#800000;color:white;padding:20px;z-index:99999;width:100%;font-size:16px;font-family:monospace;white-space:pre-wrap;";
+      div.innerHTML = "<strong>ERRO CRÍTICO (Global):</strong><br/>" + msg + "<br/><small>" + url + ":" + lineNo + "</small>";
+      document.body.appendChild(div);
+    };
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

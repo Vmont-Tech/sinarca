@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Relatório Técnico Completo MRCA - SINARCA</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+            extend: {
+                colors: {
+                "primary": "#0df233",
+                "background-light": "#f5f8f6",
+                "background-dark": "#0b140e", /* Sinarca Verde Floresta */
+                "card-dark": "#16261b", /* Verde Profundo */
+                "border-green": "#28392b",
+                "text-muted": "#9cbaa1",
+                },
+                fontFamily: {
+                "display": ["Inter", "sans-serif"],
+                "serif": ["Playfair Display", "serif"],
+                "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+                },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for technical look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b140e; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #28392b; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b543f; 
+        }
+        .neon-glow {
+            box-shadow: 0 0 10px rgba(13, 242, 51, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-white font-display overflow-x-hidden antialiased">
+<div class="relative flex min-h-screen flex-col">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-border-green bg-background-dark/95 backdrop-blur-md px-6 py-3 lg:px-10">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-white">
+<div class="size-8 text-primary">
+<svg class="h-full w-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-white text-xl font-bold tracking-tight font-serif">SINARCA</h2>
+</div>
+<label class="hidden md:flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full border border-border-green bg-card-dark focus-within:border-primary/50 transition-colors">
+<div class="text-text-muted flex items-center justify-center pl-4">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-transparent text-white focus:outline-0 focus:ring-0 border-none h-full placeholder:text-text-muted px-4 pl-2 text-sm font-normal" placeholder="Buscar Protocolo, Hash ou ID..."/>
+</div>
+</label>
+</div>
+<div class="flex items-center gap-4 lg:gap-8">
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-text-muted hover:text-primary transition-colors text-sm font-medium" href="#">Painel</a>
+<a class="text-text-muted hover:text-primary transition-colors text-sm font-medium" href="#">Projetos</a>
+<a class="text-text-muted hover:text-primary transition-colors text-sm font-medium" href="#">Mercado</a>
+<a class="text-text-muted hover:text-primary transition-colors text-sm font-medium" href="#">Auditoria</a>
+</nav>
+<div class="flex gap-3">
+<button class="flex items-center justify-center rounded-lg size-10 bg-card-dark text-white hover:bg-border-green transition-colors border border-border-green">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border border-border-green" data-alt="User profile avatar showing a generic silhouette" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCwrm52DUXZLMX6tY3SGxnh7tocckfh-wv3btMKye3twARWscccoY3nh63FCnD9LaDuRrncX3yJrCpVXdby2-2gLj6gutqhHtG6JBGcu8bnvmjF7XiUECu2mxsliIEn_aoNL3OvNHZ27p3tZTcb5pYrBKNB8Yx-m8Ov95Ia8U5acPHbmsAYhm9biuBOr9XQcdI-Vj7TN-72ny0oTBL_RWrcW12t5RJJCB3PzQO3sfoDqhrTuwXWZyKVmvinjczLp3rCAqyKFSc7uMo");'></div>
+</div>
+</div>
+</header>
+<!-- Main Content Wrapper -->
+<div class="flex flex-1 justify-center py-6 px-4 md:px-8 lg:px-12 xl:px-40">
+<div class="flex w-full max-w-[1400px] gap-8">
+<!-- Sticky Sidebar (Table of Contents) -->
+<aside class="hidden xl:flex flex-col w-64 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
+<h3 class="text-text-muted text-xs font-bold uppercase tracking-wider mb-4 px-2">Navegação do Relatório</h3>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-primary bg-primary/10 rounded-lg border-l-2 border-primary text-sm font-medium" href="#section-identification">
+<span class="material-symbols-outlined text-[18px]">fingerprint</span> Identificação
+                        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-muted hover:text-white hover:bg-card-dark rounded-lg text-sm transition-all border-l-2 border-transparent" href="#section-issuer">
+<span class="material-symbols-outlined text-[18px]">domain</span> Projeto Emissor
+                        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-muted hover:text-white hover:bg-card-dark rounded-lg text-sm transition-all border-l-2 border-transparent" href="#section-audit">
+<span class="material-symbols-outlined text-[18px]">verified_user</span> Auditoria &amp; Provas
+                        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-muted hover:text-white hover:bg-card-dark rounded-lg text-sm transition-all border-l-2 border-transparent" href="#section-cert">
+<span class="material-symbols-outlined text-[18px]">workspace_premium</span> Certificação
+                        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-muted hover:text-white hover:bg-card-dark rounded-lg text-sm transition-all border-l-2 border-transparent" href="#section-asset">
+<span class="material-symbols-outlined text-[18px]">token</span> Ativo Ambiental
+                        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-muted hover:text-white hover:bg-card-dark rounded-lg text-sm transition-all border-l-2 border-transparent" href="#section-transaction">
+<span class="material-symbols-outlined text-[18px]">sync_alt</span> Transações
+                        </a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-muted hover:text-white hover:bg-card-dark rounded-lg text-sm transition-all border-l-2 border-transparent" href="#section-signatures">
+<span class="material-symbols-outlined text-[18px]">draw</span> Assinaturas
+                        </a>
+</nav>
+<div class="mt-auto p-4 rounded-xl bg-card-dark border border-border-green">
+<p class="text-xs text-text-muted mb-2">Hash do Documento Atual</p>
+<p class="font-mono text-[10px] text-primary break-all leading-tight opacity-80">9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f</p>
+</div>
+</aside>
+<!-- Main Report Body -->
+<main class="flex-1 flex flex-col gap-8 min-w-0">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 text-sm">
+<a class="text-text-muted hover:text-primary transition-colors" href="#">Home</a>
+<span class="text-text-muted">/</span>
+<a class="text-text-muted hover:text-primary transition-colors" href="#">Consulta Pública</a>
+<span class="text-text-muted">/</span>
+<span class="text-white font-medium">Relatório MRCA-2023-8892</span>
+</div>
+<!-- Hero Header -->
+<div class="flex flex-col gap-6 border-b border-border-green pb-8">
+<div class="flex flex-wrap justify-between items-start gap-4">
+<div class="flex flex-col gap-2">
+<div class="flex flex-wrap gap-2 mb-1">
+<div class="flex h-6 items-center gap-1 rounded bg-primary/20 px-2 text-primary text-xs font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Ativo
+                                    </div>
+<div class="flex h-6 items-center gap-1 rounded bg-border-green px-2 text-text-muted text-xs font-medium uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">public</span> Público
+                                    </div>
+</div>
+<h1 class="text-white text-3xl md:text-5xl font-serif font-bold leading-tight tracking-tight">
+                                    Relatório Técnico: <span class="text-primary">MRCA-2023-8892</span>
+</h1>
+<p class="text-text-muted text-base">Gerado em 24 Out 2023 às 14:30:22 UTC • Versão Final (Imutável)</p>
+</div>
+<button class="group flex items-center justify-center gap-2 rounded-lg h-12 px-6 bg-primary hover:bg-[#0bc028] text-background-dark font-bold text-sm tracking-wide transition-all shadow-[0_0_15px_rgba(13,242,51,0.2)] hover:shadow-[0_0_25px_rgba(13,242,51,0.4)]">
+<span class="material-symbols-outlined group-hover:-translate-y-0.5 transition-transform">download</span>
+<span>Baixar Laudo PDF</span>
+</button>
+</div>
+<!-- Status Chips -->
+<div class="flex flex-wrap gap-3">
+<div class="flex items-center gap-2 rounded-lg bg-card-dark border border-border-green px-4 py-2">
+<span class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+<span class="text-sm font-medium">Verificado</span>
+</div>
+<div class="flex items-center gap-2 rounded-lg bg-card-dark border border-border-green px-4 py-2">
+<span class="material-symbols-outlined text-primary text-[20px]">shield_lock</span>
+<span class="text-sm font-medium">Auditado</span>
+</div>
+<div class="flex items-center gap-2 rounded-lg bg-card-dark border border-border-green px-4 py-2 neon-glow">
+<span class="material-symbols-outlined text-primary text-[20px]">star</span>
+<span class="text-sm font-medium text-white">Sinarca Neon</span>
+</div>
+</div>
+</div>
+<!-- 1. Identificação do Protocolo -->
+<section class="scroll-mt-32" id="section-identification">
+<div class="bg-card-dark rounded-xl border border-border-green p-6 md:p-8">
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">fingerprint</span>
+</div>
+<h2 class="text-2xl font-serif font-semibold text-white">Identificação do Protocolo</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">ID do Protocolo</span>
+<span class="text-lg font-mono text-white">PRT-8892-X</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Data de Registro</span>
+<span class="text-lg text-white">12 Ago 2023</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Metodologia</span>
+<span class="text-lg text-white">Sinarca Std v2.1</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Validade</span>
+<span class="text-lg text-white">12 Ago 2028</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. Dados do Projeto Emissor -->
+<section class="scroll-mt-32" id="section-issuer">
+<div class="bg-card-dark rounded-xl border border-border-green overflow-hidden">
+<div class="p-6 md:p-8 border-b border-border-green">
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">domain</span>
+</div>
+<h2 class="text-2xl font-serif font-semibold text-white">Dados do Projeto Emissor</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Nome do Projeto</span>
+<span class="text-lg font-semibold text-white">Reflorestamento Mata Atlântica - Setor 7</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Entidade Desenvolvedora</span>
+<span class="text-lg text-white">EcoGreen Soluções Ltda.</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">CNPJ/ID</span>
+<span class="text-lg text-white font-mono">12.345.678/0001-90</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Área Total</span>
+<span class="text-lg text-white">1,250 Hectares</span>
+</div>
+<div class="col-span-1 sm:col-span-2">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide mb-2 block">Descrição Breve</span>
+<p class="text-sm text-text-muted leading-relaxed">
+                                                Projeto de reflorestamento nativo focado na recuperação de nascentes e biodiversidade local. Utiliza espécies endêmicas e possui monitoramento via satélite em tempo real.
+                                            </p>
+</div>
+</div>
+<div class="col-span-1 h-48 md:h-auto min-h-[200px] rounded-lg overflow-hidden relative">
+<img alt="Satellite map view of the forest area in Brazil" class="w-full h-full object-cover" data-location="Mata Atlântica, Brazil" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClB4MKQEl22SJR24dhlGqJ0AJoRTlwtw-PgM9nj1lwq2Q2y0-816GBrOPrkh5r6EV0Kus9KK3mrG_sVq2O1O4VD1UmstmP_cSZlYcraXljxwV6mYuBMs2sRi4kdKvxgwbdVGQFaG9DTZB2zlfV1TaDbVxVMNW8Ukge8PRjB4b34KmeoFpwZLdmCdiwuwLGWDaovG31wx9COLLx5m817YidteaYVPOkERTabJ4-D0aUteF7jfgIMSp_brnBL-cSbRE4mbHIMDN0giU"/>
+<div class="absolute bottom-2 right-2 bg-background-dark/80 backdrop-blur px-2 py-1 rounded text-xs text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">location_on</span> -23.5505, -46.6333
+                                        </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. Delegação de Auditoria -->
+<section class="scroll-mt-32" id="section-audit">
+<div class="bg-card-dark rounded-xl border border-border-green p-6 md:p-8">
+<div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<h2 class="text-2xl font-serif font-semibold text-white">Delegação de Auditoria</h2>
+</div>
+<div class="flex items-center gap-2 text-primary bg-primary/10 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide w-fit">
+<span class="material-symbols-outlined text-[16px]">check</span> Presença Confirmada
+                                </div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Auditor Info -->
+<div class="lg:col-span-1 flex flex-col gap-6 p-5 bg-background-dark rounded-lg border border-border-green">
+<h4 class="text-white font-bold border-b border-border-green pb-2">Auditor Responsável</h4>
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-full bg-cover bg-center" data-alt="Headshot of auditor Carlos Mendes" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAiWFX6vbK6RN6Opxc5zcxkxE_i0lgsMuLnOXwz9zT6-p1K1TcF0DTS5OTvyOm_h2Dt5gvrMk9PwbWEHY-jzwXY0x5sMUpGP2eRQ185ar5GukaiL8zCX2lIfcy2pblEd94W_4fbE9oxlHFzjagdk_zztTtrijVJ7lRnFouZIRR_JkPfITHMjADhj8qXUFHFqyYiDdyr2V7zPiJndTcXwl8JC7D5KOCxggWoW3TkzjRc4RtqjKT9WzevXe66D0u-SXLZxUB2CsRYdW8");'></div>
+<div>
+<p class="text-white font-medium">Carlos Mendes</p>
+<p class="text-text-muted text-xs">ID: AUD-SP-0992</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-text-muted">Data Visita</span>
+<span class="text-white">15 Out 2023</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-text-muted">Check-in</span>
+<span class="text-white font-mono">08:45 AM</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-text-muted">Check-out</span>
+<span class="text-white font-mono">16:30 PM</span>
+</div>
+</div>
+</div>
+<!-- Evidence Gallery -->
+<div class="lg:col-span-2">
+<h4 class="text-text-muted text-xs font-bold uppercase tracking-wider mb-4">Evidências de Campo (Imutáveis)</h4>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+<div class="group relative aspect-square rounded-lg overflow-hidden bg-background-dark cursor-pointer border border-border-green">
+<img alt="Dense green forest canopy view" class="w-full h-full object-cover transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDh7Y8dQLizp1pI6EpiI7lHNY9-2_SoT-7F6323hUjsqXgOo3ctljCdRtQ6M6-G1GJcL1IKGAfOAs1bO9nPbK0QAP6vIO7bp2bhbObVsD7lnGCvbh59p_eXLha_gzYtLkXv8e9V7hnNUKR27XMZWqUK7f1XYs-AHWbsx834w0uK9N4IKk-pVG-jRPa6wU9kKppHmjcWun66P7NmI63nFc5KKuQznfJtvlbKP8MrNHGj0Vl_jDerO_pEq4Pzz2AnxDVQ_PgkPuEDr2M"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
+<div class="absolute bottom-2 left-2 bg-black/50 backdrop-blur px-1.5 py-0.5 rounded text-[10px] text-white">IMG_882.jpg</div>
+</div>
+<div class="group relative aspect-square rounded-lg overflow-hidden bg-background-dark cursor-pointer border border-border-green">
+<img alt="Close up of soil sampling equipment in forest" class="w-full h-full object-cover transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5ys85nMgXGHtAFgS9VMTIT1fB6YfexdQUO4Ot_s0bt3CD0DIKcGld5AcV0107ZLDeqdMwOPhNIfEFNrl9Zo3KeHfg0trusY4Vl_buIjYvYqtjpwrPgijQ4IbB1ENXnef9LLDLmrP6fL3WxkDuC-OY4QhGycTea9uNDWzAZi3r5M3IN8mfT1L8e7VcRGpI9nCEoF1tKihSL6EFaliE-NdVxCEFd1kCXKUP1RVCD6zImAGYCsS6QCjkDoZOAvnxDGQgDPpW1BVu7bE"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white drop-shadow-lg text-4xl opacity-80">360</span>
+</div>
+<div class="absolute bottom-2 left-2 bg-black/50 backdrop-blur px-1.5 py-0.5 rounded text-[10px] text-white">360_VIEW_01</div>
+</div>
+<div class="group relative aspect-square rounded-lg overflow-hidden bg-background-dark cursor-pointer border border-border-green">
+<img alt="Tree trunk measuring process" class="w-full h-full object-cover transition-transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqk4Pp5IEMvebiiSby_CX5xspyV3s1b0oYp6AdwEqorzu8940d1Yef-EBNe0wx38gtGftoEAiiL-7CcBx-0eDJ4tEnQaWF9CV9RiuErxK6V74gwwvCqPILnP_VtxXnafm8yH4KWqC_9yLas9lnvNh2yiaEJkmxcynFy585Hie32Rx53hZi8lIXvvJPKbWRn6q01ph9pKSPUFlUhRuKA135sO8k6kXvPNI3AbP-5An31iIHQx9EYT78kAxN6cK4991yV8n4yeU0EaQ"/>
+<div class="absolute bottom-2 left-2 bg-black/50 backdrop-blur px-1.5 py-0.5 rounded text-[10px] text-white">BIOMETRY.png</div>
+</div>
+</div>
+<div class="mt-3 flex items-center gap-2 text-xs text-text-muted">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+                                        Todas as mídias possuem metadados EXIF e geolocalização assinados digitalmente.
+                                    </div>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. Certificação Ambiental & Ativo -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+<!-- Certificação -->
+<section class="scroll-mt-32 flex flex-col h-full bg-card-dark rounded-xl border border-border-green p-6 md:p-8" id="section-cert">
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">workspace_premium</span>
+</div>
+<h2 class="text-2xl font-serif font-semibold text-white">Certificação</h2>
+</div>
+<div class="flex flex-col gap-6 flex-1">
+<div>
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Órgão Certificador</span>
+<p class="text-lg text-white font-medium mt-1">Instituto Sinarca de Validação</p>
+</div>
+<div class="p-4 bg-background-dark rounded-lg border border-border-green/50">
+<div class="flex justify-between items-center mb-2">
+<span class="text-xs text-text-muted">PDF Hash (SHA-256)</span>
+<button class="text-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<p class="font-mono text-xs text-text-muted break-all">
+                                        7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069
+                                    </p>
+</div>
+<div class="mt-auto">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Serial Numbers Range</span>
+<div class="flex items-center gap-2 mt-2 font-mono text-sm text-white bg-background-dark p-2 rounded border border-border-green/50 w-fit">
+<span class="text-primary">SN-2023-001</span>
+<span class="text-text-muted">➔</span>
+<span class="text-primary">SN-2023-500</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Ativo Ambiental -->
+<section class="scroll-mt-32 flex flex-col h-full bg-card-dark rounded-xl border border-border-green p-6 md:p-8" id="section-asset">
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">token</span>
+</div>
+<h2 class="text-2xl font-serif font-semibold text-white">Ativo Ambiental</h2>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="col-span-2 sm:col-span-1 p-4 rounded-lg bg-gradient-to-br from-background-dark to-card-dark border border-border-green">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Volume Total</span>
+<p class="text-3xl font-bold text-white mt-2">500 <span class="text-sm font-normal text-text-muted">tCO2e</span></p>
+</div>
+<div class="col-span-2 sm:col-span-1 p-4 rounded-lg bg-gradient-to-br from-background-dark to-card-dark border border-border-green">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Vintage (Ano Base)</span>
+<p class="text-3xl font-bold text-white mt-2">2022</p>
+</div>
+<div class="col-span-2">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Tipo de Crédito</span>
+<p class="text-lg text-white mt-1">Remoção de Carbono (Reflorestamento ARR)</p>
+</div>
+<div class="col-span-2">
+<span class="text-xs font-medium text-text-muted uppercase tracking-wide">Co-benefícios</span>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-2 py-1 rounded border border-border-green text-xs text-text-muted bg-background-dark">Proteção Hídrica</span>
+<span class="px-2 py-1 rounded border border-border-green text-xs text-text-muted bg-background-dark">Biodiversidade</span>
+<span class="px-2 py-1 rounded border border-border-green text-xs text-text-muted bg-background-dark">Comunidade Local</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- 5. Timeline de Rastreabilidade -->
+<section class="bg-card-dark rounded-xl border border-border-green p-6 md:p-8">
+<h3 class="text-text-muted text-xs font-bold uppercase tracking-wider mb-6">Histórico de Ciclo de Vida</h3>
+<!-- Timeline Component (Adapted) -->
+<div class="grid grid-cols-[40px_1fr] gap-x-4">
+<!-- Step 1 -->
+<div class="flex flex-col items-center gap-1 pt-1">
+<div class="text-primary bg-primary/10 rounded-full p-1">
+<span class="material-symbols-outlined text-[20px]">description</span>
+</div>
+<div class="w-[2px] bg-border-green h-full grow my-1"></div>
+</div>
+<div class="flex flex-1 flex-col pb-8">
+<p class="text-white text-base font-bold leading-normal">Protocolo Iniciado</p>
+<p class="text-sm text-text-muted">12 Ago 2023 • Criado por EcoGreen Soluções</p>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center gap-1">
+<div class="w-[2px] bg-border-green h-2"></div>
+<div class="text-primary bg-primary/10 rounded-full p-1">
+<span class="material-symbols-outlined text-[20px]">location_on</span>
+</div>
+<div class="w-[2px] bg-border-green h-full grow my-1"></div>
+</div>
+<div class="flex flex-1 flex-col pb-8">
+<p class="text-white text-base font-bold leading-normal">Auditoria de Campo</p>
+<p class="text-sm text-text-muted">15 Out 2023 • Auditor Carlos Mendes</p>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center gap-1">
+<div class="w-[2px] bg-border-green h-2"></div>
+<div class="text-primary bg-primary/10 rounded-full p-1 neon-glow">
+<span class="material-symbols-outlined text-[20px]">workspace_premium</span>
+</div>
+<div class="w-[2px] bg-border-green h-full grow my-1"></div>
+</div>
+<div class="flex flex-1 flex-col pb-8">
+<p class="text-white text-base font-bold leading-normal">Emissão de Certificado</p>
+<p class="text-sm text-text-muted">24 Out 2023 • Instituto Sinarca</p>
+</div>
+</div>
+</section>
+<!-- 6. Transação & Aposentadoria -->
+<section class="scroll-mt-32" id="section-transaction">
+<div class="bg-card-dark rounded-xl border border-border-green overflow-hidden">
+<div class="p-6 md:p-8 bg-gradient-to-r from-card-dark to-[#0f1f13]">
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">sync_alt</span>
+</div>
+<h2 class="text-2xl font-serif font-semibold text-white">Última Transação &amp; Status</h2>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-border-green text-xs text-text-muted uppercase">
+<th class="py-3 px-4 font-medium">Data</th>
+<th class="py-3 px-4 font-medium">Tipo</th>
+<th class="py-3 px-4 font-medium">De</th>
+<th class="py-3 px-4 font-medium">Para</th>
+<th class="py-3 px-4 font-medium text-right">Valor</th>
+</tr>
+</thead>
+<tbody class="text-sm">
+<tr class="border-b border-border-green/50 hover:bg-white/5 transition-colors">
+<td class="py-4 px-4 text-white">25 Out 2023</td>
+<td class="py-4 px-4 text-white"><span class="px-2 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">VENDA</span></td>
+<td class="py-4 px-4 text-text-muted font-mono">EcoGreen...</td>
+<td class="py-4 px-4 text-white font-mono">Holdings BR...</td>
+<td class="py-4 px-4 text-white text-right font-mono">R$ 42.500,00</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-8 p-6 bg-background-dark/50 rounded-xl border border-dashed border-border-green">
+<h4 class="text-white font-bold mb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted">lock_clock</span>
+                                        Aposentadoria Final
+                                    </h4>
+<p class="text-text-muted text-sm mb-4">Este ativo ainda não foi aposentado. Ele permanece circulante e válido para compensação futura.</p>
+<div class="flex gap-4 opacity-50 pointer-events-none grayscale">
+<div class="flex flex-col gap-1">
+<span class="text-xs text-text-muted uppercase">Beneficiário</span>
+<span class="text-white font-mono">---</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-xs text-text-muted uppercase">Motivo</span>
+<span class="text-white">---</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 7. Assinaturas Digitais -->
+<section class="scroll-mt-32" id="section-signatures">
+<div class="bg-background-dark rounded-xl border border-border-green p-6 md:p-8">
+<div class="flex items-center gap-3 mb-6">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">draw</span>
+</div>
+<h2 class="text-xl font-serif font-semibold text-white">Assinaturas Digitais</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Sig 1 -->
+<div class="p-4 border border-border-green rounded-lg bg-card-dark/50">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
+<span class="font-bold text-sm text-white">Auditor Líder</span>
+</div>
+<p class="text-xs text-text-muted font-mono break-all">
+                                        sig_rsa_4096: 3a1f8b...e92d
+                                    </p>
+</div>
+<!-- Sig 2 -->
+<div class="p-4 border border-border-green rounded-lg bg-card-dark/50">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
+<span class="font-bold text-sm text-white">Validador Sinarca</span>
+</div>
+<p class="text-xs text-text-muted font-mono break-all">
+                                        sig_ecdsa_secp256k1: 7c2d9a...1b4f
+                                    </p>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-border-green text-center">
+<p class="text-xs text-text-muted">
+                                    Documento gerado e assinado criptograficamente pelo Sistema Nacional de Rastreabilidade de Créditos Ambientais.
+                                    <br/>Qualquer alteração neste arquivo invalidará as assinaturas acima.
+                                </p>
+</div>
+</div>
+</section>
+</main>
+</div>
+</div>
+</div>
+</body></html>

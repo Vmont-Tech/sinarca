@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Criar Projeto MRCA - SINARCA</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Playfair+Display:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#59f20d", // Sinarca Neon
+                        "background-light": "#f6f8f5",
+                        "background-dark": "#0a1f0a", // Sinarca Verde Floresta (Base)
+                        "surface-dark": "#132a18", // Verde Profundo (Cards)
+                        "surface-input": "#051105", // Darker for inputs
+                        "text-secondary": "#a6ba9c",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a1f0a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #132a18; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2e3928; 
+        }
+        
+        .form-checkbox:checked {
+            background-color: #59f20d;
+            border-color: #59f20d;
+        }
+        
+        /* Neon glow focus effect */
+        .neon-focus:focus-within {
+            border-color: #59f20d;
+            box-shadow: 0 0 8px rgba(89, 242, 13, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-white font-display antialiased overflow-x-hidden selection:bg-primary selection:text-background-dark">
+<div class="relative flex min-h-screen w-full flex-col">
+<!-- Header -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-[#2e3928] bg-[#0a1f0a]/95 backdrop-blur-sm sticky top-0 z-50 px-6 py-3 lg:px-10">
+<div class="flex items-center gap-4 text-white">
+<div class="size-8 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined !text-[32px]">forest</span>
+</div>
+<h2 class="text-white text-xl font-bold leading-tight tracking-wider font-display">SINARCA</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Dashboard</a>
+<a class="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Projetos</a>
+<a class="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Relatórios</a>
+<a class="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Configurações</a>
+</nav>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end hidden sm:flex">
+<span class="text-xs text-text-secondary">Certificadora</span>
+<span class="text-sm font-semibold">GreenVerify Ltda.</span>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-[#2e3928]" data-alt="User profile picture placeholder with abstract pattern" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDlDixVAsUAAePMygJt3WP9cbisVjIk4TAEM4bHMuZlMgUkXLb1oPgXB0wNdABBmwhg7fSnfgpEBTiSdmPcbf-WpB2HTtmPj_UB4HZPHUAi1bMuYrv8UIqTg1qtOlI8seEuK7KUwVXFoYXS_UZfk5T1NgWUyw2k_dMxWNYrL-e2uBoBAsG83j9BzuUOjn_RXlg14v_MVmuc0goqiiQiyP00Bay0jn-S4KXZxH9lB1ihfcW5cI7_X8FZ0u2vq9rlfidRmi5JUv2E8LI");'></div>
+</div>
+</div>
+</header>
+<!-- Main Layout -->
+<div class="flex flex-1 w-full justify-center py-8">
+<div class="w-full max-w-[1280px] px-4 md:px-6 lg:px-8 flex flex-col lg:flex-row gap-8">
+<!-- Left Content: Form Wizard -->
+<main class="flex-1 flex flex-col min-w-0">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 mb-6 text-sm">
+<a class="text-text-secondary hover:text-primary transition-colors" href="#">Home</a>
+<span class="text-text-secondary">/</span>
+<a class="text-text-secondary hover:text-primary transition-colors" href="#">Gerenciamento</a>
+<span class="text-text-secondary">/</span>
+<span class="text-white font-medium">Novo Protocolo MRCA</span>
+</div>
+<!-- Page Heading -->
+<div class="mb-8">
+<h1 class="text-white text-4xl font-serif font-bold leading-tight tracking-tight mb-2">Novo Protocolo MRCA</h1>
+<p class="text-text-secondary text-base">Inicie o registro de um novo protocolo de rastreabilidade de créditos ambientais no sistema nacional.</p>
+</div>
+<!-- Progress Stepper -->
+<div class="mb-10">
+<div class="flex items-center justify-between mb-2 px-1">
+<span class="text-primary font-bold text-sm">Identificação</span>
+<span class="text-text-secondary font-medium text-sm">Emissor</span>
+<span class="text-text-secondary font-medium text-sm">Ativo Ambiental</span>
+</div>
+<div class="relative w-full h-2 bg-[#1e2f20] rounded-full overflow-hidden">
+<div class="absolute top-0 left-0 h-full bg-primary w-1/3 shadow-[0_0_10px_#59f20d]"></div>
+</div>
+<div class="flex justify-between mt-2 text-xs text-text-secondary">
+<span>Etapa 1 de 3</span>
+<span>33% concluído</span>
+</div>
+</div>
+<!-- Form Container -->
+<form class="flex flex-col gap-6" onsubmit="event.preventDefault();">
+<!-- Section 1: Identificação do Protocolo -->
+<div class="bg-surface-dark rounded-xl border border-[#2e3928] p-6 lg:p-8 shadow-lg">
+<div class="flex items-center gap-3 mb-6 border-b border-[#2e3928] pb-4">
+<span class="bg-primary/20 text-primary rounded-lg p-2 material-symbols-outlined">description</span>
+<h3 class="text-xl font-serif font-semibold text-white">Identificação do Protocolo</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="col-span-1 md:col-span-2 space-y-2">
+<label class="text-sm font-medium text-text-secondary">Nome do Protocolo</label>
+<div class="neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<input class="w-full bg-transparent border-none text-white p-3 placeholder-gray-600 focus:ring-0 focus:outline-none" placeholder="Ex: Projeto Reflorestamento Amazônia Legal - Lote 01" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-medium text-text-secondary">Tipo de MRCA</label>
+<div class="relative neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<select class="w-full bg-transparent border-none text-white p-3 pr-10 focus:ring-0 focus:outline-none appearance-none">
+<option class="bg-surface-dark text-gray-400" value="">Selecione o tipo</option>
+<option class="bg-surface-dark" value="carbon">Crédito de Carbono</option>
+<option class="bg-surface-dark" value="water">Crédito Hídrico</option>
+<option class="bg-surface-dark" value="bio">Biodiversidade</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-secondary">
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-medium text-text-secondary">Metodologia Aplicada</label>
+<div class="relative neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<select class="w-full bg-transparent border-none text-white p-3 pr-10 focus:ring-0 focus:outline-none appearance-none">
+<option class="bg-surface-dark text-gray-400" value="">Selecione a metodologia</option>
+<option class="bg-surface-dark" value="vcs">Verra VCS</option>
+<option class="bg-surface-dark" value="gs">Gold Standard</option>
+<option class="bg-surface-dark" value="mdl">MDL / ONU</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-secondary">
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+</div>
+</div>
+<div class="col-span-1 md:col-span-2 space-y-2">
+<label class="text-sm font-medium text-text-secondary">Descrição Resumida</label>
+<div class="neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<textarea class="w-full bg-transparent border-none text-white p-3 placeholder-gray-600 focus:ring-0 focus:outline-none" placeholder="Breve descrição dos objetivos e escopo do projeto..." rows="3"></textarea>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Dados do Projeto Emissor -->
+<div class="bg-surface-dark rounded-xl border border-[#2e3928] p-6 lg:p-8 shadow-lg opacity-60 hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-3 mb-6 border-b border-[#2e3928] pb-4">
+<span class="bg-primary/20 text-primary rounded-lg p-2 material-symbols-outlined">corporate_fare</span>
+<h3 class="text-xl font-serif font-semibold text-white">Dados do Projeto Emissor</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-sm font-medium text-text-secondary">CNPJ do Titular</label>
+<div class="neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<input class="w-full bg-transparent border-none text-white p-3 placeholder-gray-600 focus:ring-0 focus:outline-none" placeholder="00.000.000/0001-00" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-medium text-text-secondary">Bioma de Incidência</label>
+<div class="relative neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<select class="w-full bg-transparent border-none text-white p-3 pr-10 focus:ring-0 focus:outline-none appearance-none">
+<option class="bg-surface-dark" value="">Amazônia</option>
+<option class="bg-surface-dark" value="">Cerrado</option>
+<option class="bg-surface-dark" value="">Mata Atlântica</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-text-secondary">
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-medium text-text-secondary">Latitude</label>
+<div class="neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<input class="w-full bg-transparent border-none text-white p-3 placeholder-gray-600 focus:ring-0 focus:outline-none" placeholder="-00.000000" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-medium text-text-secondary">Longitude</label>
+<div class="neon-focus bg-surface-input rounded-lg border border-[#2e3928] transition-colors">
+<input class="w-full bg-transparent border-none text-white p-3 placeholder-gray-600 focus:ring-0 focus:outline-none" placeholder="-00.000000" type="text"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Documentação (Preview) -->
+<div class="bg-surface-dark rounded-xl border border-[#2e3928] p-6 lg:p-8 shadow-lg opacity-40">
+<div class="flex items-center gap-3 mb-2">
+<span class="bg-gray-800 text-gray-400 rounded-lg p-2 material-symbols-outlined">folder_open</span>
+<h3 class="text-xl font-serif font-semibold text-gray-400">Ativo Ambiental &amp; Documentação</h3>
+</div>
+<p class="text-sm text-gray-500 pl-12">Esta seção estará disponível após preencher os dados anteriores.</p>
+</div>
+<!-- Action Bar -->
+<div class="flex flex-col-reverse sm:flex-row items-center justify-between gap-4 mt-4 pt-6 border-t border-[#2e3928]">
+<button class="w-full sm:w-auto px-6 py-3 rounded-lg border border-[#2e3928] text-white font-medium hover:bg-[#1e2f20] transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-lg">arrow_back</span>
+                                Voltar
+                            </button>
+<div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+<button class="w-full sm:w-auto px-6 py-3 rounded-lg text-text-secondary hover:text-white font-medium hover:bg-[#1e2f20] transition-colors" type="button">
+                                    Salvar Rascunho
+                                </button>
+<button class="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary text-background-dark font-bold hover:bg-[#46c20a] transition-all shadow-[0_0_15px_rgba(89,242,13,0.3)] hover:shadow-[0_0_20px_rgba(89,242,13,0.5)] flex items-center justify-center gap-2" type="submit">
+                                    Próximo
+                                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+</form>
+</main>
+<!-- Sidebar: Contextual Help -->
+<aside class="w-full lg:w-80 flex flex-col gap-6 shrink-0">
+<div class="bg-surface-dark rounded-xl border border-[#2e3928] p-5 sticky top-24">
+<h4 class="text-primary font-bold text-lg mb-4 flex items-center gap-2 font-serif">
+<span class="material-symbols-outlined">help</span>
+                            Manual Técnico
+                        </h4>
+<div class="space-y-6">
+<div>
+<h5 class="text-white font-medium text-sm mb-2">Identificação do Protocolo</h5>
+<p class="text-text-secondary text-xs leading-relaxed">
+                                    O nome do protocolo deve ser único e seguir a nomenclatura definida na ISO 14064-2. Evite caracteres especiais no início do nome.
+                                </p>
+</div>
+<div class="h-px bg-[#2e3928] w-full"></div>
+<div>
+<h5 class="text-white font-medium text-sm mb-2">Tipologia MRCA</h5>
+<p class="text-text-secondary text-xs leading-relaxed mb-3">
+                                    Selecione a categoria primária do ativo. Projetos híbridos devem ser registrados sob a categoria de maior impacto.
+                                </p>
+<a class="text-primary text-xs font-semibold hover:underline flex items-center gap-1" href="#">
+                                    Ver tabela de equivalência
+                                    <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</a>
+</div>
+<div class="h-px bg-[#2e3928] w-full"></div>
+<div class="bg-[#1e2f20] rounded-lg p-3 border border-[#2e3928]">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-yellow-500 text-sm mt-0.5">info</span>
+<p class="text-xs text-text-secondary">
+                                        Todos os dados inseridos aqui são auditáveis e estarão sujeitos à verificação pública após o período de sigilo industrial de 30 dias.
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</div>
+</body></html>
