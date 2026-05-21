@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Detalhes do Projeto Emissor - SINARCA</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "sinarca-forest": "#002B1C", // Main Background
+              "sinarca-deep": "#003D28",   // Cards Background
+              "sinarca-neon": "#00FF94",   // Highlights/Accents
+              "sinarca-neon-dim": "rgba(0, 255, 148, 0.1)",
+            },
+            fontFamily: {
+              "sans": ["Inter", "sans-serif"],
+              "serif": ["Playfair Display", "serif"],
+            },
+            borderRadius: {
+                "DEFAULT": "0.25rem", 
+                "lg": "0.5rem", 
+                "xl": "0.75rem", 
+                "full": "9999px"
+            },
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-sinarca-forest font-sans text-gray-100 min-h-screen flex flex-col overflow-x-hidden">
+<header class="sticky top-0 z-50 bg-sinarca-deep border-b border-white/5 px-6 py-3 shadow-lg">
+<div class="max-w-[1200px] mx-auto flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-8 text-sinarca-neon flex items-center justify-center bg-sinarca-neon/10 rounded-lg border border-sinarca-neon/20">
+<span class="material-symbols-outlined text-2xl">eco</span>
+</div>
+<h2 class="text-xl font-serif font-bold leading-tight tracking-tight hidden md:block text-white">SINARCA</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-gray-300 hover:text-sinarca-neon transition-colors" href="#">Projetos</a>
+<a class="text-sm font-medium text-gray-300 hover:text-sinarca-neon transition-colors" href="#">Créditos (MRCAs)</a>
+<a class="text-sm font-medium text-gray-300 hover:text-sinarca-neon transition-colors" href="#">Relatórios</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-sinarca-forest rounded-lg px-3 py-2 border border-white/10 focus-within:border-sinarca-neon/50 transition-colors">
+<span class="material-symbols-outlined text-gray-400">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-48 text-white placeholder-gray-500" placeholder="Buscar no sistema..." type="text"/>
+</div>
+<button class="bg-white/5 p-2 rounded-full hover:bg-white/10 transition-colors relative">
+<span class="absolute top-2 right-2 w-2 h-2 bg-sinarca-neon rounded-full"></span>
+<span class="material-symbols-outlined text-gray-300">notifications</span>
+</button>
+<div class="size-10 bg-center bg-cover rounded-full border-2 border-sinarca-deep shadow-sm ring-2 ring-sinarca-neon/20" data-alt="User profile avatar image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD8XIIUdMVCEYQcDI4dm8_ccuDm6UOC5DhIs6I6dgKc0TPlHAExkDfqQ0Cyp0blCTDUsj0gW8YlPwtx6cYe925Ky3skise_xN_yNCAktAyn-s528hZDzu9OzhDJ3V4F7lGMLT8uU74AuJc41SIqZl--tHBK-ekxsMIz3bdtP6mSE7pTEvyOGxecQsrcS8cw7kSpMs6dbrbq6aO7Pa5VaNUbiSQgrTc9S_yyZQAiN9ZSnEWrnTFsPL_UMpGO8M1y4wBxFSEorIFVI7o");'></div>
+</div>
+</div>
+</header>
+<div class="flex-1 flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
+<main class="w-full max-w-[1200px] flex flex-col gap-8">
+<div class="flex flex-wrap gap-2 items-center text-sm font-medium">
+<a class="text-gray-400 hover:text-sinarca-neon transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[18px]">home</span>
+                    Início
+                </a>
+<span class="material-symbols-outlined text-gray-600 text-[16px]">chevron_right</span>
+<a class="text-gray-400 hover:text-sinarca-neon transition-colors" href="#">Consulta Pública</a>
+<span class="material-symbols-outlined text-gray-600 text-[16px]">chevron_right</span>
+<span class="text-sinarca-neon">Projeto Emissor</span>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 flex flex-col gap-6">
+<div class="bg-sinarca-deep rounded-xl p-8 shadow-xl border border-white/5 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-sinarca-neon/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+<div class="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-3">
+<span class="bg-sinarca-neon/20 text-sinarca-neon border border-sinarca-neon/20 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Ativo</span>
+<span class="text-gray-400 text-xs flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-sinarca-neon">verified</span>
+                                        Verificado SINARCA
+                                    </span>
+</div>
+<h1 class="text-3xl md:text-4xl font-serif font-bold text-white leading-tight tracking-tight mt-1">
+                                    Projeto de Conservação Florestal Nascente
+                                </h1>
+<div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-gray-300 mt-2">
+<p class="flex items-center gap-2 text-sm">
+<span class="material-symbols-outlined text-[18px] text-sinarca-neon">business</span>
+<span class="font-medium">EcoBrasil Participações S.A.</span>
+</p>
+<p class="text-xs bg-sinarca-forest border border-white/5 text-gray-400 px-3 py-1 rounded font-mono">CNPJ: 12.345.678/0001-90</p>
+</div>
+</div>
+<button class="flex items-center gap-2 bg-sinarca-neon hover:bg-[#00D67D] text-[#002B1C] px-6 py-3 rounded-lg font-bold transition-all shadow-lg shadow-sinarca-neon/20 whitespace-nowrap transform hover:-translate-y-0.5">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+                                Seguir Projeto
+                            </button>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-10 pt-8 border-t border-white/10">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bioma</span>
+<span class="text-lg font-bold text-white flex items-center gap-2 font-serif">
+<span class="material-symbols-outlined text-sinarca-neon text-[20px]">forest</span>
+                                    Amazônia
+                                </span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Área Total</span>
+<span class="text-lg font-bold text-white font-serif">12.500 <span class="text-sm font-sans font-normal text-gray-400">ha</span></span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Município (IBGE)</span>
+<span class="text-lg font-bold text-white font-serif">Altamira <span class="text-sm font-sans font-normal text-gray-400">(1500602)</span></span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Centroid</span>
+<div class="flex items-center gap-2 group cursor-pointer">
+<span class="text-sm font-mono text-sinarca-neon bg-sinarca-forest px-2 py-1 rounded border border-white/5">-3.2033, -52.3456</span>
+<span class="material-symbols-outlined text-gray-600 text-[14px] group-hover:text-sinarca-neon transition-colors">content_copy</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="flex-1 min-w-[140px] bg-sinarca-deep border border-white/10 hover:border-sinarca-neon/30 hover:bg-white/5 text-gray-200 text-sm font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-sinarca-neon text-[20px]">download</span>
+                            Baixar Relatório
+                        </button>
+<button class="flex-1 min-w-[140px] bg-sinarca-deep border border-white/10 hover:border-sinarca-neon/30 hover:bg-white/5 text-gray-200 text-sm font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-sinarca-neon text-[20px]">share</span>
+                            Compartilhar
+                        </button>
+<button class="flex-1 min-w-[140px] bg-sinarca-deep border border-white/10 hover:border-sinarca-neon/30 hover:bg-white/5 text-gray-200 text-sm font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-sinarca-neon text-[20px]">mail</span>
+                            Contatar Titular
+                        </button>
+</div>
+</div>
+<div class="lg:col-span-1 h-full min-h-[300px]">
+<div class="h-full w-full bg-sinarca-deep p-3 rounded-xl border border-white/5 shadow-xl flex flex-col gap-3">
+<div class="relative w-full flex-1 rounded-lg overflow-hidden group cursor-pointer border border-white/5">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Satellite map view of the Amazon rainforest showing dense green vegetation and river paths" data-location="Amazon Rainforest, Brazil" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBZFCteT0fZb3-Ajdl_0NRjAVuMDjrJykRFO9qM4b_jTkzE56QLDtQnaoLW1QT4G-_wSZNpZfQxq_NLVYw5UtNxF3UmURx5HuyhLKi-BG2NqcxJOMs5edkmut8S_8ihudUWcK3dufOEFZn303XhMtkx0BJnt0vZeVmVw_sJD64XqK5DNIIxRF43Xeix-h_kxBizaV4j7fyywS_qRKf1nVXz8vuQy_Wm8cLsc0RaVDvMfu1JcKAoozqFhJ-y4aEgdZyRQL-xVi4lcds"); opacity: 0.8;'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-sinarca-forest/80 to-transparent opacity-60"></div>
+<div class="absolute bottom-4 right-4 flex flex-col gap-2">
+<button class="bg-sinarca-deep text-white p-2 rounded border border-white/10 hover:bg-sinarca-forest hover:text-sinarca-neon transition-colors shadow-lg">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+<button class="bg-sinarca-deep text-white p-2 rounded border border-white/10 hover:bg-sinarca-forest hover:text-sinarca-neon transition-colors shadow-lg">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+</div>
+<div class="absolute top-4 left-4 bg-sinarca-forest/90 backdrop-blur px-3 py-1.5 rounded text-xs font-bold text-sinarca-neon border border-sinarca-neon/20 shadow-lg">
+                                Visualização Satélite
+                            </div>
+</div>
+<div class="px-2 pb-1 flex items-center justify-between">
+<p class="text-xs text-gray-400">Coordenadas: -3.2033, -52.3456</p>
+<span class="text-xs text-sinarca-neon cursor-pointer hover:underline">Expandir Mapa</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-2">
+<div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+<h3 class="text-2xl font-serif font-bold text-white flex items-center gap-3">
+<span class="flex items-center justify-center w-8 h-8 rounded-full bg-sinarca-neon/10 border border-sinarca-neon/20">
+<span class="material-symbols-outlined text-sinarca-neon text-lg">token</span>
+</span>
+                        Mecanismos de Reposição (MRCAs)
+                    </h3>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<select class="appearance-none bg-sinarca-deep border border-white/10 text-sm font-medium rounded-lg px-4 py-2.5 pr-10 focus:ring-1 focus:ring-sinarca-neon focus:border-sinarca-neon cursor-pointer text-white min-w-[180px]">
+<option>Todos os Créditos</option>
+<option>Apenas Ativos</option>
+<option>Aposentados</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-gray-400 pointer-events-none group-hover:text-sinarca-neon">expand_more</span>
+</div>
+</div>
+</div>
+<div class="bg-sinarca-deep rounded-xl border border-white/5 shadow-xl overflow-hidden">
+<div class="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-black/20 border-b border-white/5 text-xs font-bold text-sinarca-neon uppercase tracking-wider font-sans">
+<div class="col-span-3">ID do Crédito</div>
+<div class="col-span-2">Safra (Vintage)</div>
+<div class="col-span-3">Volume (tCO2e)</div>
+<div class="col-span-2">Status</div>
+<div class="col-span-2 text-right">Ações</div>
+</div>
+<div class="flex flex-col md:grid md:grid-cols-12 gap-4 px-6 py-5 border-b border-white/5 items-start md:items-center hover:bg-white/5 transition-colors group">
+<div class="col-span-3 flex flex-col">
+<span class="font-mono font-medium text-sinarca-neon text-base">MRCA-2023-BR-001</span>
+<span class="text-xs text-gray-500 md:hidden mt-1">ID do Crédito</span>
+</div>
+<div class="col-span-2 text-sm text-gray-300">
+                            2023
+                            <span class="text-xs text-gray-500 md:hidden block">Safra</span>
+</div>
+<div class="col-span-3">
+<span class="font-bold text-lg font-serif text-white">500,00</span>
+<span class="text-xs text-gray-500 md:hidden block">tCO2e</span>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-green-900/40 text-green-400 border border-green-800/50">
+<span class="size-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                Emitido
+                            </span>
+</div>
+<div class="col-span-2 flex justify-end gap-2">
+<button class="text-gray-400 hover:text-sinarca-neon hover:bg-sinarca-neon/10 rounded-lg transition-colors p-2" title="Visualizar Detalhes">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+<button class="text-gray-400 hover:text-sinarca-neon hover:bg-sinarca-neon/10 rounded-lg transition-colors p-2" title="Histórico">
+<span class="material-symbols-outlined">history</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col md:grid md:grid-cols-12 gap-4 px-6 py-5 border-b border-white/5 items-start md:items-center hover:bg-white/5 transition-colors group">
+<div class="col-span-3 flex flex-col">
+<span class="font-mono font-medium text-sinarca-neon text-base">MRCA-2022-BR-098</span>
+<span class="text-xs text-gray-500 md:hidden mt-1">ID do Crédito</span>
+</div>
+<div class="col-span-2 text-sm text-gray-300">
+                            2022
+                            <span class="text-xs text-gray-500 md:hidden block">Safra</span>
+</div>
+<div class="col-span-3">
+<span class="font-bold text-lg font-serif text-white">1.250,00</span>
+<span class="text-xs text-gray-500 md:hidden block">tCO2e</span>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-gray-700">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                Aposentado
+                            </span>
+</div>
+<div class="col-span-2 flex justify-end gap-2">
+<button class="text-gray-400 hover:text-sinarca-neon hover:bg-sinarca-neon/10 rounded-lg transition-colors p-2" title="Visualizar Detalhes">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+<button class="text-gray-400 hover:text-sinarca-neon hover:bg-sinarca-neon/10 rounded-lg transition-colors p-2" title="Histórico">
+<span class="material-symbols-outlined">history</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col md:grid md:grid-cols-12 gap-4 px-6 py-5 items-start md:items-center hover:bg-white/5 transition-colors group">
+<div class="col-span-3 flex flex-col">
+<span class="font-mono font-medium text-sinarca-neon text-base">MRCA-2024-BR-012</span>
+<span class="text-xs text-gray-500 md:hidden mt-1">ID do Crédito</span>
+</div>
+<div class="col-span-2 text-sm text-gray-300">
+                            2024
+                            <span class="text-xs text-gray-500 md:hidden block">Safra</span>
+</div>
+<div class="col-span-3">
+<span class="font-bold text-lg font-serif text-white">300,00</span>
+<span class="text-xs text-gray-500 md:hidden block">tCO2e</span>
+</div>
+<div class="col-span-2">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-amber-900/30 text-amber-300 border border-amber-800/40">
+<span class="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                                Verificação
+                            </span>
+</div>
+<div class="col-span-2 flex justify-end gap-2">
+<button class="text-gray-400 hover:text-sinarca-neon hover:bg-sinarca-neon/10 rounded-lg transition-colors p-2" title="Visualizar Detalhes">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+<button class="text-gray-400 hover:text-sinarca-neon hover:bg-sinarca-neon/10 rounded-lg transition-colors p-2" title="Histórico">
+<span class="material-symbols-outlined">history</span>
+</button>
+</div>
+</div>
+<div class="bg-black/20 border-t border-white/5 px-6 py-4 flex items-center justify-between">
+<span class="text-sm text-gray-400 font-sans">Mostrando <strong class="text-white">3</strong> de <strong class="text-white">45</strong> resultados</span>
+<div class="flex gap-2">
+<button class="px-4 py-2 text-sm font-medium border border-white/10 rounded-lg text-gray-300 hover:bg-white/5 hover:text-white disabled:opacity-50 transition-colors" disabled="">Anterior</button>
+<button class="px-4 py-2 text-sm font-medium border border-white/10 rounded-lg text-gray-300 hover:bg-white/5 hover:text-white transition-colors">Próximo</button>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-8 mb-10 text-center text-sm text-gray-500 border-t border-white/5 pt-8">
+<p>© 2024 SINARCA - Sistema Nacional de Rastreabilidade de Créditos Ambientais. Todos os direitos reservados.</p>
+<div class="flex justify-center gap-6 mt-4">
+<a class="hover:text-sinarca-neon transition-colors" href="#">Termos de Uso</a>
+<a class="hover:text-sinarca-neon transition-colors" href="#">Política de Privacidade</a>
+<a class="hover:text-sinarca-neon transition-colors" href="#">Suporte</a>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

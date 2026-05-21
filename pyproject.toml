@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sinarcaapi"
+version = "0.1.0"
+description = "API MVP do SINARCA para alimentar o frontend React/Vite"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "email-validator>=2.1.0",
+    "fastapi>=0.115.0",
+    "pydantic>=2.7.0",
+    "python-multipart>=0.0.9",
+    "uvicorn[standard]>=0.30.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]

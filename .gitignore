@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+*.pyc
+__pycache__/
+*.egg-info/
+.pytest_cache/
+venv/
+.venv/
+.idea/
+.vscode/
+scratch/

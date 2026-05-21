@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>API DOC - SINARCA</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#59f53d",
+                        "primary-dim": "#3aa826", 
+                        "background-light": "#f6f8f5",
+                        "background-dark": "#0f1210", 
+                        "surface-dark": "#121811",
+                        "surface-card": "#1a2e1a",
+                        "surface-card-hover": "#233b22",
+                        "text-muted": "#a0ba9c",
+                        "border-dark": "#2a3928",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "serif": ["Playfair Display", "serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Smooth scrolling for anchor links */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Hide default details marker */
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121811; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a3928; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3e543b; 
+        }
+
+        /* Syntax Highlighting Simulation */
+        .code-key { color: #59f53d; }
+        .code-string { color: #a0ba9c; }
+        .code-number { color: #eebb4d; }
+        .code-bool { color: #4dbcee; }
+    </style>
+</head>
+<body class="bg-background-dark text-white font-display antialiased selection:bg-primary selection:text-background-dark overflow-x-hidden">
+<!-- Sticky Header / Quick Nav -->
+<header class="sticky top-0 z-50 w-full border-b border-border-dark bg-surface-dark/90 backdrop-blur-md">
+<div class="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
+<!-- Brand -->
+<div class="flex items-center gap-4">
+<div class="size-8 text-primary">
+<svg class="h-full w-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="font-serif text-xl font-bold tracking-tight text-white">SINARCA <span class="text-xs font-sans font-normal text-text-muted opacity-60">API DOCS</span></h2>
+</div>
+<!-- Quick Icon Navigation -->
+<nav class="hidden md:flex items-center gap-8">
+<a class="group flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-colors" href="#intro" title="Início">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">home</span>
+</a>
+<a class="group flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-colors" href="#authentication" title="Autenticação">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">lock</span>
+</a>
+<a class="group flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-colors" href="#public-consultation" title="Consulta Pública">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">public</span>
+</a>
+<a class="group flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-colors" href="#management" title="Gerenciamento">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">manage_accounts</span>
+</a>
+<a class="group flex flex-col items-center gap-1 text-text-muted hover:text-primary transition-colors" href="#schemas" title="Modelos de Dados">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">data_object</span>
+</a>
+</nav>
+<!-- Search & Actions -->
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="absolute inset-y-0 left-0 flex items-center pl-3 text-text-muted">
+<span class="material-symbols-outlined text-[18px]">search</span>
+</span>
+<input class="h-9 w-48 rounded-full border-none bg-surface-card py-1 pl-10 pr-4 text-sm text-white placeholder-text-muted focus:ring-1 focus:ring-primary transition-all" placeholder="Buscar endpoint..." type="text"/>
+</div>
+<button class="h-9 rounded-full bg-primary px-4 text-sm font-bold text-background-dark hover:bg-white transition-colors">
+                    Login
+                </button>
+</div>
+</div>
+</header>
+<main class="mx-auto max-w-[960px] px-6 py-12">
+<!-- Hero Section -->
+<section class="mb-20 scroll-mt-24" id="intro">
+<div class="flex flex-col gap-6">
+<div class="space-y-4">
+<div class="inline-flex items-center gap-2 rounded-full border border-border-dark bg-surface-card px-3 py-1">
+<span class="block h-2 w-2 animate-pulse rounded-full bg-primary"></span>
+<span class="text-xs font-medium text-primary">v1.0.4 Stable</span>
+</div>
+<h1 class="font-serif text-5xl font-bold leading-tight tracking-tight text-white md:text-6xl">
+                        API <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-600">SINARCA</span>
+</h1>
+<p class="max-w-2xl text-lg text-text-muted">
+                        Interface oficial para rastreabilidade de créditos de carbono e ativos ambientais. 
+                        Integre sua plataforma diretamente ao Sistema Nacional para consultas em tempo real e auditoria de transações.
+                    </p>
+</div>
+<!-- Base URL Card -->
+<div class="mt-4 rounded-xl border border-border-dark bg-surface-card p-6 shadow-2xl">
+<label class="mb-2 block text-sm font-medium text-text-muted">Base URL</label>
+<div class="flex items-center gap-2">
+<div class="flex flex-1 items-center rounded-lg bg-background-dark px-4 py-3 font-mono text-sm text-white border border-border-dark">
+<span class="text-primary mr-1">https://</span>api.sinarca.gov.br/v1
+                        </div>
+<button class="flex h-11 items-center gap-2 rounded-lg bg-border-dark px-5 text-sm font-bold text-white hover:bg-primary hover:text-background-dark transition-all group" onclick="navigator.clipboard.writeText('https://api.sinarca.gov.br/v1')">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+<span class="hidden sm:inline">Copiar</span>
+</button>
+</div>
+</div>
+<div class="flex gap-4 pt-4">
+<button class="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-background-dark hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">key</span>
+                        Obter Chave de API
+                    </button>
+<button class="flex items-center gap-2 rounded-lg border border-border-dark bg-transparent px-6 py-3 text-sm font-bold text-white hover:border-primary hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">description</span>
+                        Documentação PDF
+                    </button>
+</div>
+</div>
+</section>
+<!-- Authentication Section -->
+<section class="mb-20 scroll-mt-24 border-t border-dashed border-border-dark pt-12" id="authentication">
+<div class="mb-8 flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-card text-primary border border-border-dark">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<h2 class="font-serif text-3xl font-bold text-white">Autenticação</h2>
+</div>
+<div class="grid gap-8 lg:grid-cols-2">
+<div class="space-y-4 text-text-muted">
+<p>
+                        A API SINARCA utiliza o padrão <strong class="text-white">Bearer Token</strong> para autenticação. 
+                        Todas as requisições devem incluir o cabeçalho <code class="rounded bg-surface-card px-1.5 py-0.5 font-mono text-sm text-primary">Authorization</code>.
+                    </p>
+<p>
+                        Tokens expiram a cada 24 horas. Para obter um novo token, utilize o endpoint <a class="text-primary hover:underline" href="#">/auth/login</a> com suas credenciais de parceiro.
+                    </p>
+<div class="mt-4 rounded-lg border border-yellow-900/30 bg-yellow-900/10 p-4">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-yellow-500">warning</span>
+<p class="text-sm text-yellow-200">Não compartilhe sua chave privada em repositórios públicos ou no lado do cliente (frontend).</p>
+</div>
+</div>
+</div>
+<div class="rounded-xl border border-border-dark bg-background-dark overflow-hidden">
+<div class="flex items-center justify-between bg-surface-card px-4 py-2 border-b border-border-dark">
+<span class="text-xs font-bold text-text-muted">BASH</span>
+<span class="material-symbols-outlined cursor-pointer text-[16px] text-text-muted hover:text-white">content_copy</span>
+</div>
+<div class="p-4 font-mono text-sm leading-relaxed overflow-x-auto">
+<span class="text-purple-400">curl</span> <span class="text-text-muted">-X GET</span> \<br/>
+                          <span class="text-primary">"https://api.sinarca.gov.br/v1/projects"</span> \<br/>
+                          <span class="text-text-muted">-H</span> <span class="text-orange-300">"Authorization: Bearer <span class="text-white opacity-50">YOUR_API_KEY</span>"</span> \<br/>
+                          <span class="text-text-muted">-H</span> <span class="text-orange-300">"Content-Type: application/json"</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Endpoint Group: Public Consultation -->
+<section class="mb-20 scroll-mt-24 border-t border-dashed border-border-dark pt-12" id="public-consultation">
+<div class="mb-8 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-card text-primary border border-border-dark">
+<span class="material-symbols-outlined">public</span>
+</div>
+<div>
+<h2 class="font-serif text-3xl font-bold text-white">Consulta Pública</h2>
+<p class="text-sm text-text-muted">Endpoints acessíveis para validação de transparência.</p>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Endpoint Card: GET /projects -->
+<details class="group rounded-xl border border-border-dark bg-surface-card overflow-hidden transition-all duration-300 open:ring-1 open:ring-primary/50 open:bg-[#152315]">
+<summary class="flex cursor-pointer list-none items-center justify-between p-4 hover:bg-surface-card-hover transition-colors">
+<div class="flex items-center gap-4 overflow-hidden">
+<span class="flex h-7 min-w-[60px] items-center justify-center rounded-md bg-blue-500/10 border border-blue-500/20 px-2 text-xs font-bold text-blue-400">GET</span>
+<code class="font-mono text-sm text-white truncate">/projects</code>
+<span class="hidden md:inline-block text-sm text-text-muted truncate">- Listar projetos certificados</span>
+</div>
+<span class="material-symbols-outlined text-text-muted transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="border-t border-border-dark px-4 py-6 md:px-6">
+<p class="mb-6 text-sm text-text-muted">Retorna uma lista paginada de todos os projetos ambientais que possuem certificação ativa no SINARCA. Resultados podem ser filtrados por região e bioma.</p>
+<!-- Parameters -->
+<div class="mb-6">
+<h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-white">Parâmetros de Query</h4>
+<div class="overflow-hidden rounded-lg border border-border-dark">
+<table class="w-full text-left text-sm">
+<thead class="bg-background-dark text-text-muted">
+<tr>
+<th class="px-4 py-2 font-medium">Nome</th>
+<th class="px-4 py-2 font-medium">Tipo</th>
+<th class="px-4 py-2 font-medium">Descrição</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark bg-surface-card/50">
+<tr>
+<td class="px-4 py-3 font-mono text-primary">page</td>
+<td class="px-4 py-3 text-text-muted">integer</td>
+<td class="px-4 py-3 text-white">Número da página (Padrão: 1)</td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-mono text-primary">bioma</td>
+<td class="px-4 py-3 text-text-muted">string</td>
+<td class="px-4 py-3 text-white">Filtro por bioma (ex: 'amazonia', 'cerrado')</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Response Preview -->
+<div class="grid gap-4 md:grid-cols-2">
+<div>
+<h4 class="mb-2 text-xs font-bold uppercase tracking-wider text-white flex justify-between">
+                                    Exemplo de Resposta 
+                                    <span class="text-primary font-mono text-[10px] border border-primary/30 bg-primary/10 px-1 rounded">200 OK</span>
+</h4>
+<div class="rounded-lg border border-border-dark bg-background-dark p-4 font-mono text-xs overflow-x-auto">
+<pre>{
+  <span class="code-key">"data"</span>: [
+    {
+      <span class="code-key">"id"</span>: <span class="code-string">"prj_839210"</span>,
+      <span class="code-key">"name"</span>: <span class="code-string">"Reflorestamento Alto Xingu"</span>,
+      <span class="code-key">"bioma"</span>: <span class="code-string">"Amazonia"</span>,
+      <span class="code-key">"status"</span>: <span class="code-string">"active"</span>,
+      <span class="code-key">"credits_issued"</span>: <span class="code-number">50000</span>
+    }
+  ],
+  <span class="code-key">"meta"</span>: {
+    <span class="code-key">"total"</span>: <span class="code-number">142</span>,
+    <span class="code-key">"page"</span>: <span class="code-number">1</span>
+  }
+}</pre>
+</div>
+</div>
+<div class="flex flex-col">
+<h4 class="mb-2 text-xs font-bold uppercase tracking-wider text-white">Testar Endpoint</h4>
+<div class="flex-1 rounded-lg border border-border-dark bg-surface-card/50 p-4 flex flex-col items-center justify-center text-center gap-3">
+<span class="material-symbols-outlined text-4xl text-border-dark">terminal</span>
+<p class="text-sm text-text-muted">Autentique-se para testar este endpoint em tempo real.</p>
+<button class="mt-2 text-xs font-bold text-primary hover:underline">Ir para Login</button>
+</div>
+</div>
+</div>
+</div>
+</details>
+<!-- Endpoint Card: GET /credits/{id} -->
+<details class="group rounded-xl border border-border-dark bg-surface-card overflow-hidden transition-all duration-300 open:ring-1 open:ring-primary/50 open:bg-[#152315]">
+<summary class="flex cursor-pointer list-none items-center justify-between p-4 hover:bg-surface-card-hover transition-colors">
+<div class="flex items-center gap-4 overflow-hidden">
+<span class="flex h-7 min-w-[60px] items-center justify-center rounded-md bg-blue-500/10 border border-blue-500/20 px-2 text-xs font-bold text-blue-400">GET</span>
+<code class="font-mono text-sm text-white truncate">/credits/{id}</code>
+<span class="hidden md:inline-block text-sm text-text-muted truncate">- Consultar status do crédito</span>
+</div>
+<span class="material-symbols-outlined text-text-muted transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="border-t border-border-dark px-4 py-6 md:px-6">
+<p class="mb-6 text-sm text-text-muted">Retorna detalhes completos de um lote de créditos específico, incluindo histórico de custódia.</p>
+<!-- Content omitted for brevity, would follow same structure -->
+<div class="rounded-lg border border-border-dark bg-background-dark p-4 font-mono text-xs overflow-x-auto">
+<pre>{
+  <span class="code-key">"id"</span>: <span class="code-string">"crd_999222"</span>,
+  <span class="code-key">"owner"</span>: <span class="code-string">"EcoCorp SA"</span>,
+  <span class="code-key">"vintage_year"</span>: <span class="code-number">2023</span>,
+  <span class="code-key">"retired"</span>: <span class="code-bool">false</span>
+}</pre>
+</div>
+</div>
+</details>
+</div>
+</section>
+<!-- Endpoint Group: Management -->
+<section class="mb-20 scroll-mt-24 border-t border-dashed border-border-dark pt-12" id="management">
+<div class="mb-8 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-card text-primary border border-border-dark">
+<span class="material-symbols-outlined">manage_accounts</span>
+</div>
+<div>
+<h2 class="font-serif text-3xl font-bold text-white">Gerenciamento</h2>
+<p class="text-sm text-text-muted">Ações de escrita para proprietários de créditos.</p>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Endpoint Card: POST /transfer -->
+<details class="group rounded-xl border border-border-dark bg-surface-card overflow-hidden transition-all duration-300 open:ring-1 open:ring-primary/50 open:bg-[#152315]">
+<summary class="flex cursor-pointer list-none items-center justify-between p-4 hover:bg-surface-card-hover transition-colors">
+<div class="flex items-center gap-4 overflow-hidden">
+<span class="flex h-7 min-w-[60px] items-center justify-center rounded-md bg-green-500/10 border border-green-500/20 px-2 text-xs font-bold text-green-400">POST</span>
+<code class="font-mono text-sm text-white truncate">/credits/transfer</code>
+<span class="hidden md:inline-block text-sm text-text-muted truncate">- Transferir titularidade</span>
+</div>
+<span class="material-symbols-outlined text-text-muted transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="border-t border-border-dark px-4 py-6 md:px-6">
+<p class="mb-6 text-sm text-text-muted">Inicia o processo de transferência de custódia de um lote de créditos para outro CNPJ registrado no SINARCA.</p>
+<div class="grid gap-8 md:grid-cols-2">
+<!-- Body Params -->
+<div>
+<h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-white">Body (JSON)</h4>
+<div class="rounded-lg border border-border-dark bg-background-dark p-4 font-mono text-xs overflow-x-auto h-full">
+<pre>{
+  <span class="code-key">"credit_id"</span>: <span class="code-string">"crd_555112"</span>,
+  <span class="code-key">"recipient_cnpj"</span>: <span class="code-string">"12.345.678/0001-90"</span>,
+  <span class="code-key">"amount"</span>: <span class="code-number">1000</span>,
+  <span class="code-key">"memo"</span>: <span class="code-string">"Venda contrato #4421"</span>
+}</pre>
+</div>
+</div>
+<!-- Responses -->
+<div>
+<h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-white">Respostas Possíveis</h4>
+<div class="space-y-2">
+<div class="flex items-center justify-between rounded bg-surface-card/50 p-2 border border-border-dark">
+<span class="text-xs font-mono text-primary">201 Created</span>
+<span class="text-xs text-text-muted">Transferência iniciada</span>
+</div>
+<div class="flex items-center justify-between rounded bg-surface-card/50 p-2 border border-border-dark">
+<span class="text-xs font-mono text-orange-400">400 Bad Request</span>
+<span class="text-xs text-text-muted">Dados inválidos</span>
+</div>
+<div class="flex items-center justify-between rounded bg-surface-card/50 p-2 border border-border-dark">
+<span class="text-xs font-mono text-red-400">403 Forbidden</span>
+<span class="text-xs text-text-muted">Sem permissão</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</details>
+<!-- Endpoint Card: POST /audit/log -->
+<details class="group rounded-xl border border-border-dark bg-surface-card overflow-hidden transition-all duration-300 open:ring-1 open:ring-primary/50 open:bg-[#152315]">
+<summary class="flex cursor-pointer list-none items-center justify-between p-4 hover:bg-surface-card-hover transition-colors">
+<div class="flex items-center gap-4 overflow-hidden">
+<span class="flex h-7 min-w-[60px] items-center justify-center rounded-md bg-green-500/10 border border-green-500/20 px-2 text-xs font-bold text-green-400">POST</span>
+<code class="font-mono text-sm text-white truncate">/audit/log</code>
+<span class="hidden md:inline-block text-sm text-text-muted truncate">- Registrar log de auditoria</span>
+</div>
+<span class="material-symbols-outlined text-text-muted transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="border-t border-border-dark px-4 py-6 md:px-6">
+<p class="mb-4 text-sm text-text-muted">Enviar registros de auditoria externa para a blockchain do SINARCA.</p>
+<div class="rounded-lg border border-border-dark bg-background-dark p-4 font-mono text-xs overflow-x-auto">
+<pre>{
+  <span class="code-key">"event_type"</span>: <span class="code-string">"field_verification"</span>,
+  <span class="code-key">"auditor_id"</span>: <span class="code-string">"aud_8821"</span>,
+  <span class="code-key">"timestamp"</span>: <span class="code-string">"2023-10-25T14:30:00Z"</span>
+}</pre>
+</div>
+</div>
+</details>
+</div>
+</section>
+<!-- Schemas / Data Models -->
+<section class="mb-20 scroll-mt-24 border-t border-dashed border-border-dark pt-12" id="schemas">
+<div class="mb-8 flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-card text-primary border border-border-dark">
+<span class="material-symbols-outlined">data_object</span>
+</div>
+<h2 class="font-serif text-3xl font-bold text-white">Modelos de Dados</h2>
+</div>
+<div class="grid gap-6 md:grid-cols-2">
+<!-- Schema Card 1 -->
+<div class="flex flex-col rounded-xl border border-border-dark bg-surface-card p-5">
+<div class="mb-3 flex items-center justify-between">
+<h3 class="font-mono font-bold text-white">ProjectMetadata</h3>
+<span class="text-[10px] uppercase tracking-wider text-text-muted">Object</span>
+</div>
+<ul class="flex-1 space-y-2 text-sm">
+<li class="flex items-baseline justify-between border-b border-border-dark pb-1">
+<span class="font-mono text-primary text-xs">id</span>
+<span class="text-xs text-text-muted">string (uuid)</span>
+</li>
+<li class="flex items-baseline justify-between border-b border-border-dark pb-1">
+<span class="font-mono text-primary text-xs">name</span>
+<span class="text-xs text-text-muted">string</span>
+</li>
+<li class="flex items-baseline justify-between border-b border-border-dark pb-1">
+<span class="font-mono text-primary text-xs">geo_coordinates</span>
+<span class="text-xs text-text-muted">array[float]</span>
+</li>
+<li class="flex items-baseline justify-between pt-1">
+<span class="font-mono text-primary text-xs">certification_date</span>
+<span class="text-xs text-text-muted">date-time</span>
+</li>
+</ul>
+</div>
+<!-- Schema Card 2 -->
+<div class="flex flex-col rounded-xl border border-border-dark bg-surface-card p-5">
+<div class="mb-3 flex items-center justify-between">
+<h3 class="font-mono font-bold text-white">CreditTransaction</h3>
+<span class="text-[10px] uppercase tracking-wider text-text-muted">Object</span>
+</div>
+<ul class="flex-1 space-y-2 text-sm">
+<li class="flex items-baseline justify-between border-b border-border-dark pb-1">
+<span class="font-mono text-primary text-xs">tx_hash</span>
+<span class="text-xs text-text-muted">string (hex)</span>
+</li>
+<li class="flex items-baseline justify-between border-b border-border-dark pb-1">
+<span class="font-mono text-primary text-xs">sender</span>
+<span class="text-xs text-text-muted">string (cnpj)</span>
+</li>
+<li class="flex items-baseline justify-between border-b border-border-dark pb-1">
+<span class="font-mono text-primary text-xs">receiver</span>
+<span class="text-xs text-text-muted">string (cnpj)</span>
+</li>
+<li class="flex items-baseline justify-between pt-1">
+<span class="font-mono text-primary text-xs">amount</span>
+<span class="text-xs text-text-muted">integer</span>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="mt-20 border-t border-border-dark py-10 text-center">
+<div class="flex justify-center gap-6 mb-6">
+<a class="text-text-muted hover:text-primary transition-colors text-sm" href="#">Termos de Uso</a>
+<a class="text-text-muted hover:text-primary transition-colors text-sm" href="#">Suporte</a>
+<a class="text-text-muted hover:text-primary transition-colors text-sm" href="#">Status do Sistema</a>
+</div>
+<p class="text-xs text-text-muted/60">
+                © 2024 SINARCA - Sistema Nacional de Rastreabilidade de Créditos Ambientais.<br/>
+                Governo Federal do Brasil. Todos os direitos reservados.
+            </p>
+<div class="mt-4 flex justify-center">
+<div class="h-1 w-12 rounded-full bg-border-dark"></div>
+</div>
+</footer>
+</main>
+</body></html>
