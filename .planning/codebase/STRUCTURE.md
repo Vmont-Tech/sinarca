@@ -8,8 +8,8 @@
 sinarca/
 |-- .devcontainer/          # Rust/Soroban development container
 |-- .planning/codebase/     # GSD codebase maps
+|-- .planning/docs/         # Project documentation moved from root/docs
 |-- backend/                # Current Python API runtime plus legacy backend skeleton
-|-- docs/                   # Product, architecture, integration, brand, and legal docs
 |-- novas telas painel/     # Committed design/reference HTML and screenshots
 |-- public/                 # Vite public assets
 |-- soroban-contract/       # Rust Soroban smart contract crate and committed target output
@@ -31,7 +31,7 @@ sinarca/
 
 **Root (`.`):**
 - Purpose: Repository root and current frontend app root.
-- Contains: Vite entry files, React package manifest, Python package manifest, Dockerfiles, docs, backend, contract, tests.
+- Contains: Vite entry files, React package manifest, Python package manifest, Dockerfiles, root `README.md`, backend, contract, tests.
 - Key files: `index.html`, `package.json`, `pyproject.toml`, `Dockerfile`, `vite.config.ts`, `tsconfig.json`
 
 **`src/`:**
@@ -129,10 +129,10 @@ sinarca/
 - Contains: FastAPI TestClient tests and Playwright GUI script.
 - Key files: `tests/test_api_integration.py`, `tests/test_gui_flows.py`
 
-**`docs/`:**
+**`.planning/docs/`:**
 - Purpose: Product, integration, architecture, lifecycle, manifesto, brand, and legal docs.
 - Contains: Backend integration spec, blueprint, bible docs, branding docs, PDFs.
-- Key files: `docs/BACKEND_INTEGRATION_SPEC.md`, `docs/bible/03_Arquitetura_Tecnica_Detalhada.md`, `docs/bible/04_Modelagem_de_Dados_e_Entidades.md`, `docs/branding/01_Manual_da_Marca.md`
+- Key files: `.planning/docs/BACKEND_INTEGRATION_SPEC.md`, `.planning/docs/bible/03_Arquitetura_Tecnica_Detalhada.md`, `.planning/docs/bible/04_Modelagem_de_Dados_e_Entidades.md`, `.planning/docs/branding/01_Manual_da_Marca.md`
 
 **`novas telas painel/`:**
 - Purpose: Reference UI screens produced outside the app source tree.
@@ -195,10 +195,10 @@ sinarca/
 - `.devcontainer/Dockerfile`: Rust/Soroban development image.
 
 **Documentation:**
-- `docs/BACKEND_INTEGRATION_SPEC.md`: Frontend/backend integration contract notes.
-- `docs/bible/03_Arquitetura_Tecnica_Detalhada.md`: Target architecture narrative.
+- `.planning/docs/BACKEND_INTEGRATION_SPEC.md`: Frontend/backend integration contract notes.
+- `.planning/docs/bible/03_Arquitetura_Tecnica_Detalhada.md`: Target architecture narrative.
 - `README.md`: Project overview, but verify claims against source files before planning.
-- `README_SINARCA.md`: Documentation index for bible and branding docs.
+- `.planning/docs/reference/README_SINARCA.md`: Documentation index for bible and branding docs.
 
 ## Naming Conventions
 
@@ -215,7 +215,7 @@ sinarca/
 - Shared frontend widgets are grouped by feature when useful: `src/components/maps/`, `src/components/calculator/`, `src/components/legal/`.
 - Frontend services are grouped by integration/domain: `src/services/api.ts`, `src/services/database.ts`, `src/services/impact-engine/`.
 - Backend modules are grouped by layer: `backend/api/`, `backend/core/`, `backend/models/`, `backend/services/`, `backend/validators/`.
-- Documentation is split between active integration docs at `docs/` and broader narrative docs at `docs/bible/` and `docs/branding/`.
+- Documentation is split between active integration docs at `.planning/docs/` and broader narrative docs at `.planning/docs/bible/` and `.planning/docs/branding/`.
 
 ## Where to Add New Code
 

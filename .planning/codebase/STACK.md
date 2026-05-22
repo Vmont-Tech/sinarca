@@ -119,7 +119,7 @@
 - API-only deploy artifact is `Dockerfile.api`.
 - Frontend-only dev/deploy artifact is `Dockerfile.frontend`.
 - Dokploy-specific configuration is not detected; deployment depends on generic Dockerfile selection and runtime env configuration.
-- Sibling/prior API contract is documented in `docs/BACKEND_INTEGRATION_SPEC.md`; it defines `/api/v1` endpoints consumed by `src/services/api.ts` and `src/services/database.ts`.
+- Sibling/prior API contract is documented in `.planning/docs/BACKEND_INTEGRATION_SPEC.md`; it defines `/api/v1` endpoints consumed by `src/services/api.ts` and `src/services/database.ts`.
 
 ---
 

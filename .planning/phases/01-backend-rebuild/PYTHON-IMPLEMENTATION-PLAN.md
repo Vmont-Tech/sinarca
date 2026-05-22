@@ -131,7 +131,7 @@
 - Criar/substituir: `Dockerfile.api`
 - Criar/substituir: `Dockerfile.frontend`
 - Criar: `docker-compose.dokploy.yml`
-- Criar: `docs/deployment/DOKPLOY.md`
+- Criar: `.planning/docs/deployment/DOKPLOY.md`
 - Criar: `.env.example`
 
 **Tarefas:**

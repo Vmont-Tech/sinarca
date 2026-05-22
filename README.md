@@ -12,8 +12,8 @@ Sistema de gerenciamento de créditos de carbono baseado em blockchain Stellar c
 
 ## 📄 Documentação Técnica
 
-Para guiar o desenvolvimento e integração, consulte os guias em `/docs`:
-- [Guia de Integração Backend](./docs/BACKEND_INTEGRATION_SPEC.md): Endpoints, Roles e Modelos de Dados.
+Para guiar o desenvolvimento e integração, consulte os guias em `.planning/docs`:
+- [Guia de Integração Backend](./.planning/docs/BACKEND_INTEGRATION_SPEC.md): Endpoints, Roles e Modelos de Dados.
 - [Estrutura de Ativos (MRCA)](./src/data/mrca_db.ts): Definição estática dos ativos.
 
 ## 🚀 Fluxo de Trabalho (Workflows)

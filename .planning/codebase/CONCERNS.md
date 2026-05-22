@@ -38,11 +38,11 @@
 - Issue: `soroban-contract/target` is tracked and about 2.7 GB; `novas telas painel/` contains many generated HTML/screenshot variants.
 - Files: `soroban-contract/target`, `novas telas painel/`, `.gitignore`
 - Impact: Git operations, clones, CI, and code search are slow and noisy. Future agents may read generated artifacts instead of source.
-- Fix approach: Stop tracking generated targets and move design artifacts to docs/reference storage or a clearly ignored archive.
+- Fix approach: Stop tracking generated targets and move design artifacts to .planning/docs/reference storage or a clearly ignored archive.
 
 **Documentation and implementation disagree on stack and contract:**
-- Issue: `README.md` claims TanStack Router/React Query, while `package.json` uses `react-router-dom` and no TanStack packages. `docs/BACKEND_INTEGRATION_SPEC.md` says Algorand, while code and contract files use Stellar/Soroban terminology.
-- Files: `README.md`, `package.json`, `docs/BACKEND_INTEGRATION_SPEC.md`, `backend/services/stellar_service.py`, `soroban-contract/src/contract.rs`
+- Issue: `README.md` claims TanStack Router/React Query, while `package.json` uses `react-router-dom` and no TanStack packages. `.planning/docs/BACKEND_INTEGRATION_SPEC.md` says Algorand, while code and contract files use Stellar/Soroban terminology.
+- Files: `README.md`, `package.json`, `.planning/docs/BACKEND_INTEGRATION_SPEC.md`, `backend/services/stellar_service.py`, `soroban-contract/src/contract.rs`
 - Impact: Planning a Node rewrite from docs alone will choose the wrong dependencies or blockchain integration.
 - Fix approach: Use source code and live frontend calls as canonical, then update docs after the Node API contract is settled.
 
@@ -85,10 +85,10 @@
 - Workaround: Add test dependencies, then rewrite tests against the active API contract before using them as rewrite safety net.
 
 **Root documentation has broken local references:**
-- Symptoms: `README_SINARCA.md` links to `docs/bible/12_Política_de_Privacidade.md`, but the file is `docs/bible/12_Politica_de_Privacidade.md`. `docs/PROJECT_LIFECYCLE_ONBOARDING.md` embeds `file:///C:/...` images from a local Windows machine.
-- Files: `README_SINARCA.md`, `docs/bible/12_Politica_de_Privacidade.md`, `docs/PROJECT_LIFECYCLE_ONBOARDING.md`
+- Symptoms: `.planning/docs/reference/README_SINARCA.md` previously linked to `.planning/docs/bible/12_Política_de_Privacidade.md`, but the file is `.planning/docs/bible/12_Politica_de_Privacidade.md`. `.planning/docs/PROJECT_LIFECYCLE_ONBOARDING.md` embeds `file:///C:/...` images from a local Windows machine.
+- Files: `.planning/docs/reference/README_SINARCA.md`, `.planning/docs/bible/12_Politica_de_Privacidade.md`, `.planning/docs/PROJECT_LIFECYCLE_ONBOARDING.md`
 - Trigger: Opening docs outside the original local workstation.
-- Workaround: Normalize filenames and commit portable image assets under `docs/`.
+- Workaround: Normalize filenames and commit portable image assets under `.planning/docs/`.
 
 ## Security Considerations
 
@@ -163,7 +163,7 @@
 ## Fragile Areas
 
 **Python backend replacement risk:**
-- Files: `backend/main.py`, `src/services/api.ts`, `src/services/database.ts`, `src/contexts/AuthContext.tsx`, `docs/BACKEND_INTEGRATION_SPEC.md`
+- Files: `backend/main.py`, `src/services/api.ts`, `src/services/database.ts`, `src/contexts/AuthContext.tsx`, `.planning/docs/BACKEND_INTEGRATION_SPEC.md`
 - Why fragile: The frontend contract is broader than the backend integration spec and uses demo-specific shapes from `backend/mock_data.py`.
 - Safe modification: Generate a contract inventory from active frontend calls, then implement Node endpoints to match those shapes before replacing Python.
 - Test coverage: `tests/test_api_integration.py` is stale; add contract tests before swapping runtimes.
@@ -244,7 +244,7 @@
 - Blocks: Any production launch or regulated demo with real users and financial/environmental assets.
 
 **Canonical API schema for the Node rewrite:**
-- Problem: The active schema lives across `backend/main.py`, `backend/mock_data.py`, `src/data/mrca_db.ts`, and `docs/BACKEND_INTEGRATION_SPEC.md`.
+- Problem: The active schema lives across `backend/main.py`, `backend/mock_data.py`, `src/data/mrca_db.ts`, and `.planning/docs/BACKEND_INTEGRATION_SPEC.md`.
 - Blocks: Safe Python-to-Node replacement without frontend regressions.
 
 **Database migration strategy:**

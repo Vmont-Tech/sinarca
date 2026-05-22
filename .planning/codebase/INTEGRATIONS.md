@@ -9,7 +9,7 @@
   - SDK/Client: native `fetch` in `src/services/api.ts`; no Axios dependency in `package.json`.
   - Auth: bearer token from `localStorage` key `sinarca_token` in `src/services/api.ts`.
   - Dev proxy: `/api` to `http://localhost:5680` in `vite.config.ts`.
-  - Contract: `docs/BACKEND_INTEGRATION_SPEC.md` defines the expected `/api/v1/auth/login`, `/api/v1/projects`, `/api/v1/inventory/*`, and `/api/v1/audit/*` endpoints.
+  - Contract: `.planning/docs/BACKEND_INTEGRATION_SPEC.md` defines the expected `/api/v1/auth/login`, `/api/v1/projects`, `/api/v1/inventory/*`, and `/api/v1/audit/*` endpoints.
   - Direct bypass: `src/pages/Dashboard/RetireCredits.tsx` calls `http://127.0.0.1:5680/api/v1/marketplace/compensate` directly instead of using `src/services/api.ts`.
   - Public docs target: `src/pages/Dashboard/ApiDocs.tsx` references `https://api.sinarca.com.br/v1`.
 
@@ -59,10 +59,10 @@
   - Auth: Not applicable.
 
 **Prior/Sibling API Contracts:**
-- Backend integration contract - `docs/BACKEND_INTEGRATION_SPEC.md` documents the desired backend API shape consumed by `src/services/database.ts`.
+- Backend integration contract - `.planning/docs/BACKEND_INTEGRATION_SPEC.md` documents the desired backend API shape consumed by `src/services/database.ts`.
   - SDK/Client: native `fetch` abstraction in `src/services/api.ts`.
-  - Auth: JWT-style response contract in `docs/BACKEND_INTEGRATION_SPEC.md`; opaque token implementation in `backend/main.py`.
-  - Note: `docs/BACKEND_INTEGRATION_SPEC.md` references Algorand as blockchain middleware, while implemented backend and contract code use Stellar/Soroban in `backend/services/stellar_service.py` and `soroban-contract/src/contract.rs`.
+  - Auth: JWT-style response contract in `.planning/docs/BACKEND_INTEGRATION_SPEC.md`; opaque token implementation in `backend/main.py`.
+  - Note: `.planning/docs/BACKEND_INTEGRATION_SPEC.md` references Algorand as blockchain middleware, while implemented backend and contract code use Stellar/Soroban in `backend/services/stellar_service.py` and `soroban-contract/src/contract.rs`.
 - Sibling backend repository reference - Not detected.
   - SDK/Client: no repo-local path or package reference to a sibling backend checkout found in scanned source/docs.
   - Auth: Not applicable.
@@ -95,7 +95,7 @@
 - Custom in-memory auth for active MVP API.
   - Implementation: `backend/main.py` validates users in `backend/mock_data.py`, creates opaque `secrets.token_urlsafe` bearer tokens, and stores token-to-user mappings in `ACTIVE_SESSIONS`.
   - Frontend: `src/contexts/AuthContext.tsx` calls `/auth/login`, `/auth/me`, `/auth/register`, and stores the bearer token in `localStorage`.
-  - Roles: `producer`, `auditor`, `company`, `certifier`, and `admin` in `src/contexts/AuthContext.tsx`, `backend/main.py`, and `docs/BACKEND_INTEGRATION_SPEC.md`.
+  - Roles: `producer`, `auditor`, `company`, `certifier`, and `admin` in `src/contexts/AuthContext.tsx`, `backend/main.py`, and `.planning/docs/BACKEND_INTEGRATION_SPEC.md`.
 - JWT/OAuth2 path exists but is not wired into active app.
   - Implementation: JWT helpers in `backend/core/jwt.py`, OAuth2 bearer dependency in `backend/core/security.py`, and DB-backed auth routers in `backend/api/auth/auth.py`, `backend/api/auth/auth_admin.py`.
   - Secret: `SECRET_KEY` in `backend/core/config.py`.
