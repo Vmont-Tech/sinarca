@@ -1,28 +1,34 @@
 # SINARCA - Especificação de Integração Backend (v1.0)
 
-Este documento serve como guia para a equipe de desenvolvimento de backend integrar as APIs reais ao frontend do SINARCA. Atualmente, o sistema utiliza dados mockados via `src/services/database.ts` e `src/data/mrca_db.ts`.
+Este documento orienta a integração das APIs reais ao frontend do SINARCA. Atualmente, parte do sistema ainda depende de dados simulados em `src/services/database.ts`, `src/data/mrca_db.ts` e `backend/mock_data.py`.
 
 ## 1. Arquitetura de Autenticação
 
-A autenticação deve seguir o padrão **JWT (JSON Web Token)**.
+A autenticação produtiva deve seguir uma das opções formalizadas no plano de reconstrução:
 
-- **Endpoint**: `/api/v1/auth/login`
-- **Método**: `POST`
-- **Payload**: `{ email, password, role }`
-- **Resposta**: `{ token, user: { id, name, role, ... } }`
+- Supabase Auth como identidade canônica, com API validando JWT.
+- Auth própria com senha hash e JWT, mantendo Supabase apenas como Postgres.
 
-### Roles (Perfis)
-- `producer`: Produtor/Certificador (Painel de Gestão de Projetos)
-- `auditor`: Auditor (Fila de Verificação Técnica)
-- `company`: Empresa/Investidor (Marketplace e Inventário)
-- `admin`: Super Admin (Gestão de Ecossistema)
+Contrato mínimo esperado:
 
----
+- **Endpoint:** `/api/v1/auth/login`
+- **Método:** `POST`
+- **Payload:** `{ email, dadoLogin, password, role? }`
+- **Resposta:** `{ token, access_token, refresh_token, expires_at, expires_in_seconds, user }`
+
+### Papéis
+
+- `producer`: produtor/certificador, painel de gestão de projetos.
+- `auditor`: auditor, fila de verificação técnica.
+- `company`: empresa/investidor, marketplace e inventário.
+- `certifier`: certificadora, decisão de certificação.
+- `admin`: administrador, gestão de ecossistema.
 
 ## 2. Modelos de Dados Principais
 
-### Projeto MRCA (Mercado de Ativos)
-Representa o ativo ambiental registrado em blockchain.
+### Projeto MRCA
+
+Representa o ativo ambiental registrado e rastreável.
 
 ```json
 {
@@ -30,11 +36,11 @@ Representa o ativo ambiental registrado em blockchain.
   "friendlyId": "PRC-2024-00X",
   "name": "string",
   "status": "AVAILABLE | AUDITED | RETIRED | SUSPENDED",
-  "methodology": "string (ex: VCS, VERRA)",
+  "methodology": "string",
   "metrics": {
-    "carbonStock": number,
-    "vintage": "year",
-    "totalAreaHa": number
+    "carbonStock": 1000,
+    "vintage": "2026",
+    "totalAreaHa": 500
   },
   "blockchain": {
     "contractAddress": "string",
@@ -44,34 +50,41 @@ Representa o ativo ambiental registrado em blockchain.
 }
 ```
 
----
+## 3. Endpoints Necessários
 
-## 3. Endpoints Necessários (E2E Flow)
+### Marketplace e consulta
 
-### Marketplace & Consulta
-- `GET /api/v1/projects`: Lista de projetos filtrada por status, bioma ou tipo.
-- `GET /api/v1/projects/:id`: Detalhes completos de um projeto (incluindo timeline e docs).
+- `GET /api/v1/projects`: lista de projetos filtrada por status, bioma ou tipo.
+- `GET /api/v1/projects/:id`: detalhes completos de um projeto, incluindo timeline e documentos.
+- `GET /api/v1/marketplace`: lista de créditos disponíveis.
+- `POST /api/v1/marketplace/buy`: compra de crédito via ledger off-chain.
+- `POST /api/v1/marketplace/compensate`: aposentadoria de crédito e emissão de certificado.
 
-### Inventário & Conformidade (Empresas)
-- `POST /api/v1/inventory/declare`: Submissão de dados de escopo 1, 2 e 3.
-- `POST /api/v1/inventory/upload`: Upload de documento comprobatório (PDF/DOCX).
+### Inventário e conformidade
 
-### Auditoria
-- `GET /api/v1/audit/queue`: Fila de projetos aguardando verificação.
-- `PATCH /api/v1/audit/verify/:projectId`: Atualização de status após inspeção técnica.
+- `POST /api/v1/inventory/declare`: submissão de dados de escopo 1, 2 e 3.
+- `POST /api/v1/inventory/upload`: upload de documento comprobatório.
 
----
+### Auditoria e certificação
 
-## 4. Integração Blockchain (Middleware)
+- `GET /api/v1/audit/queue`: fila de projetos aguardando verificação.
+- `PATCH /api/v1/audit/verify/:projectId`: atualização de status após inspeção técnica.
+- `GET /api/v1/certifier/queue`: fila de projetos aguardando certificação.
+- `PATCH /api/v1/certifier/projects/:projectId/decision`: decisão da certificadora.
 
-O backend deve atuar como um gateway para a rede **Algorand**, abstraindo a complexidade de transações para o frontend.
+## 4. Integração Blockchain
 
-- **Emissão**: Quando um projeto é aprovado, o backend deve invocar o Smart Contract de `Mint`.
-- **Aposentadoria**: No momento da liquidação (compra), o backend deve executar o `Burn` e gerar o certificado imutável.
+O backend deve atuar como gateway para Stellar/Soroban, abstraindo a complexidade de transações para o frontend.
 
----
+- **Mint:** quando um projeto é aprovado, o backend registra o evento de emissão.
+- **Unlock:** após certificação/auditoria, o backend libera crédito bloqueado conforme regra de negócio.
+- **Transfer:** compras no MVP devem ser refletidas em ledger off-chain e eventos auditáveis.
+- **Burn:** no momento da aposentadoria, o backend executa ou simula burn e gera certificado imutável.
 
-## 5. Próximos Passos para Dev Team
-1. Criar `API_URL` no `.env` do frontend.
-2. Substituir chamadas em `src/services/database.ts` por instâncias de `axios` ou `fetch`.
-3. Implementar persistência de documentos via S3 ou equivalente.
+## 5. Próximos Passos
+
+1. Congelar o contrato `/api/v1` com testes.
+2. Substituir chamadas diretas no frontend por `src/services/api.ts`.
+3. Implementar persistência de documentos via storage controlado.
+4. Conectar Supabase Postgres local/produção com migrations e RLS.
+5. Isolar integrações Stellar/Soroban, Etherfuse e Polygon atrás de adapters.

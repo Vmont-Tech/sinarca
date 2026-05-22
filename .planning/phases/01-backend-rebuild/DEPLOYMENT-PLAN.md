@@ -1,24 +1,24 @@
-# Plano de Deploy: Frontend e Backend no mesmo gatilho
+# Plano de deploy: frontend e backend no mesmo gatilho
 
 **Data:** 2026-05-22
 **Plataforma:** Dokploy em VPS Linux
-**Banco:** Supabase local/producao, fora dos containers de aplicacao
+**Banco:** Supabase local/produção, fora dos containers de aplicação
 
-Este plano funciona para API Python ou Node. O runtime muda o `Dockerfile.api`, mas o desenho de deploy permanece igual.
+Este plano considera Python/FastAPI como rota operacional atual. Caso Node.js/TypeScript volte a ser escolhido, o desenho de deploy continua válido e muda apenas o `Dockerfile.api`.
 
-## Decisao de deploy
+## Decisão de deploy
 
-Usar dois servicos Docker no mesmo repositorio e no mesmo gatilho da branch `main`:
+Usar dois serviços Docker no mesmo repositório e no mesmo gatilho da branch `main`:
 
 - `sinarca-api`: API backend, health `GET /health`.
-- `sinarca-web`: Vite build servido por Nginx/Caddy.
+- `sinarca-web`: build Vite servido por Nginx ou Caddy.
 
 O gatilho pode ser configurado de duas formas:
 
-1. **Compose Dokploy:** um `docker-compose.dokploy.yml` com dois services, ambos buildados do mesmo commit.
+1. **Compose Dokploy:** `docker-compose.dokploy.yml` com dois services, ambos buildados do mesmo commit.
 2. **Dois apps Dokploy:** dois apps separados apontando para o mesmo repo/branch `main`, cada um com seu Dockerfile e Auto Deploy ligado.
 
-O compose reduz risco de frontend e backend rodarem SHAs diferentes.
+O compose reduz o risco de frontend e backend rodarem SHAs diferentes.
 
 ## Estrutura alvo
 
@@ -28,8 +28,8 @@ Dockerfile.frontend
 docker-compose.dokploy.yml
 src/
 supabase/
-backend_app/    # se Python
-server/         # se Node
+backend_app/    # rota Python/FastAPI
+server/         # somente se a alternativa Node for retomada
 ```
 
 ## Dockerfile.api
@@ -37,27 +37,27 @@ server/         # se Node
 Se Python:
 
 - Base Python 3.12 ou 3.11 slim.
-- Instalar dependencias por lockfile.
+- Instalar dependências por lockfile.
 - Rodar `uvicorn backend_app.main:app --host 0.0.0.0 --port 5680`.
-- Usuario nao-root quando possivel.
-- Healthcheck `/health`.
+- Usar usuário não-root quando possível.
+- Expor healthcheck `/health`.
 
 Se Node:
 
-- Base Node 24 LTS.
+- Base Node.js LTS.
 - Multi-stage com `npm ci`.
 - Rodar app compilado.
-- Usuario nao-root.
-- Healthcheck `/health`.
+- Usar usuário não-root.
+- Expor healthcheck `/health`.
 
 ## Dockerfile.frontend
 
-- Build com Node LTS.
+- Build com Node.js LTS.
 - Servir `dist/` com Nginx ou Caddy.
 - SPA fallback para `index.html`.
-- Configurar `VITE_API_URL` para o dominio da API ou rota interna definida.
+- Configurar `VITE_API_URL` para o domínio da API ou rota interna definida.
 
-## Variaveis de ambiente
+## Variáveis de ambiente
 
 API:
 
@@ -83,26 +83,26 @@ API:
 Web:
 
 - `VITE_API_URL`
-- `VITE_SUPABASE_URL`, se frontend usar Supabase diretamente
-- `VITE_SUPABASE_ANON_KEY`, se frontend usar Supabase diretamente
+- `VITE_SUPABASE_URL`, se o frontend usar Supabase diretamente
+- `VITE_SUPABASE_ANON_KEY`, se o frontend usar Supabase diretamente
 
-## Sequencia de deploy
+## Sequência de deploy
 
 1. Merge em `main`.
 2. Dokploy recebe webhook/auto deploy.
 3. Builda `api` e `web` do mesmo commit.
-4. Executa migracoes Supabase antes de liberar API nova.
+4. Executa migrações Supabase antes de liberar API nova.
 5. Sobe API e valida `/health`.
 6. Sobe web e valida `/`.
 7. Executa smoke externo:
 
 ```bash
-curl -fsS https://api.<dominio>/health
-curl -fsS https://app.<dominio>/
+curl -fsS https://api.example.com/health
+curl -fsS https://app.example.com/
 ```
 
 ## Rollback
 
 - Rollback de app: Dokploy volta para deploy anterior.
-- Rollback de banco: migration compensatoria planejada.
-- Operacoes financeiras/blockchain: idempotencia obrigatoria; nao depender de rollback de cadeia.
+- Rollback de banco: migration compensatória planejada.
+- Operações financeiras/blockchain: idempotência obrigatória; não depender de rollback de cadeia.

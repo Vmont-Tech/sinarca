@@ -1,0 +1,19 @@
+{
+  "project_preferences": {
+    "language": "pt-BR",
+    "documentation_language": "pt-BR",
+    "require_correct_accents": true,
+    "output_language": "pt-BR",
+    "copyright_language": "pt-BR",
+    "style": {
+      "tone": "direto, técnico e operacional",
+      "preserve_code_identifiers": true,
+      "preserve_external_product_names": true,
+      "avoid_unaccented_portuguese": true
+    },
+    "copyright_notice": {
+      "preferred_format": "© <ano> <titular>. Todos os direitos reservados.",
+      "notes": "Textos autorais, avisos de direitos, rodapés e documentos internos devem ser escritos em português do Brasil com acentuação correta. Licenças e textos legais de terceiros devem preservar o idioma original quando forem citação ou obrigação da licença."
+    }
+  }
+}

@@ -1,19 +1,21 @@
-# Volume 1: VisÃ£o Geral e Arquitetura do Sistema
+# Volume 1: Visão Geral e Arquitetura do Sistema
 
-## 1. IntroduÃ§Ã£o
-O Sistema Nacional de Rastreabilidade de CrÃ©ditos Ambientais (SINARCA) Ã© uma infraestrutura tecnolÃ³gica projetada para trazer soberania, seguranÃ§a e transparÃªncia ao mercado de crÃ©ditos de carbono no Brasil. O projeto atua como uma camada de seguranÃ§a extra, conectando produtores rurais, certificadoras, auditores, empresas e cidadÃ£os.
+## 1. Introdução
 
-## 2. VisÃ£o Geral da SoluÃ§Ã£o
-A soluÃ§Ã£o amarra o crÃ©dito digital Ã  realidade fÃ­sica da floresta atravÃ©s dos seguintes pilares:
-*   **IdentificaÃ§Ã£o FÃ­sica InviolÃ¡vel**: Tags NFC 424 DNA (QTAGs).
-*   **Monitoramento ContÃ­nuo**: SatÃ©lite Sentinel-2 e IA.
-*   **Registro ImutÃ¡vel**: Blockchain e Smart Contracts.
-*   **ResponsabilizaÃ§Ã£o Individual**: Assinatura biomÃ©trica e geolocalizada.
+O Sistema Nacional de Rastreabilidade de Créditos Ambientais (SINARCA) é uma infraestrutura tecnológica projetada para trazer soberania, segurança e transparência ao mercado de créditos de carbono no Brasil. O projeto atua como uma camada de segurança extra, conectando produtores rurais, certificadoras, auditores, empresas e cidadãos.
 
-## 3. Arquitetura de Alto NÃ­vel
-1.  **Camada FÃ­sica**: QTAGs e Dispositivos MÃ³veis.
-2.  **Camada de Monitoramento**: API Copernicus e Motor de IA.
-3.  **Camada Backend**: APIs RESTful e Banco de Dados (PostgreSQL).
-4.  **Camada Blockchain**: Blockchain/Smart Contracts (Mint/Transfer/Burn).
+## 2. Visão Geral da Solução
 
+A solução amarra o crédito digital à realidade física da floresta por meio dos seguintes pilares:
 
+- **Identificação Física Inviolável:** Tags NFC 424 DNA (QTAGs).
+- **Monitoramento Contínuo:** satélite Sentinel-2 e IA.
+- **Registro Imutável:** blockchain e smart contracts.
+- **Responsabilização Individual:** assinatura biométrica e geolocalizada.
+
+## 3. Arquitetura de Alto Nível
+
+1. **Camada Física:** QTAGs e dispositivos móveis.
+2. **Camada de Monitoramento:** API Copernicus e motor de IA.
+3. **Camada Backend:** APIs RESTful e banco de dados.
+4. **Camada Blockchain:** Stellar/Soroban e smart contracts para mint, unlock, transfer e burn.

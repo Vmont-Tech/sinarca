@@ -1,132 +1,128 @@
-# Decisao de Arquitetura 001: Opcoes de runtime do backend SINARCA
+# Decisão de Arquitetura 001: Opções de runtime do backend SINARCA
 
 **Data:** 2026-05-22
-**Status:** decisao em aberto
-**Escopo:** reconstrucao da API/backend, integracao segura com frontend, Supabase local/producao e Dokploy via Dockerfile.
+**Status:** decisão operacional atual: reconstruir em Python/FastAPI; manter Node.js/TypeScript como alternativa documentada.
+**Escopo:** reconstrução da API/backend, integração segura com frontend, Supabase local/produção e Dokploy via Dockerfile.
 
-## Premissa corrigida
+## Premissa
 
-Nenhum runtime deve ser tratado como verdade assumida.
+Nenhum runtime deve ser tratado como verdade técnica automática. A escolha precisa considerar manutenção futura, risco de migração, maturidade da equipe e aderência aos fluxos operacionais do SINARCA.
 
-O repositorio atual prova apenas isto:
+O repositório atual comprova apenas estes pontos:
 
-- O frontend ja existe em React/Vite/TypeScript.
-- A API em producao local hoje e Python/FastAPI em `backend/main.py`.
-- Essa API ativa usa dados em memoria e nao usa Supabase.
-- Existe uma arquitetura Python relacional parcial em `backend/api/*`, `backend/core/*` e `backend/models/*`, mas ela nao esta ligada ao app ativo.
-- O deploy Docker atual precisa ser refeito independentemente de Python ou Node.
+- O frontend já existe em React/Vite/TypeScript.
+- A API ativa hoje é Python/FastAPI em `backend/main.py`.
+- A API ativa usa dados em memória e não usa Supabase.
+- Existe uma arquitetura Python relacional parcial em `backend/api/*`, `backend/core/*` e `backend/models/*`, mas ela não está ligada ao app ativo.
+- O deploy Docker atual precisa ser refeito independentemente do runtime escolhido.
 
-Logo, a decisao a ser tomada nao e "Python vs Node" em abstrato. O criterio pratico e qual caminho reduz risco de manutencao futura para a equipe que vai operar o SINARCA.
+Assim, a pergunta prática não é "Python contra Node" em abstrato. A pergunta é qual caminho reduz risco de manutenção e entrega para a equipe que vai operar o SINARCA.
 
-## Opcoes
+## Opção A: reconstruir a API em Python/FastAPI
 
-### Opcao A: Reconstruir a API em Python/FastAPI
+**Resumo:** manter Python como runtime, mas reconstruir a API de forma limpa em vez de remendar o MVP em memória.
 
-**Resumo:** manter Python como runtime, mas reescrever a API limpa em vez de tentar remendar o `backend/main.py` atual.
-
-**Stack possivel:**
+**Stack possível:**
 
 - Python 3.12 ou 3.11
 - FastAPI
 - Pydantic v2
 - SQLAlchemy 2 async + asyncpg
-- Alembic para migracoes
+- Alembic para migrações
 - Supabase Postgres/Auth
 - pytest + httpx
 - Ruff/mypy ou Pyright
-- Dockerfile API dedicado
+- Dockerfile dedicado para API
 
-**Forcas:**
+**Forças:**
 
 - Preserva a linguagem atual do backend.
-- FastAPI ja e adequado para APIs produtivas, OpenAPI e validacao.
-- Mais coerente se a manutencao futura sera feita por equipe com mais familiaridade em Python.
-- Melhor encaixe para futuras rotinas de IA/satelite/processamento geoespacial, caso elas fiquem no mesmo backend.
-- Permite reaproveitar conceitos e alguns nomes de dominio existentes, mas sem carregar a implementacao quebrada.
+- Reduz custo de troca de stack durante a reconstrução.
+- FastAPI continua adequado para APIs produtivas, validação e OpenAPI.
+- É mais coerente se a manutenção futura for feita por uma equipe com maior familiaridade em Python.
+- Tem bom encaixe para futuras rotinas de IA, satélite, geoprocessamento e auditoria ambiental.
 
 **Riscos:**
 
-- Precisa reconstruir seguranca, auth, autorizacao, persistencia e migracoes do zero de qualquer forma.
-- Se a equipe tentar reaproveitar os modulos SQLAlchemy atuais sem auditoria, vai herdar inconsistencias de schema e dependencias ausentes.
-- Continuara havendo dois ecossistemas no repo: Node para frontend e Python para backend.
+- Segurança, autenticação, autorização, persistência e migrações precisam ser reconstruídas mesmo mantendo Python.
+- Reaproveitar os módulos SQLAlchemy atuais sem auditoria herdaria inconsistências de schema e dependências ausentes.
+- O repositório seguirá com dois ecossistemas: Node para frontend e Python para backend.
 
 **Quando escolher:**
 
-- A manutencao futura sera majoritariamente Python.
-- O time quer evitar uma troca de linguagem alem da troca de arquitetura.
-- O backend tende a concentrar IA, satelite, geoprocessamento e jobs de auditoria ambiental.
+- A equipe de manutenção do backend domina Python.
+- O objetivo é reduzir risco de reescrita mantendo a linguagem já presente.
+- O backend tende a concentrar integrações com IA, satélite, geoprocessamento ou jobs ambientais.
 
-### Opcao B: Reconstruir a API em Node.js/TypeScript
+## Opção B: reconstruir a API em Node.js/TypeScript
 
-**Resumo:** trocar runtime para Node/TypeScript para unificar stack com o frontend e criar contratos compartilhados.
+**Resumo:** trocar o runtime para Node.js/TypeScript para unificar stack com o frontend e permitir contratos compartilhados.
 
-**Stack possivel:**
+**Stack possível:**
 
-- Node 24 LTS
+- Node.js LTS
 - TypeScript
 - Fastify ou NestJS
 - Prisma ou Drizzle
 - Supabase Postgres/Auth
 - Vitest
-- Dockerfile API dedicado
+- Dockerfile dedicado para API
 
-**Forcas:**
+**Forças:**
 
-- Unifica linguagem entre frontend e backend.
+- Unifica a linguagem entre frontend e backend.
 - Facilita DTOs compartilhados, testes de contrato em TypeScript e SDK interno.
 - Encaixa bem com Supabase JS e tooling web.
-- Pode reduzir friccao se o time principal e frontend/fullstack JS.
+- Pode acelerar times mais fortes em frontend/fullstack JavaScript.
 
 **Riscos:**
 
-- A troca de linguagem adiciona custo de reescrita e manutencao.
-- Pode ser pior para manutencao futura se a equipe de backend for mais forte em Python.
-- Fluxos de IA/satelite/geoespacial podem acabar exigindo servicos Python separados depois.
+- A troca de linguagem adiciona custo de migração.
+- Pode aumentar risco de manutenção se a equipe de backend for mais forte em Python.
+- Fluxos de IA, satélite e geoprocessamento podem exigir serviços Python separados depois.
 
 **Quando escolher:**
 
-- O time quer padronizar tudo em TypeScript.
-- A prioridade e contrato frontend/backend e velocidade fullstack.
-- O backend sera majoritariamente API transacional, sem processamento Python pesado no mesmo servico.
+- A equipe decide padronizar tudo em TypeScript.
+- A prioridade é velocidade fullstack e compartilhamento de tipos.
+- O backend será majoritariamente API transacional, sem processamento Python pesado no serviço principal.
 
-### Opcao C: Python API + workers especializados separados
+## Opção C: Python API + workers especializados
 
-**Resumo:** FastAPI continua como API principal; jobs pesados ficam em workers Python independentes ou filas, sem misturar tudo nas rotas HTTP.
+**Resumo:** FastAPI permanece como API principal; jobs pesados ficam em workers Python independentes ou filas.
 
-**Forcas:**
+**Forças:**
 
-- Mantem API em Python e organiza crescimento.
-- Evita rotas HTTP lentas para Sentinel, IA, auditoria automatica, harvest de yield e cross-chain listeners.
-- Facilita escalar jobs separadamente no futuro.
+- Mantém API em Python e organiza crescimento.
+- Evita rotas HTTP lentas para Sentinel, IA, auditoria automatizada, colheita de yield e listeners cross-chain.
+- Permite escalar jobs separadamente no futuro.
 
 **Riscos:**
 
-- Adiciona fila/scheduler e operacao extra.
-- Pode ser prematuro se o MVP ainda nao precisa desses jobs reais.
+- Adiciona fila, scheduler e operação extra.
+- Pode ser prematuro se o MVP ainda não precisa desses jobs reais.
 
 **Quando escolher:**
 
-- A plataforma vai evoluir rapido para monitoramento, IA, satelite, blockchain listeners e tesouraria automatizada.
-- A equipe aceita uma arquitetura um pouco mais operacional desde o inicio.
+- A plataforma avançar rapidamente para monitoramento, IA, satélite, blockchain listeners e tesouraria automatizada.
+- A equipe aceitar uma arquitetura um pouco mais operacional desde o início.
 
-## Matriz de decisao
+## Matriz de decisão
 
-| Criterio | Peso sugerido | Opcao A Python API | Opcao B Node API | Opcao C Python + workers |
+| Critério | Peso sugerido | Opção A Python API | Opção B Node API | Opção C Python + workers |
 |---|---:|---|---|---|
-| Manutencao futura pela equipe | Alto | Melhor se time domina Python | Melhor se time domina TS | Melhor se time domina Python + operacao |
-| Corte seguro do backend atual | Alto | Bom, desde que seja rebuild limpo | Bom, desde que contrato seja congelado | Bom, mas maior escopo |
-| Integracao com frontend atual | Alto | Boa via contrato OpenAPI/DTOs | Muito boa via TS compartilhado | Boa via contrato OpenAPI/DTOs |
-| Supabase local/producao | Alto | Viavel com SQLAlchemy/Alembic e Auth JWT | Viavel com Prisma/Drizzle | Viavel |
-| IA/satelite/geoprocessamento | Medio/alto | Forte | Pode exigir servico Python futuro | Forte |
-| Complexidade operacional inicial | Medio | Media | Media | Maior |
-| Dokploy via Dockerfile | Alto | Viavel | Viavel | Viavel, com mais servicos |
+| Manutenção futura pela equipe | Alto | Melhor se o time domina Python | Melhor se o time domina TypeScript | Melhor se o time domina Python e operação |
+| Corte seguro do backend atual | Alto | Bom, desde que seja rebuild limpo | Bom, desde que o contrato seja congelado | Bom, mas com maior escopo |
+| Integração com frontend atual | Alto | Boa via OpenAPI/DTOs | Muito boa via tipos compartilhados | Boa via OpenAPI/DTOs |
+| Supabase local/produção | Alto | Viável com SQLAlchemy/Alembic e Auth JWT | Viável com Prisma/Drizzle | Viável |
+| IA, satélite e geoprocessamento | Médio/alto | Forte | Pode exigir serviço Python futuro | Forte |
+| Complexidade operacional inicial | Médio | Média | Média | Maior |
+| Dokploy via Dockerfile | Alto | Viável | Viável | Viável, com mais serviços |
 
-## Decisao pendente
+## Decisão registrada
 
-Para decidir sem assumir verdade, faltam tres respostas operacionais:
+A rota recomendada para o próximo ciclo é reconstruir a API em Python/FastAPI, porque o usuário indicou manutenção futura como fator decisivo e porque o repositório já possui runtime Python ativo.
 
-1. Quem vai manter o backend depois do MVP: perfil mais Python, mais TypeScript, ou misto?
-2. Os fluxos de IA/Sentinel/geoprocessamento entram no backend principal ja no MVP ou podem ser adapters/jobs futuros?
-3. O objetivo do primeiro corte e "substituir o Python atual com menor risco" ou "padronizar fullstack em uma linguagem"?
+Essa decisão não transforma os módulos atuais em fonte confiável de implementação. O contrato ativo continua sendo a combinação de `backend/main.py`, `backend/mock_data.py`, `src/services/api.ts`, `src/services/database.ts` e `src/contexts/AuthContext.tsx`.
 
-Enquanto isso nao for fechado, os planos abaixo devem permanecer como alternativas.
+Node.js/TypeScript permanece documentado como alternativa caso a equipe revise a decisão e priorize padronização fullstack.

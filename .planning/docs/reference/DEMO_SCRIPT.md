@@ -1,6 +1,6 @@
-# Roteiro de Demonstração SINARCA (Demo Script)
+# Roteiro de Demonstração SINARCA
 
-Este roteiro guia a apresentação da plataforma SINARCA para investidores, destacando a fluidez da experiência do usuário, a rastreabilidade blochchain e a clareza dos dados de impacto.
+Este roteiro guia a apresentação da plataforma SINARCA para investidores, destacando a fluidez da experiência do usuário, a rastreabilidade blockchain e a clareza dos dados de impacto.
 
 ---
 

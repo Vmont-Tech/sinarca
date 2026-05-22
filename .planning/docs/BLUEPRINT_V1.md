@@ -30,7 +30,7 @@ Este documento deve ser seguido como fonte única de verdade.
 *   Compartilham dados públicos
 *   Possuem permissões e escopos distintos
 
-## 3. Tipos de Usuário (Roles)
+## 3. Tipos de Usuário (Papéis)
 
 ### 3.1 Público (Sem Login)
 **Permissões:**

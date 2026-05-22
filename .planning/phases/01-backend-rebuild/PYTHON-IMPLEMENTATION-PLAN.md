@@ -1,8 +1,8 @@
-# Plano de Implementacao: Reconstrucao da API em Python/FastAPI
+# Plano de implementação: reconstrução da API em Python/FastAPI
 
-**Objetivo:** reconstruir o backend em Python mantendo FastAPI, mas removendo a dependencia do MVP em memoria e da arquitetura SQLAlchemy parcialmente quebrada.
+**Objetivo:** reconstruir o backend em Python mantendo FastAPI, mas removendo a dependência do MVP em memória e da arquitetura SQLAlchemy parcialmente quebrada.
 
-**Arquitetura:** nova API Python organizada por modulos, usando Supabase Postgres como fonte de dados, Alembic para migracoes, guards por papel e adapters isolados para Stellar/Etherfuse/Polygon.
+**Arquitetura:** nova API Python organizada por módulos, usando Supabase Postgres como fonte de dados, Alembic para migrações, guards por papel e adapters isolados para Stellar/Etherfuse/Polygon.
 
 ## Fase 0: contrato e testes
 
@@ -16,11 +16,11 @@
 **Tarefas:**
 
 - Congelar contrato atual de `backend/main.py`.
-- Adicionar dependencias de teste: `pytest`, `httpx`, `pytest-asyncio`.
+- Adicionar dependências de teste: `pytest`, `httpx`, `pytest-asyncio`.
 - Criar testes para auth, projects, audit, certifier, marketplace, compensate e transactions.
 - Corrigir chamada hardcoded do frontend para usar `src/services/api.ts`.
 
-**Saida esperada:** testes rodam contra a API Python atual e documentam o comportamento que a API nova precisa manter.
+**Saída esperada:** testes rodam contra a API Python atual e documentam o comportamento que a API nova precisa manter.
 
 ## Fase 1: novo esqueleto FastAPI
 
@@ -38,13 +38,13 @@
 
 - Criar app FastAPI novo, sem importar `backend/main.py`.
 - Configurar CORS por env.
-- Criar tratamento padrao de erros com `detail`.
+- Criar tratamento padrão de erros com `detail`.
 - Criar `GET /health`.
 - Configurar logging estruturado.
 
-**Saida esperada:** `uvicorn backend_app.main:app --port 5680` sobe API limpa com health.
+**Saída esperada:** `uvicorn backend_app.main:app --port 5680` sobe API limpa com health.
 
-## Fase 2: Supabase Postgres e migracoes
+## Fase 2: Supabase Postgres e migrações
 
 **Arquivos:**
 
@@ -60,12 +60,12 @@
 
 - Usar Supabase local para desenvolvimento.
 - Definir schema em SQL versionado e refletir modelos SQLAlchemy.
-- Configurar Alembic para migracoes controladas.
+- Configurar Alembic para migrações controladas.
 - Criar seed local baseado em `backend/mock_data.py`.
 
-**Saida esperada:** banco local recriado do zero com seed e API lendo projetos persistentes.
+**Saída esperada:** banco local recriado do zero com seed e API lendo projetos persistentes.
 
-## Fase 3: auth e papeis
+## Fase 3: auth e papéis
 
 **Arquivos:**
 
@@ -77,14 +77,14 @@
 **Tarefas:**
 
 - Escolher uma das duas abordagens antes de implementar:
-  - Supabase Auth como identidade canonica, API validando JWT.
-  - Auth propria com Argon2/JWT, mantendo Supabase apenas como Postgres.
+  - Supabase Auth como identidade canônica, API validando JWT.
+  - Auth própria com Argon2/JWT, mantendo Supabase apenas como Postgres.
 - Implementar `/api/v1/auth/login`, `/register`, `/me`, `PATCH /me`.
 - Implementar `require_user` e `require_role`.
 
-**Saida esperada:** frontend autentica e rotas sensiveis rejeitam anonimos.
+**Saída esperada:** frontend autentica e rotas sensíveis rejeitam anônimos.
 
-## Fase 4: dominios operacionais
+## Fase 4: domínios operacionais
 
 **Arquivos:**
 
@@ -99,11 +99,11 @@
 
 - Portar endpoints preservando `/api/v1`.
 - Persistir timeline, status e eventos.
-- Implementar ledger unico/off-chain para compras.
+- Implementar ledger único/off-chain para compras.
 - Implementar aposentadoria e certificado.
-- Adicionar idempotencia em compra, aposentadoria e eventos blockchain.
+- Adicionar idempotência em compra, aposentadoria e eventos blockchain.
 
-**Saida esperada:** frontend usa a API nova sem depender de mock em memoria.
+**Saída esperada:** frontend usa a API nova sem depender de mock em memória.
 
 ## Fase 5: adapters externos
 
@@ -122,7 +122,7 @@
 - Implementar modo `mock` e `sandbox` antes de `live`.
 - Registrar todos os efeitos externos em `chain_events` e `audit_events`.
 
-**Saida esperada:** rotas nao importam SDKs externos diretamente.
+**Saída esperada:** rotas não importam SDKs externos diretamente.
 
 ## Fase 6: deploy Python no Dokploy
 
@@ -136,13 +136,13 @@
 
 **Tarefas:**
 
-- API image Python multi-stage com dependencias lockadas.
+- API image Python multi-stage com dependências travadas.
 - Frontend image Vite + Nginx/Caddy.
 - Compose Dokploy com `api` e `web`.
-- Supabase fora do container em producao.
+- Supabase fora do container em produção.
 - Healthcheck da API em `/health`.
 
-**Saida esperada:** commit na `main` aciona build/deploy dos dois servicos.
+**Saída esperada:** commit na `main` aciona build/deploy dos dois serviços.
 
 ## Gates
 
