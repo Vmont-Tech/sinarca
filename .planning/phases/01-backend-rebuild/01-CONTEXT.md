@@ -18,7 +18,7 @@ Esta fase não entrega aplicativo móvel nativo, treinamento real de IA/NDVI, op
 ### D-01: Runtime canônico
 - A reconstrução aprovada segue Python/FastAPI em `backend_app/`.
 - `backend_app` vira runtime único da fase; `backend/main.py` fica temporariamente no repo apenas como referência/contrato legado, sem fallback por flag e sem destino de deploy.
-- Node.js/TypeScript permanece somente como alternativa documentada em `NODE-IMPLEMENTATION-PLAN.md`.
+- Node.js/TypeScript permanece somente como alternativa documentada em `NODE-IMPLEMENTATION-GUIDE.md`.
 
 ### D-02: Fonte de dados
 - Supabase fica apenas como Postgres canônico da aplicação; Supabase Auth não é fonte de identidade nesta fase.
@@ -93,9 +93,9 @@ Esta fase não entrega aplicativo móvel nativo, treinamento real de IA/NDVI, op
 ### Contratos e planos existentes da fase
 - `.planning/phases/01-backend-rebuild/API-CONTRACT.md` - rotas e shapes mínimos da API v1.
 - `.planning/phases/01-backend-rebuild/DATA-MODEL.md` - entidades alvo em Supabase Postgres, RLS e status canônicos.
-- `.planning/phases/01-backend-rebuild/PYTHON-IMPLEMENTATION-PLAN.md` - direção inicial da reconstrução Python/FastAPI.
-- `.planning/phases/01-backend-rebuild/DEPLOYMENT-PLAN.md` - decisão de deploy API/web no mesmo gatilho.
-- `.planning/phases/01-backend-rebuild/NODE-IMPLEMENTATION-PLAN.md` - alternativa documentada, não rota canônica.
+- `.planning/phases/01-backend-rebuild/PYTHON-IMPLEMENTATION-GUIDE.md` - direção inicial da reconstrução Python/FastAPI.
+- `.planning/phases/01-backend-rebuild/DEPLOYMENT-GUIDE.md` - decisão de deploy API/web no mesmo gatilho.
+- `.planning/phases/01-backend-rebuild/NODE-IMPLEMENTATION-GUIDE.md` - alternativa documentada, não rota canônica.
 
 ### Código fonte operacional
 - `backend/main.py` - API ativa e contrato legado a congelar por testes.

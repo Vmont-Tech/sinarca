@@ -69,8 +69,8 @@ Para concluir a Phase 1, a execução precisa produzir evidência de:
 - `01-RESEARCH.md`
 - `API-CONTRACT.md`
 - `DATA-MODEL.md`
-- `DEPLOYMENT-PLAN.md`
-- `PYTHON-IMPLEMENTATION-PLAN.md`
+- `DEPLOYMENT-GUIDE.md`
+- `PYTHON-IMPLEMENTATION-GUIDE.md`
 
 ## Resultado
 

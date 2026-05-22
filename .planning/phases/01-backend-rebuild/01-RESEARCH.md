@@ -21,8 +21,8 @@
 - `.planning/architecture/001-backend-runtime-options.md`
 - `.planning/phases/01-backend-rebuild/API-CONTRACT.md`
 - `.planning/phases/01-backend-rebuild/DATA-MODEL.md`
-- `.planning/phases/01-backend-rebuild/PYTHON-IMPLEMENTATION-PLAN.md`
-- `.planning/phases/01-backend-rebuild/DEPLOYMENT-PLAN.md`
+- `.planning/phases/01-backend-rebuild/PYTHON-IMPLEMENTATION-GUIDE.md`
+- `.planning/phases/01-backend-rebuild/DEPLOYMENT-GUIDE.md`
 
 ## Requisitos extraídos dos documentos
 
