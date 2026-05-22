@@ -184,6 +184,11 @@ export const database = {
         return asArray<InventoryItem>(response, 'inventory', []);
     },
 
+    getTransactions: async (): Promise<TransactionRecord[]> => {
+        const response = await apiGet<TransactionsResponse>('/transactions');
+        return asArray<TransactionRecord>(response, 'transactions', []);
+    },
+
     // LEGACY REDIRECT: getMRCAs aponta para MarketProjects para compatibilidade.
     getMRCAs: async (params: any) => {
         return database.getMarketProjects(params);

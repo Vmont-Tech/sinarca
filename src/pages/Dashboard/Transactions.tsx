@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ArrowRightLeft,
     Download,
@@ -13,18 +13,35 @@ import {
     XCircle,
     FileText
 } from 'lucide-react';
-
-const MOCK_TRANSACTIONS = [
-    { id: 'tx-001', type: 'retired', asset: 'Reserva Juma', amount: '1,200', unit: 'tCO2e', date: 'Hoje, 10:30', status: 'completed', hash: '0x7f9...e4r5', entities: { from: 'Minha Conta', to: 'Aposentadoria' } },
-    { id: 'tx-002', type: 'received', asset: 'Carbono Cerrado', amount: '500', unit: 'tCO2e', date: 'Ontem, 14:15', status: 'completed', hash: '0x8a1...b2c3', entities: { from: 'AgroSustentável', to: 'Minha Conta' } },
-    { id: 'tx-003', type: 'sent', asset: 'Mata Atlântica Viva', amount: '200', unit: 'tCO2e', date: '12 Jan 2025', status: 'pending', hash: '0x1c9...f2a3', entities: { from: 'Minha Conta', to: 'TechGlobal' } },
-    { id: 'tx-004', type: 'minted', asset: 'Recuperação Amazônia', amount: '5,000', unit: 'tCO2e', date: '01 Jan 2025', status: 'completed', hash: '0x9d8...e1s2', entities: { from: 'Protocolo', to: 'Minha Conta' } },
-    { id: 'tx-005', type: 'retired', asset: 'Energia Limpa Solar', amount: '150', unit: 'tCO2e', date: '20 Dez 2024', status: 'completed', hash: '0x3e4...r5t6', entities: { from: 'Minha Conta', to: 'Aposentadoria' } },
-];
+import { database, type TransactionRecord } from '../../services/database';
 
 export default function Transactions() {
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let active = true;
+        setLoading(true);
+        database.getTransactions()
+            .then(data => {
+                if (active) {
+                    setTransactions(data);
+                    setError(null);
+                }
+            })
+            .catch(err => {
+                if (active) setError(err instanceof Error ? err.message : 'Erro ao carregar transações');
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, []);
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -52,7 +69,7 @@ export default function Transactions() {
         }
     };
 
-    const filteredTransactions = MOCK_TRANSACTIONS.filter(tx => {
+    const filteredTransactions = transactions.filter(tx => {
         const matchesFilter = filter === 'all' || tx.type === filter;
         const matchesSearch = tx.asset.toLowerCase().includes(searchTerm.toLowerCase()) || tx.hash.includes(searchTerm);
         return matchesFilter && matchesSearch;
@@ -162,7 +179,19 @@ export default function Transactions() {
                         </tbody>
                     </table>
                 </div>
-                {filteredTransactions.length === 0 && (
+                {loading && (
+                    <div className="p-12 text-center text-text-muted">
+                        <Clock className="w-12 h-12 mx-auto mb-4 opacity-20 animate-pulse" />
+                        <p>Carregando transações...</p>
+                    </div>
+                )}
+                {!loading && error && (
+                    <div className="p-12 text-center text-red-300">
+                        <XCircle className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p>{error}</p>
+                    </div>
+                )}
+                {!loading && !error && filteredTransactions.length === 0 && (
                     <div className="p-12 text-center text-text-muted">
                         <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
                         <p>Nenhuma transação encontrada com os filtros atuais.</p>

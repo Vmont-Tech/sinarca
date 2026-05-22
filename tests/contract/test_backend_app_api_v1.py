@@ -187,3 +187,74 @@ def test_audit_queue_verify_and_monitoring_anomaly_block_project() -> None:
     detail = client.get(f"/api/v1/projects/{project['friendlyId']}")
     assert detail.status_code == 200
     assert detail.json()["project"]["status"] == "BLOCKED_AUDIT_REQUIRED"
+
+
+def activate_project_for_marketplace(prefix: str | None = None, credit_potential: int = 1200) -> dict[str, object]:
+    project = create_project_for_workflow(prefix)
+    certifier_response = client.patch(
+        f"/api/v1/certifier/projects/{project['friendlyId']}/decision",
+        json={"decision": "APPROVE", "credit_potential": credit_potential},
+        headers=auth_headers("certificadora@sinarca.com.br", "certificadora"),
+    )
+    assert certifier_response.status_code == 200
+    audit_response = client.patch(
+        f"/api/v1/audit/verify/{project['friendlyId']}",
+        json={"status": "APPROVED", "laudo_texto": "Auditoria aprovada para marketplace"},
+        headers=auth_headers("auditor@sinarca.com.br", "auditor"),
+    )
+    assert audit_response.status_code == 200
+    return project
+
+
+def test_marketplace_buy_ledger_compensate_and_transactions_are_persistent() -> None:
+    project = activate_project_for_marketplace(credit_potential=1200)
+
+    marketplace_response = client.get("/api/v1/marketplace")
+    assert marketplace_response.status_code == 200
+    marketplace = marketplace_response.json()
+    assert marketplace["success"] is True
+    assert any(item["friendlyId"] == project["friendlyId"] for item in marketplace["credits"])
+
+    company_headers = auth_headers("empresa@sinarca.com.br", "empresa")
+    buy_response = client.post(
+        "/api/v1/marketplace/buy",
+        json={
+            "project_id": project["id"],
+            "buyer_id": "comp-001",
+            "quantidade": 10,
+            "unit_price_brl": 500,
+            "idempotency_key": f"buy-{uuid.uuid4().hex}",
+        },
+        headers=company_headers,
+    )
+    assert buy_response.status_code == 200
+    buy = buy_response.json()
+    assert buy["success"] is True
+    assert buy["message"] == "Compra registrada"
+    assert buy["transaction"]["tipo_transacao"] == "PURCHASE"
+    assert buy["transaction"]["ledger_mode"] == "OFFCHAIN_LEDGER_PURCHASE"
+    assert buy["transaction"]["totalValue"] == 5000
+
+    compensate_response = client.post(
+        "/api/v1/marketplace/compensate",
+        json={
+            "buyer_id": "comp-001",
+            "emissions_data": {"scope1": 2, "scope2": 1, "scope3": 1, "total": 4},
+            "credits_to_use": [{"project_id": project["id"], "amount": 4}],
+            "idempotency_key": f"retire-{uuid.uuid4().hex}",
+        },
+        headers=company_headers,
+    )
+    assert compensate_response.status_code == 200
+    compensate = compensate_response.json()
+    assert compensate["success"] is True
+    assert compensate["message"] == "Compensação realizada com sucesso"
+    assert compensate["certificate"]["emissionsCompensated"] == 4
+    assert compensate["certificate"]["certificateUrl"]
+    assert compensate["certificate"]["blockchainHash"]
+
+    transactions_response = client.get("/api/v1/transactions", headers=company_headers)
+    assert transactions_response.status_code == 200
+    transactions = transactions_response.json()["transactions"]
+    assert any(tx["type"] == "received" and tx["asset"] == project["name"] for tx in transactions)
+    assert any(tx["type"] == "retired" and tx["asset"] == project["name"] for tx in transactions)
