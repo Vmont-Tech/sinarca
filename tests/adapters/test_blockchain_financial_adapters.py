@@ -5,8 +5,10 @@ import asyncio
 import pytest
 
 from backend_app.adapters.etherfuse import EtherfuseAdapter, EtherfuseConfig
+from backend_app.adapters.polygon import PolygonConfig, PolygonVaultAdapter
 from backend_app.adapters.stellar import SorobanCreditAdapter, StellarAdapterConfig, StellarReserveSponsor
 from backend_app.adapters.transfero import TransferoAdapter, TransferoConfig
+from backend_app.main import app
 from backend_app.modules.treasury.service import TreasuryService
 
 
@@ -119,3 +121,37 @@ def test_etherfuse_confirm_collateral_and_mint_requires_confirmed_status() -> No
                 soroban_adapter=SorobanCreditAdapter(StellarAdapterConfig(mode="mock", network="testnet")),
             )
         )
+
+
+def test_polygon_mock_validate_lock_event_and_request_wrapped_mint() -> None:
+    adapter = PolygonVaultAdapter(PolygonConfig(mode="mock"))
+
+    lock = adapter.validate_lock_event(
+        chain="polygon",
+        vault_address="0xVault",
+        source_token_address="0xToken",
+        source_tx_hash="0xabc123",
+        amount=25,
+    )
+    wrapped = adapter.request_wrapped_mint("PRC-2026-001", "SINARCA:WRAPPED:POLYGON", 25)
+
+    assert lock["success"] is True
+    assert lock["status"] == "LOCK_CONFIRMED"
+    assert lock["source_tx_hash"] == "0xabc123"
+    assert wrapped["status"] == "WRAPPED_MINT_REQUESTED"
+    assert wrapped["wrapped_stellar_asset"] == "SINARCA:WRAPPED:POLYGON"
+
+
+def test_polygon_testnet_fails_closed_without_rpc_or_vault() -> None:
+    adapter = PolygonVaultAdapter(PolygonConfig(mode="testnet", rpc_url=None, vault_address=None))
+
+    with pytest.raises(RuntimeError, match="Configuração Polygon incompleta"):
+        adapter.validate_lock_event("polygon", "0xVault", "0xToken", "0xabc123", 1)
+
+
+def test_stellar_status_route_reports_mock_mode() -> None:
+    route_paths = {route.path for route in app.routes}
+    status = StellarReserveSponsor().status()
+
+    assert "/api/v1/stellar/status" in route_paths
+    assert status["mode"] in {"mock", "testnet", "live"}
