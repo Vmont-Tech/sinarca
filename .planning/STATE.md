@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-backend-rebuild-01-04-PLAN.md
-last_updated: "2026-05-22T22:22:16.721Z"
+stopped_at: Completed 01-backend-rebuild-01-05-PLAN.md
+last_updated: "2026-05-22T22:37:11.104Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -26,29 +26,30 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 ## Current Position
 
 Phase: 01 (backend-rebuild) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-05-22
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 12min
-- Total execution time: 0.78 hours
+- Total execution time: 0.97 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 backend-rebuild | 4/6 | 47min | 12min |
+| 1 backend-rebuild | 5/6 | 58min | 12min |
 | Phase 01-backend-rebuild P01-01 | 5min | 3 tasks | 4 files |
 | Phase 01-backend-rebuild P01-02 | 6min | 3 tasks | 20 files |
 | Phase 01-backend-rebuild P01-03 | 24min | 4 tasks | 14 files |
 | Phase 01-backend-rebuild P01-04 | 12min | 4 tasks | 26 files |
+| Phase 01-backend-rebuild P01-05 | 11min | 5 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Progress: [███████░░░] 67%
 - [Phase 01-backend-rebuild]: [Phase 01]: backend_app API v1 agora cobre projetos, certificação, auditoria, marketplace, transações, inventário e upload seguro contra Supabase Postgres local. — Execução da Plan 01-04.
 - [Phase 01-backend-rebuild]: [Phase 01]: Compras usam ledger off-chain com OFFCHAIN_LEDGER_PURCHASE em chain_events.payload, sem wallet externa do comprador. — Execução da Plan 01-04.
 - [Phase 01-backend-rebuild]: [Phase 01]: Declarações de inventário persistem como documentos lógicos auditáveis em documents, sem nova tabela na Plan 01-04. — Execução da Plan 01-04.
+- [Phase 01-backend-rebuild]: Adapters Stellar/Soroban, Etherfuse e Polygon falham fechado em testnet/sandbox sem segredos e configuração obrigatórios.
+- [Phase 01-backend-rebuild]: backend_app auth própria permaneceu canônica nas rotas blockchain/tesouraria; Supabase segue apenas como Postgres.
+- [Phase 01-backend-rebuild]: Soroban SDK 26 constrói WASM local com wasm32v1-none; wasm32-unknown-unknown é incompatível com o Rust atual.
 
 ### Pending Todos
 
@@ -76,6 +80,9 @@ None yet.
 ### Blockers/Concerns
 
 - Supabase, Dokploy, Soroban, Etherfuse e Polygon dependem de credenciais/ambientes externos para smoke real.
+- Soroban testnet deploy/invoke/status bloqueado: falta source account/identidade de assinatura e SOROBAN_CONTRACT_ID; ver .planning/docs/providers/PHASE1-PROVIDER-SMOKE.md.
+- Polygon testnet smoke bloqueado: POLYGON_RPC_URL, POLYGON_VAULT_ADDRESS e source lock tx hash ausentes.
+- Etherfuse sandbox smoke bloqueado: ETHERFUSE_API_URL e ETHERFUSE_API_KEY ausentes.
 
 ## Deferred Items
 
@@ -86,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-22T22:22:16.719Z
-Stopped at: Completed 01-backend-rebuild-01-04-PLAN.md
+Last session: 2026-05-22T22:37:10.985Z
+Stopped at: Completed 01-backend-rebuild-01-05-PLAN.md
 Resume file: None

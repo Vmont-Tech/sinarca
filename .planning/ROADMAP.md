@@ -27,7 +27,7 @@ Plans:
 - [x] 01-02: Criar `backend_app` FastAPI com configuração, health, auth própria Argon2/JWT e guards por papel.
 - [x] 01-03: Criar schema Supabase, RLS mínima, seed completo e camada de dados.
 - [x] 01-04: Implementar módulos operacionais persistentes da API v1 e remover mocks runtime do frontend.
-- [ ] 01-05: Implementar adapters blockchain/financeiros e smoke real de provedores sandbox/testnet.
+- [x] 01-05: Implementar adapters blockchain/financeiros e smoke real de provedores sandbox/testnet.
 - [ ] 01-06: Preparar Docker/Dokploy, cutover sem fallback e documentação operacional.
 
 ## Auxiliary Documents
@@ -40,4 +40,4 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. backend-rebuild | 4/6 | In Progress | - |
+| 1. backend-rebuild | 5/6 | In Progress | - |
