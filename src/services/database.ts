@@ -1,12 +1,4 @@
-import {
-    PROJECTS_DB,
-    CERTIFIERS_DB,
-    AUDITORS_DB,
-    COMPANIES_DB,
-    INVENTORY_DB,
-    type ProjectMRCA,
-    type InventoryItem,
-} from '../data/mrca_db';
+import { type ProjectMRCA, type InventoryItem } from '../data/mrca_db';
 import { apiGet } from './api';
 
 const delay = (ms = 200) => new Promise(resolve => setTimeout(resolve, ms));
@@ -19,14 +11,14 @@ const asArray = <T,>(value: any, key: string, fallback: T[]): T[] => {
 };
 
 const getProjectsFromApi = async (): Promise<ProjectMRCA[]> => {
-    try {
-        const response = await apiGet<any>('/projects?limit=1000');
-        return asArray<ProjectMRCA>(response, 'projects', PROJECTS_DB);
-    } catch (error) {
-        console.warn('[SINARCA] API indisponível; usando PROJECTS_DB mockado.', error);
-        await delay(150);
-        return PROJECTS_DB;
+    const response = await apiGet<any>('/projects?limit=1000');
+    // Se a API retornar no shape esperado, usamos; se não, a UI precisa tratar.
+    if (!response) return [];
+    const projects = response?.projects;
+    if (!Array.isArray(projects)) {
+        throw new Error('Resposta inválida da API: esperado campo "projects" como array');
     }
+    return projects as ProjectMRCA[];
 };
 
 const mapProjectToFeedItem = (proj: ProjectMRCA) => {
@@ -69,38 +61,20 @@ const mapProjectToFeedItem = (proj: ProjectMRCA) => {
 export const database = {
     // === CERTIFICADORAS ===
     getCertifiers: async () => {
-        try {
-            const response = await apiGet<any>('/certifiers');
-            return asArray(response, 'certifiers', CERTIFIERS_DB);
-        } catch (error) {
-            console.warn('[SINARCA] API indisponível; usando CERTIFIERS_DB.', error);
-            await delay();
-            return CERTIFIERS_DB;
-        }
+        const response = await apiGet<any>('/certifiers');
+        return asArray(response, 'certifiers', []);
     },
 
     // === AUDITORES ===
     getAuditors: async () => {
-        try {
-            const response = await apiGet<any>('/auditors');
-            return asArray(response, 'auditors', AUDITORS_DB);
-        } catch (error) {
-            console.warn('[SINARCA] API indisponível; usando AUDITORS_DB.', error);
-            await delay();
-            return AUDITORS_DB;
-        }
+        const response = await apiGet<any>('/auditors');
+        return asArray(response, 'auditors', []);
     },
 
     // === EMPRESAS ===
     getCompanies: async () => {
-        try {
-            const response = await apiGet<any>('/companies');
-            return asArray(response, 'companies', COMPANIES_DB);
-        } catch (error) {
-            console.warn('[SINARCA] API indisponível; usando COMPANIES_DB.', error);
-            await delay();
-            return COMPANIES_DB;
-        }
+        const response = await apiGet<any>('/companies');
+        return asArray(response, 'companies', []);
     },
 
     // === CONTA DE MERCADO VOLUNTÁRIO ===
@@ -130,14 +104,8 @@ export const database = {
     },
 
     getRawProjectById: async (id: string): Promise<ProjectMRCA | undefined> => {
-        try {
-            const response = await apiGet<any>(`/projects/${encodeURIComponent(id)}`);
-            if (response?.project) return response.project;
-        } catch (error) {
-            console.warn('[SINARCA] Falha ao buscar projeto na API; usando mock local.', error);
-        }
-
-        return PROJECTS_DB.find(p => p.id === id || p.friendlyId === id);
+        const response = await apiGet<any>(`/projects/${encodeURIComponent(id)}`);
+        return response?.project;
     },
 
     // === BUSCA UNIFICADA ===
@@ -169,14 +137,8 @@ export const database = {
 
     // === INVENTÁRIO GOVERNAMENTAL ===
     getInventoryData: async (): Promise<InventoryItem[]> => {
-        try {
-            const response = await apiGet<any>('/inventory');
-            return asArray<InventoryItem>(response, 'inventory', INVENTORY_DB);
-        } catch (error) {
-            console.warn('[SINARCA] API indisponível; usando INVENTORY_DB.', error);
-            await delay();
-            return INVENTORY_DB;
-        }
+        const response = await apiGet<any>('/inventory');
+        return asArray<InventoryItem>(response, 'inventory', []);
     },
 
     // LEGACY REDIRECT: getMRCAs aponta para MarketProjects para compatibilidade.
