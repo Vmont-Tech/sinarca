@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from backend_app.core.config import get_settings
 
@@ -34,6 +35,7 @@ def get_engine() -> AsyncEngine:
         _engine = create_async_engine(
             _async_database_url(settings.database_url),
             pool_pre_ping=True,
+            poolclass=NullPool,
         )
     return _engine
 
@@ -50,6 +52,5 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
-    async with get_sessionmaker() as session:
+    async with get_sessionmaker()() as session:
         yield session
-

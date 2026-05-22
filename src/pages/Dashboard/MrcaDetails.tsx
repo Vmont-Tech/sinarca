@@ -27,7 +27,7 @@ import {
     Building2,
     BadgeCheck
 } from 'lucide-react';
-import { getProjectById as getMockProjectById, type ProjectMRCA } from '../../data/mrca_db';
+import { type ProjectMRCA } from '../../data/mrca_db';
 import { database } from '../../services/database';
 import LogoLight from '../../assets/sinarca-logo-recortado.svg';
 
@@ -35,6 +35,7 @@ export default function MrcaDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [project, setProject] = useState<ProjectMRCA | null>(null);
+    const [notFound, setNotFound] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'blockchain' | 'docs' | 'audit'>('overview');
 
     useEffect(() => {
@@ -43,12 +44,19 @@ export default function MrcaDetails() {
         const loadProject = async () => {
             if (!id) return;
 
-            const found = await database.getRawProjectById(id);
-            const fallback = getMockProjectById(id);
-
-            if (active && (found || fallback)) {
-                setProject(found || fallback || null);
-                window.scrollTo(0, 0);
+            try {
+                const found = await database.getRawProjectById(id);
+                if (active && found) {
+                    setProject(found);
+                    setNotFound(false);
+                    window.scrollTo(0, 0);
+                } else if (active) {
+                    setNotFound(true);
+                }
+            } catch {
+                if (active) {
+                    setNotFound(true);
+                }
             }
         };
 
@@ -58,6 +66,22 @@ export default function MrcaDetails() {
             active = false;
         };
     }, [id]);
+
+    if (notFound) {
+        return (
+            <div className="min-h-screen bg-white flex items-center justify-center p-4">
+                <div className="text-center space-y-6">
+                    <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Projeto não encontrado na API persistente.</p>
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="px-5 py-3 bg-black text-white rounded-xl text-xs font-bold uppercase tracking-widest"
+                    >
+                        Voltar
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (!project) {
         return (

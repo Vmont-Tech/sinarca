@@ -4,13 +4,77 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func, text
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Enum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
     pass
+
+
+UserRoleEnum = Enum("producer", "auditor", "company", "certifier", "admin", name="user_role", create_type=False)
+ProjectStatusEnum = Enum(
+    "DRAFT",
+    "CREATED",
+    "REGISTERED",
+    "BASELINE_PENDING",
+    "AWAITING_CERTIFICATION",
+    "CERTIFIED_AWAITING_TREASURY",
+    "TOKENIZED_LOCKED",
+    "AWAITING_AUDIT",
+    "AUDITED",
+    "ACTIVE",
+    "AVAILABLE",
+    "RESERVED",
+    "TRANSFERRED",
+    "BLOCKED_AUDIT_REQUIRED",
+    "RECALCULATION_REQUIRED",
+    "SUSPENDED",
+    "RETIRED",
+    name="project_status",
+    create_type=False,
+)
+CreditStatusEnum = Enum(
+    "LOCKED",
+    "AVAILABLE",
+    "RESERVED",
+    "OWNED_OFFCHAIN",
+    "RETIRED",
+    "BURNED",
+    "SUSPENDED",
+    name="credit_status",
+    create_type=False,
+)
+LedgerEntryTypeEnum = Enum(
+    "CREDIT_ISSUED",
+    "PURCHASE",
+    "RECEIVED",
+    "TRANSFER_SENT",
+    "RETIREMENT",
+    "MINT",
+    "BURN",
+    "RESERVE",
+    "YIELD",
+    "ADJUSTMENT",
+    name="ledger_entry_type",
+    create_type=False,
+)
+ChainEventTypeEnum = Enum(
+    "MINT_LOCKED",
+    "UNLOCK",
+    "TRANSFER",
+    "BURN",
+    "SPONSORED_RESERVE",
+    "PIX_CONFIRMED",
+    "TREASURY_LOCK",
+    "VAULT_LOCK",
+    "WRAPPED_MINT",
+    "STATUS_CHECK",
+    name="chain_event_type",
+    create_type=False,
+)
+ExternalChainEnum = Enum("stellar", "soroban", "etherfuse", "polygon", name="external_chain", create_type=False)
 
 
 def uuid_pk() -> Mapped[uuid.UUID]:
@@ -66,7 +130,7 @@ class Profile(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     document: Mapped[str | None] = mapped_column(String)
-    role: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(UserRoleEnum, nullable=False)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String)
     avatar_url: Mapped[str | None] = mapped_column(String)
@@ -88,7 +152,7 @@ class Project(Base):
     baseline: Mapped[str | None] = mapped_column(Text)
     methodology: Mapped[str] = mapped_column(String, nullable=False)
     methodology_link: Mapped[str | None] = mapped_column(String)
-    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'REGISTERED'"))
+    status: Mapped[str] = mapped_column(ProjectStatusEnum, nullable=False, server_default=text("'REGISTERED'"))
     producer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     developer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     auditor_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
@@ -196,7 +260,7 @@ class EnvironmentalCredit(Base):
     quantity_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     quantity_available: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     quantity_retired: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, server_default=text("0"))
-    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'LOCKED'"))
+    status: Mapped[str] = mapped_column(CreditStatusEnum, nullable=False, server_default=text("'LOCKED'"))
     unit: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'tCO2e'"))
     token_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     serial_start: Mapped[str | None] = mapped_column(String)
@@ -264,7 +328,7 @@ class LedgerEntry(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("ledger_accounts.id"), nullable=False)
-    entry_type: Mapped[str] = mapped_column(String, nullable=False)
+    entry_type: Mapped[str] = mapped_column(LedgerEntryTypeEnum, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     unit: Mapped[str] = mapped_column(String, nullable=False)
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
@@ -311,8 +375,8 @@ class ChainEvent(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
-    event_type: Mapped[str] = mapped_column(String, nullable=False)
-    chain: Mapped[str] = mapped_column(String, nullable=False)
+    event_type: Mapped[str] = mapped_column(ChainEventTypeEnum, nullable=False)
+    chain: Mapped[str] = mapped_column(ExternalChainEnum, nullable=False)
     transaction_hash: Mapped[str | None] = mapped_column(String)
     source_tx_hash: Mapped[str | None] = mapped_column(String)
     amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
@@ -326,7 +390,7 @@ class ExternalChainProject(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
-    chain: Mapped[str] = mapped_column(String, nullable=False)
+    chain: Mapped[str] = mapped_column(ExternalChainEnum, nullable=False)
     vault_address: Mapped[str] = mapped_column(String, nullable=False)
     source_token_address: Mapped[str] = mapped_column(String, nullable=False)
     source_tx_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
@@ -357,7 +421,7 @@ class AuditEvent(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     actor_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
-    actor_role: Mapped[str | None] = mapped_column(String)
+    actor_role: Mapped[str | None] = mapped_column(UserRoleEnum)
     action: Mapped[str] = mapped_column(String, nullable=False)
     entity_type: Mapped[str] = mapped_column(String, nullable=False)
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
@@ -379,4 +443,3 @@ class IdempotencyKey(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'RECORDED'"))
     created_at: Mapped[datetime] = created_at_column()
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-

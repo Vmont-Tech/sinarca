@@ -1,7 +1,55 @@
 import { type ProjectMRCA, type InventoryItem } from '../data/mrca_db';
 import { apiGet } from './api';
 
-const delay = (ms = 200) => new Promise(resolve => setTimeout(resolve, ms));
+export type ProjectsResponse = {
+    success: boolean;
+    total: number;
+    projects: ProjectMRCA[];
+};
+
+export type ProjectResponse = {
+    success: boolean;
+    project: ProjectMRCA;
+};
+
+export type MarketplaceResponse = {
+    success: boolean;
+    total: number;
+    credits: ProjectMRCA[];
+};
+
+export type QueueResponse<T = ProjectMRCA> = {
+    success: boolean;
+    total: number;
+    projects: T[];
+};
+
+export type CatalogResponse<T = any> = {
+    success: boolean;
+    certifiers?: T[];
+    auditors?: T[];
+    companies?: T[];
+};
+
+export type TransactionRecord = {
+    id: string;
+    type: string;
+    asset: string;
+    amount: string;
+    unit: string;
+    date: string;
+    status: string;
+    hash: string;
+    entities: {
+        from: string;
+        to: string;
+    };
+};
+
+export type TransactionsResponse = {
+    success: boolean;
+    transactions: TransactionRecord[];
+};
 
 const asArray = <T,>(value: any, key: string, fallback: T[]): T[] => {
     if (Array.isArray(value)) return value;
@@ -11,7 +59,7 @@ const asArray = <T,>(value: any, key: string, fallback: T[]): T[] => {
 };
 
 const getProjectsFromApi = async (): Promise<ProjectMRCA[]> => {
-    const response = await apiGet<any>('/projects?limit=1000');
+    const response = await apiGet<ProjectsResponse>('/projects?limit=1000');
     // Se a API retornar no shape esperado, usamos; se não, a UI precisa tratar.
     if (!response) return [];
     const projects = response?.projects;
@@ -61,19 +109,19 @@ const mapProjectToFeedItem = (proj: ProjectMRCA) => {
 export const database = {
     // === CERTIFICADORAS ===
     getCertifiers: async () => {
-        const response = await apiGet<any>('/certifiers');
+        const response = await apiGet<CatalogResponse>('/certifiers');
         return asArray(response, 'certifiers', []);
     },
 
     // === AUDITORES ===
     getAuditors: async () => {
-        const response = await apiGet<any>('/auditors');
+        const response = await apiGet<CatalogResponse>('/auditors');
         return asArray(response, 'auditors', []);
     },
 
     // === EMPRESAS ===
     getCompanies: async () => {
-        const response = await apiGet<any>('/companies');
+        const response = await apiGet<CatalogResponse>('/companies');
         return asArray(response, 'companies', []);
     },
 
@@ -104,7 +152,7 @@ export const database = {
     },
 
     getRawProjectById: async (id: string): Promise<ProjectMRCA | undefined> => {
-        const response = await apiGet<any>(`/projects/${encodeURIComponent(id)}`);
+        const response = await apiGet<ProjectResponse>(`/projects/${encodeURIComponent(id)}`);
         return response?.project;
     },
 
@@ -126,13 +174,8 @@ export const database = {
     },
 
     getInstitution: async (cnpj: string) => {
-        return {
-            name: 'Banco Futuro',
-            cnpj,
-            type: 'empresa',
-            emissions: { 2024: { scope1: 5000, scope2: 15000, scope3: 25000, compensated: 12450 } },
-            contact: 'esg@bancofuturo.com',
-        };
+        const companies = await database.getCompanies();
+        return companies.find((company: any) => company.document === cnpj || company.id === cnpj || company.name === cnpj);
     },
 
     // === INVENTÁRIO GOVERNAMENTAL ===
