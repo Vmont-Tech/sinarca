@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Ready to execute Phase 1.
-last_updated: "2026-05-22T21:17:07.651Z"
-last_activity: 2026-05-22 -- Phase 01 execution started
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-05-22T21:24:55.872Z"
+last_activity: 2026-05-22
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 17
 ---
 
 # Project State
@@ -26,25 +26,26 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 ## Current Position
 
 Phase: 01 (backend-rebuild) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 01
-Last activity: 2026-05-22 -- Phase 01 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-05-22
 
-Progress: [----------] 0%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: N/A
-- Total execution time: 0.0 hours
+- Total plans completed: 1
+- Average duration: 5min
+- Total execution time: 0.08 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 backend-rebuild | 0/6 | 6 | N/A |
+| 1 backend-rebuild | 1/6 | 6 | 5min |
+| Phase 01-backend-rebuild P01-01 | 5min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -54,6 +55,9 @@ Progress: [----------] 0%
 - `DEPLOYMENT-GUIDE.md`, `PYTHON-IMPLEMENTATION-GUIDE.md` e `NODE-IMPLEMENTATION-GUIDE.md` são documentação auxiliar, não planos executáveis.
 - Auth própria com Argon2/JWT; Supabase apenas como Postgres.
 - Cutover sem fallback runtime para `backend/main.py`.
+- [Phase 01]: O contrato legado foi congelado contra backend.main:app antes da reconstrução em backend_app.
+- [Phase 01]: A aposentadoria de créditos usa apiPost('/marketplace/compensate') para herdar VITE_API_URL e bearer token.
+- [Phase 01]: O adapter Stellar legado deve falhar explicitamente quando habilitado sem chaves públicas.
 
 ### Pending Todos
 
@@ -72,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-22
-Stopped at: Ready to execute Phase 1.
-Resume file: None.
+Last session: 2026-05-22T21:24:55.827Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None
