@@ -1,0 +1,13 @@
+{
+  "name": "sinarca-rust-soroban",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "extensions": [
+    "rust-lang.rust-analyzer"
+  ],
+  "postCreateCommand": "rustup target add wasm32-unknown-unknown && cargo --version"
+}

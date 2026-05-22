@@ -77,9 +77,12 @@ class StellarService:
         memo: str = "",
         asset_code: str | None = None,
     ) -> dict[str, Any]:
-        """Aposenta (queima) créditos. No MVP, devido à falta de custódia das chaves privadas dos compradores,
-        o burn na mainnet exigiria a assinatura do cliente via WalletConnect/Albedo. 
-        Por isso, o backend registra o burn internamente e retorna um hash simulado criptograficamente.
+        """Burn (aposentadoria) de créditos no Stellar.
+
+        Observação importante:
+        - Este repositório ainda não possui, neste arquivo, a integração Soroban RPC real.
+        - Mantemos o modo mock apenas para o MVP/legado Web2.
+        - Ao ativar STELLAR_ENABLED=true, este método será substituído para chamar o contrato Soroban via RPC.
         """
         code = asset_code or self.config.asset_code
         payload = f"{code}:{amount}:{from_account}:BURN:{memo}:{self.config.network}"
@@ -95,8 +98,6 @@ class StellarService:
             "memo": memo,
         }
 
-        if not self.config.issuer_public_key or not self.config.distributor_public_key:
-            raise RuntimeError("Configuração Stellar incompleta: issuer/distributor ausentes")
 
         import requests
         from stellar_sdk import Asset, Keypair, Network, Server, TransactionBuilder
