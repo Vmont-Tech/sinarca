@@ -24,7 +24,7 @@ O ciclo atual concentra a Phase 1 na reconstrução do backend do SINARCA, saind
 
 Plans:
 - [x] 01-01: Congelar contrato atual, limpar testes obsoletos e corrigir chamada hardcoded de aposentadoria.
-- [ ] 01-02: Criar `backend_app` FastAPI com configuração, health, auth própria Argon2/JWT e guards por papel.
+- [x] 01-02: Criar `backend_app` FastAPI com configuração, health, auth própria Argon2/JWT e guards por papel.
 - [ ] 01-03: Criar schema Supabase, RLS mínima, seed completo e camada de dados.
 - [ ] 01-04: Implementar módulos operacionais persistentes da API v1 e remover mocks runtime do frontend.
 - [ ] 01-05: Implementar adapters blockchain/financeiros e smoke real de provedores sandbox/testnet.
@@ -40,4 +40,4 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. backend-rebuild | 1/6 | In Progress | - |
+| 1. backend-rebuild | 2/6 | In Progress | - |
