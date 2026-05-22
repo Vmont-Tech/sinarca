@@ -258,3 +258,48 @@ def test_marketplace_buy_ledger_compensate_and_transactions_are_persistent() -> 
     transactions = transactions_response.json()["transactions"]
     assert any(tx["type"] == "received" and tx["asset"] == project["name"] for tx in transactions)
     assert any(tx["type"] == "retired" and tx["asset"] == project["name"] for tx in transactions)
+
+
+def test_inventory_declare_and_secure_upload_persist_documents() -> None:
+    headers = auth_headers("empresa@sinarca.com.br", "empresa")
+
+    inventory_response = client.get("/api/v1/inventory", headers=headers)
+    assert inventory_response.status_code == 200
+    assert inventory_response.json()["success"] is True
+    assert inventory_response.json()["inventory"]
+
+    declaration_response = client.post(
+        "/api/v1/inventory/declare",
+        json={"escopo_1": 10, "escopo_2": 20, "escopo_3": 30},
+        headers=headers,
+    )
+    assert declaration_response.status_code == 201
+    declaration = declaration_response.json()
+    assert declaration["success"] is True
+    assert declaration["total_emissoes"] == 60
+    assert declaration["recommended_offset_tco2e"] == 60
+
+    unauthenticated_upload = client.post(
+        "/api/v1/inventory/upload",
+        files={"file": ("evidencia.pdf", b"%PDF-1.4\nsem auth", "application/pdf")},
+    )
+    assert unauthenticated_upload.status_code == 401
+
+    spoofed_upload = client.post(
+        "/api/v1/inventory/upload",
+        files={"file": ("evidencia.pdf", b"not a pdf", "application/pdf")},
+        headers=headers,
+    )
+    assert spoofed_upload.status_code == 400
+
+    pdf_content = b"%PDF-1.4\n% contract evidence " + uuid.uuid4().hex.encode()
+    upload_response = client.post(
+        "/api/v1/inventory/upload",
+        files={"file": ("evidencia.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    assert upload_response.status_code == 201
+    upload = upload_response.json()
+    assert upload["success"] is True
+    assert upload["sha256"]
+    assert upload["size_bytes"] == len(pdf_content)
