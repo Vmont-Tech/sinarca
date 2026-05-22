@@ -50,7 +50,7 @@ RUN if [ -f pyproject.toml ]; then \
 # =========================================
 # FRONTEND
 # =========================================
-COPY --from=frontend /app/dist /var/www/html
+COPY --from=frontend /app/dist /app/frontend/dist
 
 # =========================================
 # POSTGRES CONFIG
@@ -64,24 +64,16 @@ RUN service postgresql start && \
     su postgres -c "createdb -O $POSTGRES_USER $POSTGRES_DB"
 
 # =========================================
-# DATABASE URL
+# DATABASE URL + FRONTEND
 # =========================================
 ENV DATABASE_URL=postgresql://sinarca:sinarca123@localhost:5432/sinarca_db
+ENV FRONTEND_DIST_DIR=/app/frontend/dist
 
 # =========================================
 # START SCRIPT
 # =========================================
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-service postgresql start\n\
-\n\
-uvicorn backend.main:app --host 0.0.0.0 --port 5680 &\n\
-\n\
-tail -f /dev/null\n\
-' > /start.sh && chmod +x /start.sh
+RUN printf '#!/bin/bash\nset -e\nservice postgresql start\nexec uvicorn backend.main:app --host 0.0.0.0 --port 80\n' > /start.sh && chmod +x /start.sh
 
 EXPOSE 80
-EXPOSE 5680
 
 CMD ["/start.sh"]
