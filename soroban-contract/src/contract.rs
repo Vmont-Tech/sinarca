@@ -206,7 +206,11 @@ impl SinarcaToken {
         set_burned_internal(&env, project_id.clone(), 0i128);
 
         let prev = get_balance_internal(&env, project_id.clone(), &initial_owner);
-        set_balance_internal(&env, project_id, &initial_owner, prev + amount);
+        set_balance_internal(&env, project_id.clone(), &initial_owner, prev + amount);
+        env.events().publish(
+            (Symbol::new(&env, "mint_locked"), project_id),
+            (amount, initial_owner),
+        );
     }
 
     /// Unlock: somente a certificadora do projeto pode desbloquear.
@@ -218,7 +222,9 @@ impl SinarcaToken {
         if st == TokenStatus::DISPONIVEL {
             return;
         }
-        set_status_internal(&env, project_id, TokenStatus::DISPONIVEL);
+        set_status_internal(&env, project_id.clone(), TokenStatus::DISPONIVEL);
+        env.events()
+            .publish((Symbol::new(&env, "unlock"), project_id), ());
     }
 
     /// Transfer: bloqueada quando BLOQUEADO.
@@ -242,7 +248,11 @@ impl SinarcaToken {
 
         set_balance_internal(&env, project_id.clone(), &from, from_bal - amount);
         let to_bal = get_balance_internal(&env, project_id.clone(), &to);
-        set_balance_internal(&env, project_id, &to, to_bal + amount);
+        set_balance_internal(&env, project_id.clone(), &to, to_bal + amount);
+        env.events().publish(
+            (Symbol::new(&env, "transfer"), project_id),
+            (from, to, amount),
+        );
     }
 
     /// Burn:
@@ -287,7 +297,11 @@ impl SinarcaToken {
         set_balance_internal(&env, project_id.clone(), &from, from_bal - amount);
 
         let burned = get_burned_internal(&env, project_id.clone());
-        set_burned_internal(&env, project_id, burned + amount);
+        set_burned_internal(&env, project_id.clone(), burned + amount);
+        env.events().publish(
+            (Symbol::new(&env, "burn"), project_id),
+            (from, operator, amount),
+        );
     }
 
 
@@ -311,4 +325,3 @@ impl SinarcaToken {
         get_burned_internal(&env, project_id)
     }
 }
-

@@ -15,3 +15,4 @@ scratch/
 TODO.md
 supabase/.branches/
 supabase/.temp/
+soroban-contract/target/
