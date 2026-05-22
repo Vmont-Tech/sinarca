@@ -69,6 +69,9 @@ class StellarService:
                 "memo": memo,
             }
 
+        if not self.config.issuer_public_key or not self.config.distributor_public_key:
+            raise RuntimeError("Configuração Stellar incompleta: chaves públicas do emissor e distribuidor são obrigatórias.")
+
     def burn_credit(
         self,
         *,

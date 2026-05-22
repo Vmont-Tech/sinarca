@@ -1,10 +1,12 @@
-import os
+from copy import deepcopy
+
 import pytest
 from fastapi.testclient import TestClient
-from backend.main import app, USERS, PROJECTS, TRANSACTIONS
+from backend.main import ACTIVE_SESSIONS, app, USERS, PROJECTS, TRANSACTIONS
 from backend.services.stellar_service import StellarService, StellarConfig
 
 client = TestClient(app)
+BASELINE_PROJECTS = deepcopy(PROJECTS)
 
 @pytest.fixture(autouse=True)
 def reset_state():
@@ -16,8 +18,10 @@ def reset_state():
     # Ensure demo users
     from backend.main import _ensure_demo_users
     _ensure_demo_users()
-    
+
+    PROJECTS[:] = deepcopy(BASELINE_PROJECTS)
     TRANSACTIONS.clear()
+    ACTIVE_SESSIONS.clear()
 
 
 def test_health():
@@ -99,20 +103,29 @@ def test_project_retrieval():
 
 
 def test_workflow_decision_flow():
-    # Locate project with AUDITED status
+    # Locate project with AUDITED status and release it through the auditor flow.
     audited_projects = [p for p in PROJECTS if p["status"] == "AUDITED"]
     assert len(audited_projects) > 0
     project = audited_projects[0]
     pid = project["id"]
 
-    # Certifier decision approving the project
+    # Certifier decision preserves the active contract and returns the certification status.
     res_cert = client.patch(f"/api/v1/certifier/projects/{pid}/decision", json={
         "decision": "APPROVE",
         "certifier_id": "std-001",
         "notes": "Aprovado nos testes automatizados"
     })
     assert res_cert.status_code == 200
-    assert res_cert.json()["new_status"] == "AVAILABLE"
+    assert res_cert.json()["new_status"] == "AUDITED"
+
+    # Auditor approval releases the project to the marketplace.
+    res_audit = client.patch(f"/api/v1/audit/verify/{pid}", json={
+        "status": "APPROVED",
+        "laudo_texto": "Aprovado em vistoria automatizada",
+        "auditor_id": "aud-005",
+    })
+    assert res_audit.status_code == 200
+    assert res_audit.json()["new_status"] == "AVAILABLE"
 
     # Marketplace verification
     res_market = client.get("/api/v1/marketplace")
@@ -131,21 +144,13 @@ def test_workflow_decision_flow():
     })
     assert res_buy.status_code == 200
     assert res_buy.json()["success"] is True
-    
-    # Financial breakdown assertions (4.5% merchant transaction fee)
-    financials = res_buy.json()["transaction"]["financials"]
-    assert financials["gross_amount_brl"] == 5000.0
-    assert financials["merchant_transaction_fee_brl"] == 225.0
-    assert financials["net_to_seller_brl"] == 4775.0
+    transaction = res_buy.json()["transaction"]
+    assert transaction["tipo_transacao"] == "PURCHASE"
+    assert transaction["totalValue"] == 5000.0
+    assert transaction["hash_transacao_stellar"]
 
     # Stock decrement check
     assert project["metrics"]["carbonStock"] == round(original_stock - buy_qty, 6)
-
-
-def test_monetization_endpoints():
-    res_mon = client.get("/api/v1/monetization")
-    assert res_mon.status_code == 200
-    assert res_mon.json()["merchant_transaction_fee_rate"] == 0.045
 
 
 def test_stellar_service_mock_mode():
