@@ -280,7 +280,13 @@ class ProjectsService:
     async def _next_friendly_id(self) -> str:
         year = datetime.now(timezone.utc).year
         count = await self.session.scalar(select(func.count()).select_from(Project))
-        return f"PRC-{year}-{int(count or 0) + 1:03d}"
+        sequence = int(count or 0) + 1
+        while True:
+            friendly_id = f"PRC-{year}-{sequence:03d}"
+            exists = await self.session.scalar(select(Project.id).where(Project.friendly_id == friendly_id))
+            if exists is None:
+                return friendly_id
+            sequence += 1
 
 
 def deterministic_baseline(payload: ProjectCreate) -> BaselineDTO:
@@ -344,4 +350,3 @@ def _area_from_tags(tags: list[Any] | None) -> float:
 
 def _credit_potential_from_baseline(baseline: BaselineDTO) -> float:
     return round(baseline.vegetation_cover_pct * baseline.ndvi_mean * 100, 2)
-

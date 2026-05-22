@@ -88,6 +88,12 @@ class CatalogResponse(BaseModel):
     companies: list[dict[str, Any]] | None = None
 
 
+class QueueResponse(BaseModel):
+    success: bool = True
+    total: int
+    projects: list[ProjectMRCA]
+
+
 class ProjectTagInput(BaseModel):
     tag_uid: str
     cmac: str
