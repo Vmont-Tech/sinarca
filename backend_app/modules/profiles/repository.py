@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, cast as typing_cast
 
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend_app.core.config import get_settings
 from backend_app.core.roles import UserRole
 from backend_app.core.security import hash_password
+from backend_app.db.models import Profile
+from backend_app.db.session import is_database_configured
 
 
 @dataclass
@@ -96,12 +103,108 @@ class InMemoryProfileRepository:
         return profile
 
 
-def get_profile_repository() -> InMemoryProfileRepository:
+class SQLAlchemyProfileRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def get_by_id(self, user_id: str) -> ProfileRecord | None:
+        result = await self.session.execute(select(Profile).where(_profile_identity_filter(user_id)))
+        profile = result.scalar_one_or_none()
+        return _record_from_model(profile) if profile is not None else None
+
+    async def get_by_login(self, login: str) -> ProfileRecord | None:
+        normalized = login.strip().lower()
+        result = await self.session.execute(
+            select(Profile).where(
+                or_(
+                    Profile.email.ilike(normalized),
+                    Profile.document == normalized,
+                )
+            )
+        )
+        profile = result.scalar_one_or_none()
+        return _record_from_model(profile) if profile is not None else None
+
+    async def email_exists(self, email: str) -> bool:
+        normalized = email.strip().lower()
+        result = await self.session.execute(select(Profile.id).where(Profile.email.ilike(normalized)))
+        return result.scalar_one_or_none() is not None
+
+    async def create(
+        self,
+        *,
+        name: str,
+        email: str,
+        document: str,
+        role: UserRole,
+        password_hash_value: str,
+    ) -> ProfileRecord:
+        profile = Profile(
+            external_id=f"user-{email.strip().lower()}",
+            name=name,
+            email=email.strip().lower(),
+            document=document,
+            role=role,
+            password_hash=password_hash_value,
+        )
+        self.session.add(profile)
+        await self.session.flush()
+        return _record_from_model(profile)
+
+    async def update(self, user_id: str, **updates: str | None) -> ProfileRecord | None:
+        result = await self.session.execute(select(Profile).where(_profile_identity_filter(user_id)))
+        profile = result.scalar_one_or_none()
+        if profile is None:
+            return None
+
+        field_map = {"avatar": "avatar_url", "govLevel": "gov_level"}
+        for field, value in updates.items():
+            model_field = field_map.get(field, field)
+            if value is not None and hasattr(profile, model_field):
+                setattr(profile, model_field, value)
+        await self.session.flush()
+        return _record_from_model(profile)
+
+
+def get_profile_repository(session: AsyncSession | None = None) -> InMemoryProfileRepository | SQLAlchemyProfileRepository:
+    if session is not None:
+        return SQLAlchemyProfileRepository(session)
+
+    settings = get_settings()
+    if is_database_configured(settings.database_url) and settings.app_env.strip().lower() == "production":
+        raise RuntimeError("Repositório de perfis em memória bloqueado em produção; forneça AsyncSession")
     return profile_repository
 
 
 def reset_profile_repository() -> None:
+    settings = get_settings()
+    if is_database_configured(settings.database_url) and settings.app_env.strip().lower() == "production":
+        raise RuntimeError("Reset do repositório em memória bloqueado em produção")
     profile_repository.reset()
+
+
+def _record_from_model(profile: Profile) -> ProfileRecord:
+    return ProfileRecord(
+        id=profile.external_id or str(profile.id),
+        name=profile.name,
+        email=profile.email,
+        document=profile.document or "",
+        role=typing_cast(UserRole, profile.role),
+        password_hash=profile.password_hash,
+        organization=None,
+        phone=profile.phone,
+        avatar=profile.avatar_url,
+        govLevel=profile.gov_level,
+    )
+
+
+def _profile_identity_filter(user_id: str):
+    filters = [Profile.external_id == user_id]
+    try:
+        filters.append(Profile.id == uuid.UUID(user_id))
+    except ValueError:
+        pass
+    return or_(*filters)
 
 
 def _seed_profiles() -> list[ProfileRecord]:
