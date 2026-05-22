@@ -24,3 +24,9 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["backend*", "backend_app*"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+]

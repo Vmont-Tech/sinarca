@@ -1,11 +1,15 @@
 import os
 import time
-from playwright.sync_api import sync_playwright
 
 # Absolute path to artifacts folder where screenshots will be saved
 ARTIFACT_DIR = r"C:\Users\chris\.gemini\antigravity-ide\brain\97efac11-a985-4aa6-9751-f997c88bb58e"
 
 def run_gui_tests():
+    try:
+        from playwright.sync_api import sync_playwright
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("Instale playwright para executar este script GUI manual.") from exc
+
     print("=== INICIANDO TESTES DE INTERFACE (GUI) ===")
     
     with sync_playwright() as p:
