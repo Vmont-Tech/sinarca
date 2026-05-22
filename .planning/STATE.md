@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-backend-rebuild-01-05-PLAN.md
-last_updated: "2026-05-22T22:37:11.104Z"
+status: verifying
+stopped_at: Completed 01-backend-rebuild-01-06-PLAN.md
+last_updated: "2026-05-22T22:54:11.209Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -25,31 +25,32 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 
 ## Current Position
 
-Phase: 01 (backend-rebuild) — EXECUTING
+Phase: 01 (backend-rebuild) — COMPLETE
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-22
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 12min
-- Total execution time: 0.97 hours
+- Total execution time: 1.18 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 backend-rebuild | 5/6 | 58min | 12min |
+| 1 backend-rebuild | 6/6 | 71min | 12min |
 | Phase 01-backend-rebuild P01-01 | 5min | 3 tasks | 4 files |
 | Phase 01-backend-rebuild P01-02 | 6min | 3 tasks | 20 files |
 | Phase 01-backend-rebuild P01-03 | 24min | 4 tasks | 14 files |
 | Phase 01-backend-rebuild P01-04 | 12min | 4 tasks | 26 files |
 | Phase 01-backend-rebuild P01-05 | 11min | 5 tasks | 17 files |
+| Phase 01-backend-rebuild P01-06 | 13min | 5 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Progress: [████████░░] 83%
 - [Phase 01-backend-rebuild]: Adapters Stellar/Soroban, Etherfuse e Polygon falham fechado em testnet/sandbox sem segredos e configuração obrigatórios.
 - [Phase 01-backend-rebuild]: backend_app auth própria permaneceu canônica nas rotas blockchain/tesouraria; Supabase segue apenas como Postgres.
 - [Phase 01-backend-rebuild]: Soroban SDK 26 constrói WASM local com wasm32v1-none; wasm32-unknown-unknown é incompatível com o Rust atual.
+- [Phase 01-backend-rebuild]: Deploy Dokploy usa backend_app.main:app como runtime único da API, com web estática Nginx e Supabase Postgres externo.
+- [Phase 01-backend-rebuild]: Staging Phase 1 permanece bloqueado externamente até existirem STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto.
 
 ### Pending Todos
 
@@ -83,6 +86,7 @@ None yet.
 - Soroban testnet deploy/invoke/status bloqueado: falta source account/identidade de assinatura e SOROBAN_CONTRACT_ID; ver .planning/docs/providers/PHASE1-PROVIDER-SMOKE.md.
 - Polygon testnet smoke bloqueado: POLYGON_RPC_URL, POLYGON_VAULT_ADDRESS e source lock tx hash ausentes.
 - Etherfuse sandbox smoke bloqueado: ETHERFUSE_API_URL e ETHERFUSE_API_KEY ausentes.
+- Staging Dokploy Phase 1 bloqueado: STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto ausentes; ver .planning/docs/deployment/PHASE1-STAGING-SMOKE.md.
 
 ## Deferred Items
 
@@ -93,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-22T22:37:10.985Z
-Stopped at: Completed 01-backend-rebuild-01-05-PLAN.md
+Last session: 2026-05-22T22:53:48.032Z
+Stopped at: Completed 01-backend-rebuild-01-06-PLAN.md
 Resume file: None
