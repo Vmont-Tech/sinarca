@@ -11,6 +11,7 @@ import {
     Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { apiPost } from '../../services/api';
 
 export default function RetireCredits() {
     const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function RetireCredits() {
                         Finalizar Aposentadoria de Créditos
                     </h1>
                     <p className="text-text-muted text-lg max-w-2xl">
-                        Confirme os dados abaixo para processar a baixa definitiva dos ativos ambientais na blockchain Algorand.
+                        Confirme os dados abaixo para processar a baixa definitiva dos ativos ambientais na blockchain Stellar.
                     </p>
                 </div>
 
@@ -82,7 +83,7 @@ export default function RetireCredits() {
                                         <span className="text-xs font-medium text-text-muted uppercase tracking-wider">Blockchain Network</span>
                                         <div className="flex items-center gap-2">
                                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                            <span className="text-white font-medium">Algorand Mainnet</span>
+                                            <span className="text-white font-medium">Stellar Testnet</span>
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-1">
@@ -166,24 +167,19 @@ export default function RetireCredits() {
                                                     try {
                                                         const userStr = localStorage.getItem("sinarca_user");
                                                         const user = userStr ? JSON.parse(userStr) : null;
-                                                        const res = await fetch("http://127.0.0.1:5680/api/v1/marketplace/compensate", {
-                                                            method: "POST",
-                                                            headers: { "Content-Type": "application/json" },
-                                                            body: JSON.stringify({
-                                                                buyer_id: user?.id || "comp-001",
-                                                                emissions_data: { scope1: 1000, scope2: 2000, scope3: 2000, total: 5000 },
-                                                                credits_to_use: [{ project_id: "PRC-2024-002", amount: 5000 }]
-                                                            })
-                                                        });
-                                                        const data = await res.json();
-                                                        if (res.ok && data.success) {
+                                                        const data = await apiPost('/marketplace/compensate', {
+                                                            buyer_id: user?.id || "comp-001",
+                                                            emissions_data: { scope1: 1000, scope2: 2000, scope3: 2000, total: 5000 },
+                                                            credits_to_use: [{ project_id: "PRC-2024-002", amount: 5000 }]
+                                                        }) as { success?: boolean; detail?: string; message?: string } | null;
+                                                        if (data?.success === true) {
                                                             alert('Operação realizada com sucesso! Os créditos foram aposentados e o token foi queimado na blockchain. Certificado gerado!');
                                                             navigate('/painel');
                                                         } else {
-                                                            alert('Falha na aposentadoria: ' + (data.detail || 'Erro desconhecido. Verifique se o projeto existe.'));
+                                                            alert('Falha na aposentadoria: ' + (data?.detail || data?.message || 'Erro desconhecido. Verifique se o projeto existe.'));
                                                         }
                                                     } catch (e) {
-                                                        alert('Erro de conexão ao aposentar.');
+                                                        alert(e instanceof Error ? e.message : 'Erro de conexão ao aposentar.');
                                                     }
                                                 }
                                             }}
