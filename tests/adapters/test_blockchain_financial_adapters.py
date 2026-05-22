@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
+from backend_app.adapters.etherfuse import EtherfuseAdapter, EtherfuseConfig
 from backend_app.adapters.stellar import SorobanCreditAdapter, StellarAdapterConfig, StellarReserveSponsor
+from backend_app.adapters.transfero import TransferoAdapter, TransferoConfig
+from backend_app.modules.treasury.service import TreasuryService
 
 
 def test_stellar_sponsor_account_and_trustline_models_sponsored_reserves() -> None:
@@ -54,3 +59,63 @@ def test_stellar_testnet_mode_fails_closed_without_required_secrets() -> None:
 
     with pytest.raises(RuntimeError, match="Configuração Stellar incompleta"):
         sponsor.sponsor_account_and_trustline("PRC-2026-001", "GPRODUCER", "SINARCA")
+
+
+def test_etherfuse_mock_confirm_collateral_returns_tesouro_direto() -> None:
+    adapter = EtherfuseAdapter(EtherfuseConfig(mode="mock"))
+
+    result = adapter.confirm_collateral("PRC-2026-001", 1500.50, "pix-abc")
+
+    assert result["provider"] == "etherfuse"
+    assert result["instrument"] == "Tesouro Direto"
+    assert result["status"] == "CONFIRMED"
+    assert result["external_reference"] == "etherfuse-mock-pix-abc"
+
+
+def test_etherfuse_sandbox_fails_closed_without_api_key() -> None:
+    adapter = EtherfuseAdapter(EtherfuseConfig(mode="sandbox", api_url="https://sandbox.invalid", api_key=None))
+
+    with pytest.raises(RuntimeError, match="Configuração Etherfuse incompleta"):
+        adapter.confirm_collateral("PRC-2026-001", 1000, "pix-abc")
+
+
+def test_transfero_adapter_is_future_portability_outside_mock() -> None:
+    adapter = TransferoAdapter(TransferoConfig(mode="sandbox"))
+
+    with pytest.raises(NotImplementedError, match="TransferoAdapter preparado para portabilidade futura"):
+        adapter.status("transfero-ref")
+
+
+def test_yield_distribution_splits_90_10_to_social_impact_vault() -> None:
+    distribution = asyncio.run(TreasuryService().harvest_and_distribute_yield(
+        treasury_position_id="00000000-0000-0000-0000-000000000001",
+        gross_yield_brl=123.45,
+    ))
+
+    assert distribution["operational_brl"] == 111.11
+    assert distribution["social_vault_brl"] == 12.35
+    assert distribution["social_destination"] == "SocialImpactVault"
+
+
+def test_etherfuse_confirm_collateral_and_mint_requires_confirmed_status() -> None:
+    class PendingLiquidity:
+        def confirm_collateral(self, project_id: str, amount_brl: float, pix_reference: str) -> dict[str, object]:
+            return {"provider": "etherfuse", "status": "PENDING"}
+
+        def release_funds(self, project_id: str, amount_brl: float) -> dict[str, object]:
+            return {}
+
+        def status(self, reference: str) -> dict[str, object]:
+            return {}
+
+    with pytest.raises(RuntimeError, match="Lastro financeiro não confirmado"):
+        asyncio.run(
+            TreasuryService().confirm_collateral_and_mint(
+                project_id="PRC-2026-001",
+                amount_brl=1000,
+                credit_amount=100,
+                pix_reference="pix-pending",
+                liquidity_adapter=PendingLiquidity(),
+                soroban_adapter=SorobanCreditAdapter(StellarAdapterConfig(mode="mock", network="testnet")),
+            )
+        )
