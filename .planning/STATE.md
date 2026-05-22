@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-05-22T21:35:24.880Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-05-22T22:00:08Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -26,27 +26,28 @@ See: `.planning/PROJECT.md` (updated 2026-05-22)
 ## Current Position
 
 Phase: 01 (backend-rebuild) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-22
 
-Progress: [███░░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
-- Average duration: 6min
-- Total execution time: 0.18 hours
+- Total plans completed: 3
+- Average duration: 12min
+- Total execution time: 0.58 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 backend-rebuild | 2/6 | 11min | 6min |
+| 1 backend-rebuild | 3/6 | 35min | 12min |
 | Phase 01-backend-rebuild P01-01 | 5min | 3 tasks | 4 files |
 | Phase 01-backend-rebuild P01-02 | 6min | 3 tasks | 20 files |
+| Phase 01-backend-rebuild P01-03 | 24min | 4 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Progress: [███░░░░░░░] 33%
 - [Phase 01]: O adapter Stellar legado deve falhar explicitamente quando habilitado sem chaves públicas.
 - [Phase 01]: backend_app agora expõe auth própria com Argon2/JWT e resposta compatível com AuthContext.
 - [Phase 01]: repositório de perfis em memória é stub temporário da Plan 01-02 e será substituído por Supabase Postgres na Plan 01-03.
+- [Phase 01]: Supabase local oficial roda via Docker em 54321/54322/54323; migrations e seed passam com `npx supabase db reset`.
+- [Phase 01]: Seed inicial consolida mocks do backend e frontend para mapas, feed/detalhes, rankings, perfis, inventário, transações e filas de auditoria/certificação.
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-22T21:35:05.766Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-05-22T22:00:08Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None

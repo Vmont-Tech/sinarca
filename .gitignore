@@ -13,3 +13,5 @@ venv/
 .vscode/
 scratch/
 TODO.md
+supabase/.branches/
+supabase/.temp/
