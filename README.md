@@ -1,96 +1,55 @@
-# Sinarca - Plataforma de Créditos de Carbono
+# SINARCA
 
-Sistema de gerenciamento de créditos de carbono baseado em blockchain Stellar com integração de marketplace, inventário corporativo e auditoria.
+Plataforma de créditos ambientais com frontend React/Vite e backend FastAPI canônico em `backend_app`. A Phase 1 usa Supabase somente como Postgres externo, auth própria com Argon2/JWT, ledger off-chain para compras e adapters para Stellar/Soroban, Etherfuse/Tesouro, TransferoAdapter futuro e lock-and-mint Polygon.
 
-## 🛠️ Tecnologia e Arquitetura
+## Arquitetura
 
-- **Frontend**: React + TypeScript + Vite
-- **Roteamento**: TanStack Router
-- **State Management**: TanStack React Query
-- **Design System**: Vanilla CSS (Flat & Institutional)
-- **Blockchain**: Integração com rede Stellar (Consensus Protocol)
+- **Web:** React, TypeScript, Vite e React Router.
+- **API:** FastAPI em `backend_app.main:app`, exposta em `GET /health` e rotas `/api/v1`.
+- **Banco:** Supabase Postgres externo via `DATABASE_URL`.
+- **Auth:** credenciais próprias do backend com Argon2, JWT e refresh token.
+- **Deploy:** Dokploy com `sinarca-api` e `sinarca-web` no mesmo commit, sem Postgres local no compose.
 
-## 📄 Documentação Técnica
+## Execução local
 
-Para guiar o desenvolvimento e integração, consulte os guias em `.planning/docs`:
-- [Guia de Integração Backend](./.planning/docs/BACKEND_INTEGRATION_SPEC.md): Endpoints, Roles e Modelos de Dados.
-- [Estrutura de Ativos (MRCA)](./src/data/mrca_db.ts): Definição estática dos ativos.
-
-## 🚀 Fluxo de Trabalho (Workflows)
-
-1. **Marketplace → Detalhes**: Consulta pública de ativos com prova on-chain.
-2. **Inventário → Compensação**: Declaração de emissões corporativas e liquidação de créditos.
-3. **Certificação → Auditoria**: Ciclo de vida completo do crédito, desde a emissão até a aposentadoria.
-
-## 🚀 Quick Start
+Instale as dependências do frontend:
 
 ```bash
-# Instalar dependências
-npm install
+npm ci
+```
 
-# Executar em desenvolvimento
+Execute o frontend:
+
+```bash
 npm run dev
+```
 
-# Build para produção
+Execute a API canônica:
+
+```bash
+uv run uvicorn backend_app.main:app --host 0.0.0.0 --port 5680
+```
+
+Rode os testes e validações principais:
+
+```bash
+npm run lint
 npm run build
-
-# Preview do build
-npm run preview
+uv run pytest -q
+docker compose -f docker-compose.dokploy.yml config
 ```
 
-## 📁 Estrutura do Projeto
+## Deploy Dokploy
 
-```
-src/
-├── routes/           # Roteamento com TanStack Router
-├── components/       # Componentes React reutilizáveis
-├── styles/          # Estilos CSS globais
-├── data/            # Dados estáticos e configurações
-└── types/           # Definições de tipos TypeScript
-```
+O deploy operacional está documentado em [`.planning/docs/deployment/DOKPLOY.md`](./.planning/docs/deployment/DOKPLOY.md). O compose de Dokploy builda:
 
-## ESLint & Type Checking
+- `sinarca-api`: imagem Python/FastAPI com `backend_app.main:app`.
+- `sinarca-web`: build estático Vite servido por Nginx.
 
-Para ambiente de produção, atualize a configuração de ESLint para incluir type-aware lint rules:
+Configure os secrets reais no Dokploy/Supabase a partir de `.env.example`. O arquivo contém apenas placeholders fictícios.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Documentação técnica
 
-export default defineConfig([
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      tseslint.configs.recommendedTypeChecked,
-      reactX.configs['recommended-typescript'],
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-  },
-])
-```
-
-## 📦 Dependências Principais
-
-- `@tanstack/react-router`: Roteamento moderno
-- `@tanstack/react-query`: Data fetching e caching
-- `typescript`: Type safety
-- `vite`: Build tool de alta performance
-
-## 🔗 Recursos Úteis
-
-- [React Documentation](https://react.dev)
-- [Vite Guide](https://vitejs.dev)
-- [TanStack Router Docs](https://tanstack.com/router)
-- [TanStack React Query Docs](https://tanstack.com/query)
-- [Stellar Developer Docs](https://developers.stellar.org)
-
----
-
-**Desenvolvido com ❤️ por Vmont-Tech**
+- [Especificação de Integração Backend](./.planning/docs/BACKEND_INTEGRATION_SPEC.md)
+- [Plano de Deploy da Phase 1](./.planning/phases/01-backend-rebuild/DEPLOYMENT-GUIDE.md)
+- [Evidência de provedores Phase 1](./.planning/docs/providers/PHASE1-PROVIDER-SMOKE.md)

@@ -1,42 +1,45 @@
-# SINARCA - Especificação de Integração Backend (v1.0)
+# SINARCA - Especificação de Integração Backend (Phase 1)
 
-Este documento orienta a integração das APIs reais ao frontend do SINARCA. Atualmente, parte do sistema ainda depende de dados simulados em `src/services/database.ts`, `src/data/mrca_db.ts` e `backend/mock_data.py`.
+Este documento define o contrato operacional entre o frontend SINARCA e a API reconstruída. O backend canônico da Phase 1 é `backend_app`; Docker, Dokploy, scripts operacionais e staging devem executar `backend_app.main:app`.
 
-## 1. Arquitetura de Autenticação
+## 1. Arquitetura Canônica
 
-A autenticação produtiva da Phase 1 deve seguir a decisão formalizada no plano de reconstrução:
+- **Runtime backend:** FastAPI em `backend_app.main:app`.
+- **Rotas:** `GET /health` e contrato `/api/v1`.
+- **Banco:** Supabase apenas como Postgres externo, acessado por `DATABASE_URL` e service role no backend.
+- **Identidade:** auth própria com Argon2/JWT; Supabase Auth, `auth.uid()` e claims Supabase não são fonte canônica nesta fase.
+- **Frontend:** `src/services/api.ts` usa `VITE_API_URL` e bearer token salvo em `localStorage.sinarca_token`.
 
-- Auth própria no `backend_app`, com senha hash Argon2, JWT/refresh próprios e Supabase apenas como Postgres.
-- Supabase Auth, `auth.uid()` e claims Supabase não são fonte canônica de identidade nesta fase.
+## 2. Contrato de Autenticação
 
-Contrato mínimo esperado:
+### Login
 
-- **Endpoint:** `/api/v1/auth/login`
-- **Método:** `POST`
-- **Payload:** `{ email, dadoLogin, password, role? }`
+- **Endpoint:** `POST /api/v1/auth/login`
+- **Payload:** `{ email, dadoLogin?, password, role? }`
 - **Resposta:** `{ token, access_token, refresh_token, expires_at, expires_in_seconds, user }`
 
-### Papéis
+### Cadastro público
 
-- `producer`: produtor/certificador, painel de gestão de projetos.
-- `auditor`: auditor, fila de verificação técnica.
-- `company`: empresa/investidor, marketplace e inventário.
-- `certifier`: certificadora, decisão de certificação.
-- `admin`: administrador, gestão de ecossistema.
+- Papéis aceitos: `producer`, `auditor`, `company`, `certifier`.
+- `admin` deve ser provisionado fora do cadastro público.
+- Senhas são hash Argon2 no backend.
 
-## 2. Modelos de Dados Principais
+## 3. Modelos e Endpoints Principais
 
 ### Projeto MRCA
-
-Representa o ativo ambiental registrado e rastreável.
 
 ```json
 {
   "id": "uuid",
-  "friendlyId": "PRC-2024-00X",
+  "friendlyId": "PRC-2026-001",
   "name": "string",
-  "status": "AVAILABLE | AUDITED | RETIRED | SUSPENDED",
+  "status": "ACTIVE",
   "methodology": "string",
+  "location": {
+    "city": "Porto Nacional",
+    "state": "Tocantins",
+    "bioma": "Cerrado"
+  },
   "metrics": {
     "carbonStock": 1000,
     "vintage": "2026",
@@ -50,49 +53,58 @@ Representa o ativo ambiental registrado e rastreável.
 }
 ```
 
-## 3. Endpoints Necessários
+### Consulta e catálogos
 
-### Marketplace e consulta
+- `GET /api/v1/projects`
+- `GET /api/v1/projects/{id_or_friendly_id}`
+- `POST /api/v1/projects`
+- `GET /api/v1/certifiers`
+- `GET /api/v1/auditors`
+- `GET /api/v1/companies`
 
-- `GET /api/v1/projects`: lista de projetos filtrada por status, bioma ou tipo.
-- `GET /api/v1/projects/:id`: detalhes completos de um projeto, incluindo timeline e documentos.
-- `GET /api/v1/certifiers`: catálogo persistente de certificadoras.
-- `GET /api/v1/auditors`: catálogo persistente de auditores.
-- `GET /api/v1/companies`: catálogo persistente de empresas/perfis.
-- `GET /api/v1/marketplace`: lista de créditos disponíveis.
-- `POST /api/v1/marketplace/buy`: compra de crédito via ledger off-chain.
-- `POST /api/v1/marketplace/compensate`: aposentadoria de crédito e emissão de certificado.
-- `GET /api/v1/transactions`: histórico persistente que substitui mocks de transações no frontend.
+### Certificação, auditoria e monitoramento
 
-### Inventário e conformidade
+- `GET /api/v1/certifier/queue`
+- `PATCH /api/v1/certifier/projects/{project_id}/decision`
+- `GET /api/v1/audit/queue`
+- `PATCH /api/v1/audit/verify/{project_id}`
+- Monitoramento registra anomalias, bloqueio de projeto e recálculo via eventos persistentes.
 
-- `POST /api/v1/inventory/declare`: submissão de dados de escopo 1, 2 e 3.
-- `POST /api/v1/inventory/upload`: upload de documento comprobatório.
+### Marketplace, ledger e inventário
 
-### Auditoria e certificação
+- `GET /api/v1/marketplace`
+- `POST /api/v1/marketplace/buy`
+- `POST /api/v1/marketplace/compensate`
+- `GET /api/v1/transactions`
+- `GET /api/v1/inventory`
+- `POST /api/v1/inventory/declare`
+- `POST /api/v1/inventory/upload`
 
-- `GET /api/v1/audit/queue`: fila de projetos aguardando verificação.
-- `PATCH /api/v1/audit/verify/:projectId`: atualização de status após inspeção técnica.
-- `GET /api/v1/certifier/queue`: fila de projetos aguardando certificação.
-- `PATCH /api/v1/certifier/projects/:projectId/decision`: decisão da certificadora.
+Compras usam ledger off-chain no backend. O comprador comum não precisa de wallet externa, chave privada ou gas; propriedade, compras e aposentadorias são refletidas em `ledger_accounts`, `ledger_entries`, `purchases`, `retirements` e eventos auditáveis.
 
-## 4. Integração Blockchain
+## 4. Blockchain, Tesouraria e Interoperabilidade
 
-O backend deve atuar como gateway para Stellar/Soroban, abstraindo a complexidade de transações para o frontend.
+- **Stellar/Soroban:** adapters executam mint bloqueado, unlock, transfer e burn. Sponsored reserves usam `BeginSponsoringFutureReserves` quando configurados.
+- **Etherfuse/Tesouro:** `EtherfuseAdapter` confirma lastro financeiro em sandbox/API antes de mint quando as credenciais existem.
+- **TransferoAdapter:** porta futura para portabilidade de liquidez sem trocar o contrato do frontend.
+- **Yield social:** tesouraria divide rendimento em 90% operação e 10% `SocialImpactVault`.
+- **Polygon:** lock-and-mint valida crédito externo travado em vault EVM/Polygon antes de solicitar wrapped mint na Stellar.
 
-- **Mint:** quando um projeto é aprovado, o backend registra o evento de emissão.
-- **Unlock:** após certificação/auditoria, o backend libera crédito bloqueado conforme regra de negócio.
-- **Transfer:** compras no MVP devem ser refletidas em ledger off-chain e eventos auditáveis.
-- **Burn:** no momento da aposentadoria, o backend executa burn via adapter quando configurado e gera certificado imutável.
+Provider smoke real fica documentado em `.planning/docs/providers/PHASE1-PROVIDER-SMOKE.md`. Ausência de credenciais externas deve ser registrada como bloqueio, não sucesso.
 
-Para a Phase 1, Stellar/Soroban testnet com deploy/invoke/status é obrigatório. Etherfuse e Polygon exigem tentativa real em sandbox/testnet/API quando houver acesso; sem credenciais, o bloqueio deve ser registrado.
+## 5. Deploy e Cutover
 
-## 5. Próximos Passos
+O deploy Dokploy da Phase 1 usa `docker-compose.dokploy.yml` com dois serviços:
 
-1. Congelar o contrato `/api/v1` com testes.
-2. Substituir chamadas diretas no frontend por `src/services/api.ts`.
-3. Implementar persistência de documentos via storage controlado.
-4. Conectar Supabase Postgres local/produção com migrations e RLS.
-5. Importar/consolidar mocks de `src/data/mrca_db.ts`, `backend/mock_data.py` e telas de dados no seed Supabase.
-6. Isolar integrações Stellar/Soroban, Etherfuse e Polygon atrás de adapters.
-7. Validar staging Dokploy sem fallback para `backend/main.py`.
+- `sinarca-api`, buildado por `Dockerfile.api`, executando `backend_app.main:app`.
+- `sinarca-web`, buildado por `Dockerfile.frontend`, servindo `dist/` via Nginx.
+
+Supabase permanece externo aos containers. Não há serviço Postgres local no compose de Dokploy.
+
+Antes de liberar staging:
+
+1. Aplicar migrations no Supabase real com `supabase db push`.
+2. Validar API em `GET /health`.
+3. Validar login com auth própria contra Postgres real.
+4. Validar frontend com `VITE_API_URL` apontando para a API staging.
+5. Registrar evidências em `.planning/docs/deployment/PHASE1-STAGING-SMOKE.md`.
