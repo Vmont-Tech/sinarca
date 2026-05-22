@@ -74,6 +74,19 @@ create table organizations (
   updated_at timestamptz not null default now()
 );
 
+create table inventory_regions (
+  id text primary key,
+  uf text not null unique,
+  name text not null,
+  description text not null,
+  status text not null,
+  emissions jsonb not null,
+  local_contributions jsonb not null,
+  source text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table profiles (
   id uuid primary key default uuid_generate_v4(),
   external_id text not null unique,
@@ -214,8 +227,11 @@ create table environmental_credits (
   updated_at timestamptz not null default now()
 );
 
+create unique index environmental_credits_project_vintage_idx on environmental_credits (project_id, vintage);
+
 create table ledger_accounts (
   id uuid primary key default uuid_generate_v4(),
+  external_id text not null unique,
   owner_profile_id uuid references profiles(id),
   owner_organization_id uuid references organizations(id),
   project_id uuid references projects(id),
@@ -229,6 +245,9 @@ create table ledger_accounts (
     owner_profile_id is not null or owner_organization_id is not null or project_id is not null
   )
 );
+
+create unique index ledger_accounts_org_type_idx on ledger_accounts (owner_organization_id, account_type) where owner_organization_id is not null;
+create unique index ledger_accounts_project_type_idx on ledger_accounts (project_id, account_type) where project_id is not null;
 
 create table purchases (
   id uuid primary key default uuid_generate_v4(),
@@ -248,6 +267,9 @@ create table purchases (
 );
 
 create unique index purchases_idempotency_key_idx on purchases (idempotency_key);
+
+create unique index certifications_project_decision_idx on certifications (project_id, decision);
+create unique index audits_project_status_idx on audits (project_id, status);
 
 create table retirements (
   id uuid primary key default uuid_generate_v4(),
@@ -299,6 +321,8 @@ create table treasury_positions (
   updated_at timestamptz not null default now(),
   metadata jsonb not null default '{}'::jsonb
 );
+
+create unique index treasury_positions_external_reference_idx on treasury_positions (external_reference);
 
 create table yield_distributions (
   id uuid primary key default uuid_generate_v4(),
