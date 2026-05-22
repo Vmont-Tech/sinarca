@@ -10,7 +10,7 @@ Este contrato deve ser preservado no primeiro corte da reconstrução em Python/
 - Prefixo: `/api/v1`
 - Health fora do prefixo: `GET /health`
 - Envelope padrão: respostas de sucesso devem continuar aceitando `{ "success": true, ... }`.
-- Autenticação: o frontend envia `Authorization: Bearer <token>` via `src/services/api.ts`.
+- Autenticação: o frontend envia `Authorization: Bearer <token>` via `src/services/api.ts`; o token é emitido pela auth própria do `backend_app`, não por Supabase Auth.
 - Erros: retornar `detail` ou `message`, pois `src/services/api.ts` extrai esses campos.
 - CORS: permitir somente origens configuradas por ambiente em produção.
 
@@ -33,6 +33,8 @@ Este contrato deve ser preservado no primeiro corte da reconstrução em Python/
 | GET | `/api/v1/auditors` | `{ success, auditors: [...] }` |
 | GET | `/api/v1/companies` | `{ success, companies: [...] }` |
 | GET | `/api/v1/inventory` | `{ success, inventory: [...] }` |
+
+Essas rotas substituem os mocks de `src/data/mrca_db.ts` e os catálogos usados por mapas, rankings de impacto e perfis.
 
 Campos usados pelo frontend no `ProjectMRCA`:
 
@@ -86,4 +88,5 @@ Campos usados pelo frontend no `ProjectMRCA`:
 
 - `src/pages/Dashboard/RetireCredits.tsx` deve parar de chamar `http://127.0.0.1:5680` diretamente e usar `apiPost('/marketplace/compensate', ...)`.
 - `src/services/database.ts` deve ganhar tipos DTO explícitos para reduzir regressão durante a troca do backend.
+- `src/pages/Dashboard/Transactions.tsx` deve consumir `/api/v1/transactions` e deixar `MOCK_TRANSACTIONS` apenas como fixture/teste, não runtime.
 - `src/contexts/AuthContext.tsx` deve tratar a API reconstruída como fonte canônica e manter fallback local apenas em desenvolvimento.

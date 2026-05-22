@@ -9,17 +9,18 @@ Este modelo serve para a reconstrução Python/FastAPI e também preserva compat
 ## Princípios
 
 - Supabase Postgres é a fonte canônica de dados.
+- Supabase Auth não é fonte de identidade nesta fase; usuários, senha hash e papéis pertencem ao `backend_app`.
 - A service role nunca sai do backend.
 - RLS deve estar ligada em tabelas acessíveis por APIs Supabase ou por futuras consultas diretas.
 - A API executa regras de negócio e transações críticas.
-- `backend/mock_data.py` vira fixture/seed, não modelo implícito.
+- `backend/mock_data.py`, `src/data/mrca_db.ts` e mocks de telas viram fixture/seed, não modelo implícito.
 - Fluxos financeiros e blockchain devem ser idempotentes por chave de operação.
 
 ## Entidades principais
 
 | Tabela | Responsabilidade |
 |---|---|
-| `profiles` | Extensão de `auth.users`; papel SINARCA, documento, organização, telefone e status |
+| `profiles` | Usuário da auth própria; email, senha hash, papel SINARCA, documento, organização, telefone e status |
 | `organizations` | Empresas, certificadoras, produtores/comunidades e entidades parceiras |
 | `projects` | Projeto ambiental, status de ciclo, localização, área, metodologia e produtor |
 | `project_tags` | Tags NFC 424 DNA, coordenadas, vértice, estado físico e histórico de leitura |
@@ -82,7 +83,7 @@ Este modelo serve para a reconstrução Python/FastAPI e também preserva compat
 
 ## RLS mínima
 
-- `profiles`: usuário lê/edita o próprio perfil; admin lê/edita todos.
+- `profiles`: usuário lê/edita o próprio perfil via backend; admin lê/edita todos via backend. Políticas não devem depender de `auth.uid()`.
 - `projects`: público lê projetos ativos; produtor lê seus projetos; certificadora/auditor vê filas designadas; admin vê tudo.
 - `ledger_entries`, `purchases`, `retirements`: usuário/organização lê apenas seus registros; backend service role escreve.
 - `treasury_positions`, `yield_distributions`: somente backend/admin.

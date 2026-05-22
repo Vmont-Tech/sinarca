@@ -2,15 +2,15 @@
 
 **Data:** 2026-05-22
 **Plataforma:** Dokploy em VPS Linux
-**Banco:** Supabase local/produção, fora dos containers de aplicação
+**Banco:** Supabase Postgres real/staging/produção, fora dos containers de aplicação
 
-Este plano considera Python/FastAPI como rota operacional atual. Caso Node.js/TypeScript volte a ser escolhido, o desenho de deploy continua válido e muda apenas o `Dockerfile.api`.
+Este plano considera Python/FastAPI em `backend_app` como rota operacional atual. O backend legado `backend/main.py` não é fallback de deploy.
 
 ## Decisão de deploy
 
 Usar dois serviços Docker no mesmo repositório e no mesmo gatilho da branch `main`:
 
-- `sinarca-api`: API backend, health `GET /health`.
+- `sinarca-api`: API `backend_app`, health `GET /health`.
 - `sinarca-web`: build Vite servido por Nginx ou Caddy.
 
 O gatilho pode ser configurado de duas formas:
@@ -91,15 +91,18 @@ Web:
 1. Merge em `main`.
 2. Dokploy recebe webhook/auto deploy.
 3. Builda `api` e `web` do mesmo commit.
-4. Executa migrações Supabase antes de liberar API nova.
+4. Executa `supabase db push` real antes de liberar API nova.
 5. Sobe API e valida `/health`.
-6. Sobe web e valida `/`.
-7. Executa smoke externo:
+6. Valida login auth própria contra Postgres real.
+7. Sobe web e valida `/`, confirmando consumo de `backend_app`.
+8. Executa smoke externo:
 
 ```bash
 curl -fsS https://api.example.com/health
 curl -fsS https://app.example.com/
 ```
+
+Sem API staging saudável em `/health` e frontend staging consumindo `backend_app`, a Phase 1 permanece bloqueada.
 
 ## Rollback
 

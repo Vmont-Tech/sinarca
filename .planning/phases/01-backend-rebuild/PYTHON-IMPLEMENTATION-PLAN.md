@@ -2,7 +2,7 @@
 
 **Objetivo:** reconstruir o backend em Python mantendo FastAPI, mas removendo a dependência do MVP em memória e da arquitetura SQLAlchemy parcialmente quebrada.
 
-**Arquitetura:** nova API Python organizada por módulos, usando Supabase Postgres como fonte de dados, Alembic para migrações, guards por papel e adapters isolados para Stellar/Etherfuse/Polygon.
+**Arquitetura:** nova API Python organizada por módulos, usando Supabase apenas como Postgres, auth própria Argon2/JWT, Alembic para migrações, guards por papel e adapters isolados para Stellar/Etherfuse/Polygon.
 
 ## Fase 0: contrato e testes
 
@@ -61,7 +61,8 @@
 - Usar Supabase local para desenvolvimento.
 - Definir schema em SQL versionado e refletir modelos SQLAlchemy.
 - Configurar Alembic para migrações controladas.
-- Criar seed local baseado em `backend/mock_data.py`.
+- Criar seed idempotente baseado em `backend/mock_data.py`, `src/data/mrca_db.ts` e mocks de telas dependentes de dados, incluindo transações, catálogos, inventário, mapas e rankings.
+- Executar `supabase db push` real; validação local não substitui esse critério.
 
 **Saída esperada:** banco local recriado do zero com seed e API lendo projetos persistentes.
 
@@ -76,9 +77,8 @@
 
 **Tarefas:**
 
-- Escolher uma das duas abordagens antes de implementar:
-  - Supabase Auth como identidade canônica, API validando JWT.
-  - Auth própria com Argon2/JWT, mantendo Supabase apenas como Postgres.
+- Implementar auth própria com Argon2/JWT, mantendo Supabase apenas como Postgres.
+- Não usar Supabase Auth, claims Supabase ou `auth.uid()` como contrato obrigatório.
 - Implementar `/api/v1/auth/login`, `/register`, `/me`, `PATCH /me`.
 - Implementar `require_user` e `require_role`.
 
@@ -98,6 +98,7 @@
 **Tarefas:**
 
 - Portar endpoints preservando `/api/v1`.
+- Cobrir todos os fluxos de frontend que dependem de dados: projetos, mapas, rankings/impacto, perfis, inventário, auditoria, certificação, marketplace, transações e aposentadoria.
 - Persistir timeline, status e eventos.
 - Implementar ledger único/off-chain para compras.
 - Implementar aposentadoria e certificado.
@@ -119,7 +120,8 @@
 **Tarefas:**
 
 - Definir portas para mint locked, sponsored reserve, unlock, burn, lock-and-mint e harvest.
-- Implementar modo `mock` e `sandbox` antes de `live`.
+- Implementar modo `mock` para testes, mas exigir Soroban testnet real com deploy/invoke/status antes de concluir a Phase 1.
+- Tentar Etherfuse sandbox/API real e Polygon testnet/RPC quando houver acesso; sem credenciais, documentar bloqueio externo.
 - Registrar todos os efeitos externos em `chain_events` e `audit_events`.
 
 **Saída esperada:** rotas não importam SDKs externos diretamente.
@@ -139,8 +141,10 @@
 - API image Python multi-stage com dependências travadas.
 - Frontend image Vite + Nginx/Caddy.
 - Compose Dokploy com `api` e `web`.
-- Supabase fora do container em produção.
+- Supabase fora do container em staging/produção.
 - Healthcheck da API em `/health`.
+- Cutover sem fallback: Docker, compose e docs usam apenas `backend_app.main:app`; `backend/main.py` fica como referência legado temporária.
+- Validar staging Dokploy com API `/health`, login auth própria contra Postgres real e frontend consumindo `backend_app`.
 
 **Saída esperada:** commit na `main` aciona build/deploy dos dois serviços.
 

@@ -4,10 +4,10 @@ Este documento orienta a integração das APIs reais ao frontend do SINARCA. Atu
 
 ## 1. Arquitetura de Autenticação
 
-A autenticação produtiva deve seguir uma das opções formalizadas no plano de reconstrução:
+A autenticação produtiva da Phase 1 deve seguir a decisão formalizada no plano de reconstrução:
 
-- Supabase Auth como identidade canônica, com API validando JWT.
-- Auth própria com senha hash e JWT, mantendo Supabase apenas como Postgres.
+- Auth própria no `backend_app`, com senha hash Argon2, JWT/refresh próprios e Supabase apenas como Postgres.
+- Supabase Auth, `auth.uid()` e claims Supabase não são fonte canônica de identidade nesta fase.
 
 Contrato mínimo esperado:
 
@@ -56,9 +56,13 @@ Representa o ativo ambiental registrado e rastreável.
 
 - `GET /api/v1/projects`: lista de projetos filtrada por status, bioma ou tipo.
 - `GET /api/v1/projects/:id`: detalhes completos de um projeto, incluindo timeline e documentos.
+- `GET /api/v1/certifiers`: catálogo persistente de certificadoras.
+- `GET /api/v1/auditors`: catálogo persistente de auditores.
+- `GET /api/v1/companies`: catálogo persistente de empresas/perfis.
 - `GET /api/v1/marketplace`: lista de créditos disponíveis.
 - `POST /api/v1/marketplace/buy`: compra de crédito via ledger off-chain.
 - `POST /api/v1/marketplace/compensate`: aposentadoria de crédito e emissão de certificado.
+- `GET /api/v1/transactions`: histórico persistente que substitui mocks de transações no frontend.
 
 ### Inventário e conformidade
 
@@ -79,7 +83,9 @@ O backend deve atuar como gateway para Stellar/Soroban, abstraindo a complexidad
 - **Mint:** quando um projeto é aprovado, o backend registra o evento de emissão.
 - **Unlock:** após certificação/auditoria, o backend libera crédito bloqueado conforme regra de negócio.
 - **Transfer:** compras no MVP devem ser refletidas em ledger off-chain e eventos auditáveis.
-- **Burn:** no momento da aposentadoria, o backend executa ou simula burn e gera certificado imutável.
+- **Burn:** no momento da aposentadoria, o backend executa burn via adapter quando configurado e gera certificado imutável.
+
+Para a Phase 1, Stellar/Soroban testnet com deploy/invoke/status é obrigatório. Etherfuse e Polygon exigem tentativa real em sandbox/testnet/API quando houver acesso; sem credenciais, o bloqueio deve ser registrado.
 
 ## 5. Próximos Passos
 
@@ -87,4 +93,6 @@ O backend deve atuar como gateway para Stellar/Soroban, abstraindo a complexidad
 2. Substituir chamadas diretas no frontend por `src/services/api.ts`.
 3. Implementar persistência de documentos via storage controlado.
 4. Conectar Supabase Postgres local/produção com migrations e RLS.
-5. Isolar integrações Stellar/Soroban, Etherfuse e Polygon atrás de adapters.
+5. Importar/consolidar mocks de `src/data/mrca_db.ts`, `backend/mock_data.py` e telas de dados no seed Supabase.
+6. Isolar integrações Stellar/Soroban, Etherfuse e Polygon atrás de adapters.
+7. Validar staging Dokploy sem fallback para `backend/main.py`.
