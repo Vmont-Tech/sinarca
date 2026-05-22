@@ -1,0 +1,38 @@
+services:
+  sinarca-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      BACKEND_RUNTIME: backend_app
+    ports:
+      - "${API_PORT:-5680}:5680"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5680/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  sinarca-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      sinarca-api:
+        condition: service_healthy
+    restart: unless-stopped
