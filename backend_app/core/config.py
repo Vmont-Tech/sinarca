@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     public_web_url: str = "http://localhost:5173"
     cors_origins: list[str] = Field(default_factory=list)
     database_url: str = "dev-database-url"
-    jwt_secret_key: str = "dev-jwt-secret-key"
+    jwt_secret_key: str = "dev-jwt-secret-key-for-local-tests-32bytes"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
     refresh_token_days: int = 7
