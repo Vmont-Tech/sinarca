@@ -46,7 +46,7 @@ interface MRCAItemProps {
 export const MRCAItem: React.FC<MRCAItemProps> = ({ data }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const isPublic = location.pathname.startsWith('/public') || location.pathname === '/' || location.pathname === '/landing';
+    const isPublic = !location.pathname.startsWith('/painel');
 
     // 1. Image Error State
     const [imgError, setImgError] = useState(false);
@@ -59,7 +59,7 @@ export const MRCAItem: React.FC<MRCAItemProps> = ({ data }) => {
     const handleClick = () => {
         const targetId = data.friendlyId || data.projectId || data.id || 'PRC-2024-882';
         if (isPublic) {
-            navigate(`/public/projeto/${targetId}`);
+            navigate(`/projeto/${targetId}`);
         } else {
             navigate(`/painel/mrca/${targetId}`);
         }

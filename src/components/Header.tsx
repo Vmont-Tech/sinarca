@@ -41,12 +41,12 @@ export default function Header({ isHome = false }: HeaderProps) {
                 </div>
 
                 <nav className="hidden lg:flex items-center gap-8">
-                    <button onClick={() => navigate('/public/feed')} className={navLinkClass('/public/feed')}>Rastreabilidade</button>
-                    <button onClick={() => navigate('/public/consulta')} className={navLinkClass('/public/consulta')}>Projetos Disponíveis</button>
-                    <button onClick={() => navigate('/public/mapa-nacional')} className={navLinkClass('/public/mapa-nacional')}>Ecossistema Gov</button>
-                    <button onClick={() => navigate('/public/mapa-brasil')} className={navLinkClass('/public/mapa-brasil')}>Mapa Brasil</button>
-                    <button onClick={() => navigate('/public/rankings')} className={navLinkClass('/public/rankings')}>Ranking de Impacto</button>
-                    <button onClick={() => navigate('/public/sobre')} className={navLinkClass('/public/sobre')}>Sobre o SINARCA</button>
+                    <button onClick={() => navigate('/feed')} className={navLinkClass('/feed')}>Rastreabilidade</button>
+                    <button onClick={() => navigate('/consulta')} className={navLinkClass('/consulta')}>Projetos Disponíveis</button>
+                    <button onClick={() => navigate('/mapa-nacional')} className={navLinkClass('/mapa-nacional')}>Ecossistema Gov</button>
+                    <button onClick={() => navigate('/mapa-brasil')} className={navLinkClass('/mapa-brasil')}>Mapa Brasil</button>
+                    <button onClick={() => navigate('/rankings')} className={navLinkClass('/rankings')}>Ranking de Impacto</button>
+                    <button onClick={() => navigate('/sobre')} className={navLinkClass('/sobre')}>Sobre o SINARCA</button>
                 </nav>
 
                 <div className="flex items-center gap-4">

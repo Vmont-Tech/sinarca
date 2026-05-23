@@ -323,7 +323,7 @@ const StepResult = ({ result, onReset }: { result: SIEResult, onReset: () => voi
                     </div>
 
                     <div
-                        onClick={() => navigate('/public/consulta')}
+                        onClick={() => navigate('/consulta')}
                         className="flex-[2] bg-[#00FF94] text-[#002B1C] p-6 rounded-2xl flex flex-col justify-center relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform">
                         <Leaf className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 group-hover:rotate-12 transition-transform" />
                         <h3 className="text-xl font-bold mb-2">Compensar Agora</h3>

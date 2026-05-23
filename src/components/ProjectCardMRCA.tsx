@@ -8,8 +8,8 @@ interface ProjectCardMRCAProps {
 
 export function ProjectCardMRCA({ data, compact = false }: ProjectCardMRCAProps) {
     const location = useLocation();
-    const isPublic = location.pathname.startsWith('/public');
-    const projectPath = isPublic ? '/public/projeto' : '/painel/mrca';
+    const isPublic = !location.pathname.startsWith('/painel');
+    const projectPath = isPublic ? '/projeto' : '/painel/mrca';
     
     const isAvailable = data.status.includes('Ativo') || data.status.includes('Disponível');
     

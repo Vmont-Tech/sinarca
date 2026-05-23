@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -54,6 +54,49 @@ import { AuthProvider } from './contexts/AuthContext';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 
+function LegacyPublicRedirect() {
+  const location = useLocation();
+  const cleanPath = location.pathname.replace(/^\/public\/?/, '/') || '/';
+  return <Navigate to={`${cleanPath}${location.search}${location.hash}`} replace />;
+}
+
+function publicRoutes() {
+  return (
+    <>
+      {/* Feed de Eventos On-Chain (Automático) e Transparência */}
+      <Route path="feed" element={<PublicExplorer />} />
+      <Route path="tx/:hash" element={<TransactionDetails />} />
+
+      {/* Consulta e Transparência */}
+      <Route path="consulta" element={<Feed />} />
+      <Route path="projetos" element={<Feed />} />
+      <Route path="projeto/:id" element={<MrcaDetails />} />
+      <Route path="perfil/:id" element={<UserProfile />} />
+
+      {/* Métricas e Rankings */}
+      <Route path="rankings" element={<ImpactLeaders />} />
+      <Route path="lideres" element={<ImpactLeaders />} />
+      <Route path="auditores" element={<Auditors />} />
+
+      {/* Institucional / Legal */}
+      <Route path="sobre" element={<AboutSinarca />} />
+      <Route path="api" element={<ApiDocs />} />
+      <Route path="compliance" element={<Compliance />} />
+      <Route path="termos" element={<Terms />} />
+      <Route path="privacidade" element={<Privacy />} />
+      <Route path="suporte-juridico" element={<LegalSupport />} />
+      <Route path="dados" element={<DataGovernance />} />
+      <Route path="ciclo-credito" element={<CreditCycle />} />
+
+      {/* Mapas Dedicados */}
+      <Route path="mapa-nacional" element={<NationalMap />} />
+      <Route path="mapa-brasil" element={<PublicMapPage />} />
+      <Route path="mapa-projetos" element={<GlobalMap />} />
+      <Route path="mapa" element={<Navigate to="/mapa-nacional" replace />} />
+    </>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -63,39 +106,10 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
 
-          <Route path="/public" element={<PublicLayout />}>
-            {/* Feed de Eventos On-Chain (Automático) e Transparência */}
-            <Route path="feed" element={<PublicExplorer />} />
-            <Route path="tx/:hash" element={<TransactionDetails />} />
-
-            {/* Consulta e Transparência */}
-            <Route path="consulta" element={<Feed />} /> {/* Lista de Projetos (MRCA) */}
-            <Route path="projetos" element={<Feed />} /> {/* Alias */}
-            <Route path="projeto/:id" element={<MrcaDetails />} />
-            <Route path="perfil/:id" element={<UserProfile />} />
-
-
-            {/* Métricas e Rankings */}
-            <Route path="rankings" element={<ImpactLeaders />} />
-            <Route path="lideres" element={<ImpactLeaders />} />
-            <Route path="auditores" element={<Auditors />} />
-
-            {/* Institucional / Legal */}
-            <Route path="sobre" element={<AboutSinarca />} />
-            <Route path="api" element={<ApiDocs />} />
-            <Route path="compliance" element={<Compliance />} />
-            <Route path="termos" element={<Terms />} />
-            <Route path="privacidade" element={<Privacy />} />
-            <Route path="suporte-juridico" element={<LegalSupport />} />
-            <Route path="dados" element={<DataGovernance />} />
-            <Route path="ciclo-credito" element={<CreditCycle />} />
-            
-            {/* Mapas Dedicados */}
-            <Route path="mapa-nacional" element={<NationalMap />} />
-            <Route path="mapa-brasil" element={<PublicMapPage />} />
-            <Route path="mapa-projetos" element={<GlobalMap />} />
-            <Route path="mapa" element={<Navigate to="mapa-nacional" replace />} />
+          <Route element={<PublicLayout />}>
+            {publicRoutes()}
           </Route>
+          <Route path="/public/*" element={<LegacyPublicRedirect />} />
 
           {/* 2. PAINEL DE GESTÃO (RESTRICTED) */}
           <Route path="/painel" element={<ProtectedRoute />}>

@@ -115,7 +115,7 @@ export default function AboutSinarca() {
                     <h2 className="text-3xl font-display font-bold text-white uppercase text-center">Pronto para fazer parte?</h2>
                     <div className="flex gap-4">
                         <button 
-                            onClick={() => navigate('/public/rankings')}
+                            onClick={() => navigate('/rankings')}
                             className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white hover:text-black transition-all uppercase text-xs tracking-widest"
                         >
                             Ver Ranking de Impacto

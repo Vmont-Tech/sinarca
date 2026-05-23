@@ -31,16 +31,16 @@ export default function Footer() {
                     <div>
                         <h4 className="text-black font-bold uppercase text-[10px] tracking-widest mb-6">Plataforma</h4>
                         <ul className="space-y-4">
-                            <li><button onClick={() => navigate('/public/feed')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Marketplace</button></li>
-                            <li><button onClick={() => navigate('/public/consulta')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Mapa de Ativos</button></li>
-                            <li><button onClick={() => navigate('/public/rankings')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Transparência</button></li>
+                            <li><button onClick={() => navigate('/feed')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Marketplace</button></li>
+                            <li><button onClick={() => navigate('/consulta')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Mapa de Ativos</button></li>
+                            <li><button onClick={() => navigate('/rankings')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Transparência</button></li>
                         </ul>
                     </div>
 
                     <div>
                         <h4 className="text-black font-bold uppercase text-[10px] tracking-widest mb-6">Institucional</h4>
                         <ul className="space-y-4">
-                            <li><button onClick={() => navigate('/public/sobre')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Sobre Nós</button></li>
+                            <li><button onClick={() => navigate('/sobre')} className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Sobre Nós</button></li>
                             <li><a href="#" className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Termos Legais</a></li>
                             <li><a href="#" className="text-gray-600 hover:text-primary text-xs font-bold uppercase tracking-widest transition-colors">Compliance</a></li>
                         </ul>

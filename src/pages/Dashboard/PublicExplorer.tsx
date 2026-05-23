@@ -226,7 +226,7 @@ export default function PublicExplorer() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div>
-                                                    <p className="font-bold text-white text-sm hover:text-sinarca-neon cursor-pointer transition-colors" onClick={() => navigate('/public/projetos')}>
+                                                    <p className="font-bold text-white text-sm hover:text-sinarca-neon cursor-pointer transition-colors" onClick={() => navigate('/projetos')}>
                                                         {evt.asset}
                                                     </p>
                                                     <div className="flex items-center gap-1 mt-0.5">
@@ -263,7 +263,7 @@ export default function PublicExplorer() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div onClick={() => navigate(`/public/tx/${evt.hash}`)} className="inline-flex items-center gap-2 bg-[#050a06] px-2 py-1.5 rounded border border-sinarca-border group-hover:border-sinarca-neon/30 transition-colors cursor-pointer" title="Ver no explorer">
+                                                <div onClick={() => navigate(`/tx/${evt.hash}`)} className="inline-flex items-center gap-2 bg-[#050a06] px-2 py-1.5 rounded border border-sinarca-border group-hover:border-sinarca-neon/30 transition-colors cursor-pointer" title="Ver no explorer">
                                                     <span className="text-xs font-mono text-sinarca-neon">{evt.hash.substring(0, 18)}...</span>
                                                     <CheckCircle className="w-3 h-3 text-sinarca-neon" />
                                                 </div>

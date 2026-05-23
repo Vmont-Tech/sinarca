@@ -167,7 +167,7 @@ export default function LandingPage() {
           </p>
 
           <button
-            onClick={() => navigate('/public/consulta')}
+            onClick={() => navigate('/consulta')}
             className="px-12 py-5 bg-primary text-white font-bold text-xs uppercase tracking-widest rounded-2xl transition-all transform hover:scale-105 flex items-center gap-4 mx-auto shadow-2xl shadow-primary/20"
           >
             <Search className="w-4 h-4" /> Consultar Registros Públicos
@@ -204,7 +204,7 @@ export default function LandingPage() {
       <section className="py-24 relative bg-[#050a05]">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
           {/* Card 1: Mapa */}
-          <div onClick={() => navigate('/public/mapa-brasil')} className="group relative h-[450px] rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-primary/30 transition-all duration-700 cursor-pointer shadow-2xl">
+          <div onClick={() => navigate('/mapa-brasil')} className="group relative h-[450px] rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-primary/30 transition-all duration-700 cursor-pointer shadow-2xl">
             <div className="absolute inset-0 z-0">
               <img
                 src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1600&auto=format&fit=crop"
@@ -235,7 +235,7 @@ export default function LandingPage() {
           </div>
 
           {/* Card 2: Ranking */}
-          <div onClick={() => navigate('/public/rankings')} className="group relative h-[450px] rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-primary/30 transition-all duration-700 cursor-pointer shadow-2xl">
+          <div onClick={() => navigate('/rankings')} className="group relative h-[450px] rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-primary/30 transition-all duration-700 cursor-pointer shadow-2xl">
             <div className="absolute inset-0 z-0">
               <img
                 src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1600&auto=format&fit=crop"
@@ -293,7 +293,7 @@ export default function LandingPage() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/public/consulta')}
+              onClick={() => navigate('/consulta')}
               className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-white text-[10px] font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-all flex items-center gap-3 group"
             >
               Explorar Ativos <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -384,7 +384,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row items-center gap-10 mt-10 pt-10 border-t border-gray-100">
                 <button 
-                  onClick={() => navigate('/public/mapa-nacional')}
+                  onClick={() => navigate('/mapa-nacional')}
                   className="px-12 py-5 bg-black text-white rounded-2xl font-bold hover:bg-primary transition-all flex items-center gap-4 group shadow-2xl"
                 >
                   Abrir Mapa Governamental <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

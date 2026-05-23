@@ -181,11 +181,11 @@ export default function Institutional() {
             {/* Public Links CTA */}
             <div className="mt-8 pt-12 border-t border-white/5 flex flex-wrap gap-6 items-center justify-between">
                 <div className="flex gap-8">
-                    <button onClick={() => navigate('/public/termos')} className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">Termos de Uso</button>
-                    <button onClick={() => navigate('/public/privacidade')} className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
-                    <button onClick={() => navigate('/public/compliance')} className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">Compliance</button>
+                    <button onClick={() => navigate('/termos')} className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">Termos de Uso</button>
+                    <button onClick={() => navigate('/privacidade')} className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">Privacidade</button>
+                    <button onClick={() => navigate('/compliance')} className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">Compliance</button>
                 </div>
-                <button onClick={() => navigate('/public/dados')} className="px-6 py-3 bg-secondary text-black font-bold text-xs uppercase tracking-widest rounded-lg hover:bg-white transition-all shadow-[0_0_20px_rgba(129,199,132,0.2)]">
+                <button onClick={() => navigate('/dados')} className="px-6 py-3 bg-secondary text-black font-bold text-xs uppercase tracking-widest rounded-lg hover:bg-white transition-all shadow-[0_0_20px_rgba(129,199,132,0.2)]">
                     Ver Governança de Dados
                 </button>
             </div>
