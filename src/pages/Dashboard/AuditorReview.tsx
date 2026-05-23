@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, RotateCcw, FileCheck2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, RotateCcw, FileCheck2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiGet, apiPatch } from '../../services/api';
 
 type AuditItem = {
@@ -8,21 +8,32 @@ type AuditItem = {
     name: string;
     nome?: string;
     status: string;
-    area_hectares: number;
-    carbonStock: number;
+    area_hectares?: number;
+    carbonStock?: number;
+    metrics?: {
+        totalAreaHa?: number;
+        carbonStock?: number;
+    };
     location: { city: string; state: string };
 };
+
+const formatNumber = (value: number | null | undefined) => (value ?? 0).toLocaleString('pt-BR');
+const getAreaHa = (project: AuditItem) => project.metrics?.totalAreaHa ?? project.area_hectares;
+const getCarbonStock = (project: AuditItem) => project.metrics?.carbonStock ?? project.carbonStock;
+const pageSize = 5;
 
 export default function AuditorReview() {
     const [items, setItems] = React.useState<AuditItem[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [message, setMessage] = React.useState('');
+    const [currentPage, setCurrentPage] = React.useState(1);
 
     const loadQueue = React.useCallback(async () => {
         setLoading(true);
         try {
             const response = await apiGet<any>('/audit/queue');
             setItems(response?.projects || []);
+            setCurrentPage(1);
         } finally {
             setLoading(false);
         }
@@ -42,6 +53,12 @@ export default function AuditorReview() {
         setMessage(`Auditoria registrada: ${status}`);
         await loadQueue();
     };
+
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const paginatedItems = React.useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return items.slice(start, start + pageSize);
+    }, [currentPage, items]);
 
     return (
         <div className="space-y-8">
@@ -64,7 +81,7 @@ export default function AuditorReview() {
                 {loading && <div className="rounded-2xl bg-white p-8 shadow-sm">Carregando fila de auditoria...</div>}
                 {!loading && items.length === 0 && <div className="rounded-2xl bg-white p-8 shadow-sm">Nenhum projeto pendente de auditoria.</div>}
 
-                {items.map((project) => (
+                {paginatedItems.map((project) => (
                     <article key={project.id} className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                             <div>
@@ -77,11 +94,11 @@ export default function AuditorReview() {
                                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <p className="text-gray-400">Área</p>
-                                        <p className="font-bold text-gray-900">{project.area_hectares.toLocaleString('pt-BR')} ha</p>
+                                        <p className="font-bold text-gray-900">{formatNumber(getAreaHa(project))} ha</p>
                                     </div>
                                     <div>
                                         <p className="text-gray-400">Estoque</p>
-                                        <p className="font-bold text-gray-900">{project.carbonStock.toLocaleString('pt-BR')} tCO₂e</p>
+                                        <p className="font-bold text-gray-900">{formatNumber(getCarbonStock(project))} tCO₂e</p>
                                     </div>
                                 </div>
                             </div>
@@ -100,6 +117,34 @@ export default function AuditorReview() {
                         </div>
                     </article>
                 ))}
+
+                {!loading && items.length > pageSize && (
+                    <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm font-semibold text-gray-500">
+                            Página {currentPage} de {totalPages}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                disabled={currentPage === 1}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                Anterior
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                                disabled={currentPage === totalPages}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Próxima
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

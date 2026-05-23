@@ -20,3 +20,24 @@ def test_project_detail_links_prefer_friendly_ids() -> None:
     assert "data.friendlyId || data.projectId || data.id" in mrca_item
     assert "navigate(`/painel/mrca/${project.id}`)" not in global_map
     assert "navigate(`/painel/mrca/${hoveredProject.id}`)" not in global_map
+
+
+def test_review_queues_read_mrca_metrics_payload() -> None:
+    auditor_review = read("src/pages/Dashboard/AuditorReview.tsx")
+    certifier_review = read("src/pages/Dashboard/CertifierReview.tsx")
+
+    for review_page in (auditor_review, certifier_review):
+        assert "project.metrics?.totalAreaHa" in review_page
+        assert "project.metrics?.carbonStock" in review_page
+        assert "project.area_hectares.toLocaleString" not in review_page
+        assert "project.carbonStock.toLocaleString" not in review_page
+
+
+def test_auditor_queue_has_client_side_pagination() -> None:
+    auditor_review = read("src/pages/Dashboard/AuditorReview.tsx")
+
+    assert "const pageSize = 5" in auditor_review
+    assert "paginatedItems.map" in auditor_review
+    assert "Página {currentPage} de {totalPages}" in auditor_review
+    assert "setCurrentPage((page) => Math.max(1, page - 1))" in auditor_review
+    assert "setCurrentPage((page) => Math.min(totalPages, page + 1))" in auditor_review

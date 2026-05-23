@@ -8,10 +8,18 @@ type QueueItem = {
     name: string;
     nome?: string;
     status: string;
-    area_hectares: number;
-    carbonStock: number;
+    area_hectares?: number;
+    carbonStock?: number;
+    metrics?: {
+        totalAreaHa?: number;
+        carbonStock?: number;
+    };
     location: { city: string; state: string };
 };
+
+const formatNumber = (value: number | null | undefined) => (value ?? 0).toLocaleString('pt-BR');
+const getAreaHa = (project: QueueItem) => project.metrics?.totalAreaHa ?? project.area_hectares;
+const getCarbonStock = (project: QueueItem) => project.metrics?.carbonStock ?? project.carbonStock;
 
 export default function CertifierReview() {
     const [items, setItems] = React.useState<QueueItem[]>([]);
@@ -77,11 +85,11 @@ export default function CertifierReview() {
                                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <p className="text-gray-400">Área</p>
-                                        <p className="font-bold text-gray-900">{project.area_hectares.toLocaleString('pt-BR')} ha</p>
+                                        <p className="font-bold text-gray-900">{formatNumber(getAreaHa(project))} ha</p>
                                     </div>
                                     <div>
                                         <p className="text-gray-400">Estoque</p>
-                                        <p className="font-bold text-gray-900">{project.carbonStock.toLocaleString('pt-BR')} tCO₂e</p>
+                                        <p className="font-bold text-gray-900">{formatNumber(getCarbonStock(project))} tCO₂e</p>
                                     </div>
                                 </div>
                             </div>
