@@ -41,3 +41,18 @@ def test_auditor_queue_has_client_side_pagination() -> None:
     assert "Página {currentPage} de {totalPages}" in auditor_review
     assert "setCurrentPage((page) => Math.max(1, page - 1))" in auditor_review
     assert "setCurrentPage((page) => Math.min(totalPages, page + 1))" in auditor_review
+
+
+def test_auditor_queue_exposes_field_evidence_review_and_report_submission() -> None:
+    auditor_review = read("src/pages/Dashboard/AuditorReview.tsx")
+
+    assert "database.getMonitoringProject(project.friendlyId || project.id)" in auditor_review
+    assert "Revisar evidências" in auditor_review
+    assert "Tags NFC 424 DNA" in auditor_review
+    assert "VERIFICAÇÃO DE TAGS" in auditor_review
+    assert "ESTADO DA ÁREA" in auditor_review
+    assert "evidencias_url: evidenceUrls" in auditor_review
+    assert "assinatura_digital: draft.signature" in auditor_review
+    assert "const latitude = draft.latitude ? Number(draft.latitude) : undefined;" in auditor_review
+    assert "const longitude = draft.longitude ? Number(draft.longitude) : undefined;" in auditor_review
+    assert "Área preservada conforme baseline" in auditor_review
