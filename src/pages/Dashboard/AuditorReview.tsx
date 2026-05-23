@@ -8,6 +8,7 @@ import {
     Copy,
     Crosshair,
     FileCheck2,
+    FileUp,
     Fingerprint,
     Link as LinkIcon,
     Loader2,
@@ -15,6 +16,7 @@ import {
     RotateCcw,
     Satellite,
     Search,
+    Trash2,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,12 +40,20 @@ type AuditItem = {
 type AuditDecision = 'APPROVED' | 'BLOCKED' | 'RECALCULATED';
 type AuditCheckKey = 'tagsLocated' | 'tagsIntact' | 'coordinatesMatch' | 'areaPreserved' | 'noDeforestation' | 'noFire' | 'producerControl';
 
+type AuditEvidenceFile = {
+    id: string;
+    name: string;
+    size: number;
+    type: string;
+    mockUrl: string;
+};
+
 type AuditDraft = {
     observations: string;
     conclusion: string;
     latitude: string;
     longitude: string;
-    evidenceUrls: string;
+    evidenceFiles: AuditEvidenceFile[];
     signature: string;
     checks: Record<AuditCheckKey, boolean>;
 };
@@ -67,7 +77,7 @@ const createDefaultDraft = (auditorName?: string): AuditDraft => ({
     conclusion: 'Projeto em conformidade. Recomenda-se desbloqueio e disponibilização dos créditos ambientais.',
     latitude: '',
     longitude: '',
-    evidenceUrls: '',
+    evidenceFiles: [],
     signature: auditorName ? `Assinado digitalmente por ${auditorName}` : 'Assinado digitalmente pelo auditor responsável',
     checks: {
         tagsLocated: false,
@@ -96,12 +106,11 @@ const normalizeText = (value: string | number | null | undefined) => String(valu
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-const splitEvidenceUrls = (value: string) => value
-    .split(/\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
 const statusMark = (checked: boolean) => checked ? '✓' : 'Pendente';
+const formatFileSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
 
 const buildAuditReport = (
     project: AuditItem,
@@ -113,6 +122,7 @@ const buildAuditReport = (
         `- Tag ${tag.position}: ${tag.status} em ${tag.latitude.toFixed(4)}, ${tag.longitude.toFixed(4)} ${statusMark(draft.checks.tagsLocated && draft.checks.tagsIntact)}`
     );
     const baseline = monitoring?.baseline;
+    const evidenceLines = draft.evidenceFiles.map((file) => `- ${file.name} (${file.type || 'arquivo'}) -> ${file.mockUrl}`);
 
     return [
         `RELATÓRIO DE AUDITORIA - PROJETO ${project.friendlyId}`,
@@ -131,6 +141,9 @@ const buildAuditReport = (
         '',
         'OBSERVAÇÕES:',
         draft.observations || 'Sem observações adicionais.',
+        '',
+        'EVIDÊNCIAS ANEXADAS:',
+        ...(evidenceLines.length ? evidenceLines : ['- Nenhum arquivo anexado nesta revisão.']),
         '',
         `CONCLUSÃO: ${draft.conclusion}`,
         `DECISÃO: ${status}`,
@@ -205,6 +218,30 @@ export default function AuditorReview() {
         setDraft((current) => ({ ...current, checks: { ...current.checks, [key]: checked } }));
     };
 
+    const addMockEvidenceFiles = (project: AuditItem, files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        const projectKey = project.friendlyId || project.id;
+        const timestamp = Date.now();
+        const evidenceFiles = Array.from(files).map((file, index) => ({
+            id: `${timestamp}-${index}-${file.name}`,
+            name: file.name,
+            size: file.size,
+            type: file.type || 'arquivo local',
+            mockUrl: `mock://auditoria/${projectKey}/${encodeURIComponent(file.name)}`,
+        }));
+        setDraft((current) => ({
+            ...current,
+            evidenceFiles: [...current.evidenceFiles, ...evidenceFiles],
+        }));
+    };
+
+    const removeMockEvidenceFile = (fileId: string) => {
+        setDraft((current) => ({
+            ...current,
+            evidenceFiles: current.evidenceFiles.filter((file) => file.id !== fileId),
+        }));
+    };
+
     const useCurrentLocation = () => {
         if (!navigator.geolocation) {
             setEvidenceError('Geolocalização indisponível neste navegador.');
@@ -229,7 +266,7 @@ export default function AuditorReview() {
         const longitude = draft.longitude ? Number(draft.longitude) : undefined;
         const evidenceUrls = [
             ...(monitoring?.baseline.evidenceUri ? [monitoring.baseline.evidenceUri] : []),
-            ...splitEvidenceUrls(draft.evidenceUrls),
+            ...draft.evidenceFiles.map((file) => file.mockUrl),
         ];
 
         await apiPatch(`/audit/verify/${encodeURIComponent(project.id)}`, {
@@ -479,10 +516,46 @@ export default function AuditorReview() {
                                             <span className="text-xs font-bold uppercase text-gray-400">Observações</span>
                                             <textarea value={draft.observations} onChange={(event) => updateDraft('observations', event.target.value)} rows={3} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Descreva integridade das tags, estado da área, amostras coletadas e qualquer divergência encontrada." />
                                         </label>
-                                        <label className="block space-y-1">
-                                            <span className="text-xs font-bold uppercase text-gray-400">URLs de fotos/documentos</span>
-                                            <textarea value={draft.evidenceUrls} onChange={(event) => updateDraft('evidenceUrls', event.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Uma URL por linha ou separada por vírgula" />
-                                        </label>
+                                        <div className="space-y-2">
+                                            <span className="text-xs font-bold uppercase text-gray-400">Fotos/documentos da vistoria</span>
+                                            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center transition hover:border-blue-300 hover:bg-blue-50">
+                                                <FileUp className="h-6 w-6 text-blue-600" />
+                                                <span className="mt-2 text-sm font-bold text-gray-800">Selecionar arquivos</span>
+                                                <span className="mt-1 text-xs text-gray-500">Mock local até definirmos upload real</span>
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*,.pdf,.doc,.docx,.heic"
+                                                    className="sr-only"
+                                                    onChange={(event) => {
+                                                        addMockEvidenceFiles(project, event.currentTarget.files);
+                                                        event.currentTarget.value = '';
+                                                    }}
+                                                />
+                                            </label>
+                                            {draft.evidenceFiles.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <p className="text-xs font-bold uppercase text-gray-400">Arquivos selecionados</p>
+                                                    {draft.evidenceFiles.map((file) => (
+                                                        <div key={file.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2">
+                                                            <div className="min-w-0">
+                                                                <p className="truncate text-sm font-bold text-gray-800">{file.name}</p>
+                                                                <p className="text-xs text-gray-500">{formatFileSize(file.size)} · {file.mockUrl}</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeMockEvidenceFile(file.id)}
+                                                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                                                                title="Remover arquivo"
+                                                                aria-label={`Remover ${file.name}`}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                         <label className="block space-y-1">
                                             <span className="text-xs font-bold uppercase text-gray-400">Conclusão</span>
                                             <textarea value={draft.conclusion} onChange={(event) => updateDraft('conclusion', event.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" />
