@@ -48,6 +48,8 @@ def test_auditor_queue_exposes_field_evidence_review_and_report_submission() -> 
 
     assert "database.getMonitoringProject(project.friendlyId || project.id)" in auditor_review
     assert "Revisar evidências" in auditor_review
+    assert "Abrir página do projeto" in auditor_review
+    assert "to={`/painel/mrca/${project.friendlyId || project.id}`}" in auditor_review
     assert "Tags NFC 424 DNA" in auditor_review
     assert "VERIFICAÇÃO DE TAGS" in auditor_review
     assert "ESTADO DA ÁREA" in auditor_review

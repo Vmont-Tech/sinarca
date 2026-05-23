@@ -1,6 +1,7 @@
 import React from 'react';
 import {
     AlertTriangle,
+    ArrowUpRight,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
@@ -18,6 +19,7 @@ import {
     Search,
     Trash2,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { apiGet, apiPatch } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { database, type MonitoringProjectResponse } from '../../services/database';
@@ -419,6 +421,12 @@ export default function AuditorReview() {
                             </div>
 
                             <div className="flex flex-col gap-3 sm:flex-row">
+                                <Link
+                                    to={`/painel/mrca/${project.friendlyId || project.id}`}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
+                                >
+                                    <ArrowUpRight className="h-4 w-4" /> Abrir página do projeto
+                                </Link>
                                 <button onClick={() => openEvidenceReview(project)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800">
                                     <ClipboardCheck className="h-4 w-4" /> Revisar evidências
                                 </button>
