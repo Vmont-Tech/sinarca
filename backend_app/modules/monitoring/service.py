@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend_app.db.models import EnvironmentalCredit, ProjectBaseline
+from backend_app.db.models import ChainEvent, EnvironmentalCredit, ProjectBaseline, ProjectTag
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.projects.service import ProjectsService
 
@@ -14,6 +14,65 @@ from backend_app.modules.projects.service import ProjectsService
 class MonitoringService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def project_summary(self, project_id: str) -> dict[str, object]:
+        project_service = ProjectsService(self.session)
+        project = await project_service._get_project_model(project_id)
+        baseline = await self._latest_baseline(project.id)
+        tags = (
+            (
+                await self.session.execute(
+                    select(ProjectTag).where(ProjectTag.project_id == project.id).order_by(ProjectTag.vertex_label.asc(), ProjectTag.created_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        events = (
+            (
+                await self.session.execute(
+                    select(ChainEvent).where(ChainEvent.project_id == project.id).order_by(ChainEvent.created_at.desc()).limit(10)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return {
+            "success": True,
+            "project": (await project_service.project_to_mrca(project)).model_dump(),
+            "baseline": {
+                "sentinelSceneId": baseline.sentinel_scene_id,
+                "baselineHash": baseline.baseline_hash,
+                "pointsAnalyzed": baseline.points_analyzed,
+                "vegetationCoverPct": float(baseline.vegetation_cover_pct),
+                "ndviMean": float(baseline.ndvi_mean),
+                "capturedAt": baseline.captured_at.isoformat(),
+                "evidenceUri": baseline.evidence_uri,
+            },
+            "tags": [
+                {
+                    "id": tag.tag_uid,
+                    "position": tag.vertex_label,
+                    "status": tag.status,
+                    "lastSeenAt": tag.last_seen_at.isoformat() if tag.last_seen_at else None,
+                    "latitude": float(tag.latitude),
+                    "longitude": float(tag.longitude),
+                }
+                for tag in tags
+            ],
+            "events": [
+                {
+                    "id": str(event.id),
+                    "type": event.event_type,
+                    "chain": event.chain,
+                    "hash": event.transaction_hash,
+                    "status": event.status,
+                    "amount": float(event.amount) if event.amount is not None else None,
+                    "createdAt": event.created_at.isoformat(),
+                }
+                for event in events
+            ],
+        }
 
     async def evaluate_anomaly(
         self,
@@ -90,4 +149,3 @@ class MonitoringService:
         if baseline is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Baseline do projeto não encontrado")
         return baseline
-

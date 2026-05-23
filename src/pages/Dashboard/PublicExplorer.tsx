@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import { database } from '../../services/database';
+import { database, type TransactionRecord } from '../../services/database';
 
 interface GlobalEvent {
     id: string;
@@ -30,6 +30,24 @@ interface GlobalEvent {
     rawDate: Date;
 }
 
+const eventTypeByTransaction: Record<string, string> = {
+    received: 'TRANSFER',
+    sent: 'TRANSFER',
+    retired: 'BURN',
+    minted: 'MINT',
+};
+
+const parseTransactionDate = (transaction: TransactionRecord): Date => {
+    const raw = transaction.createdAt || transaction.date;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+};
+
+const parseTransactionAmount = (transaction: TransactionRecord): number => {
+    const parsed = Number(String(transaction.amount).replace(',', '.'));
+    return Number.isFinite(parsed) ? Math.abs(parsed) : 0;
+};
+
 export default function PublicExplorer() {
     const navigate = useNavigate();
     const [filter, setFilter] = useState('all');
@@ -40,62 +58,23 @@ export default function PublicExplorer() {
     useEffect(() => {
         const loadEvents = async () => {
             setLoading(true);
-            const projects = await database.getMarketProjects({ limit: 1000 });
-            let allEvents: GlobalEvent[] = [];
-
-            projects.forEach((proj: any) => {
-                // 1. MINT EVENT (Creation)
-                allEvents.push({
-                    id: `mint-${proj.id}`,
-                    type: 'MINT',
-                    asset: proj.project.name,
-                    quantity: proj.quantity,
-                    from: 'Protocolo SINARCA',
-                    to: proj.chain.emitter.name, // Developer or Certifier
-                    hash: proj.projectId.substring(0, 10) + '...mint', // Simulate hash
-                    timestamp: getTimeAgo(new Date(proj.timestamp || '2023-01-01')),
-                    status: 'confirmed',
-                    rawDate: new Date(proj.timestamp || '2023-01-01')
-                });
-
-                // 2. TIMELINE EVENTS
-                // Assuming proj has a timeline property in the raw DB return, but getMarketProjects returns mapped data.
-                // We might need to access the raw projects via a new DB method or just infer from status for now to be safe, 
-                // OR better: let's use the 'project.lifecycleStatus' mapped property.
-
-                // Let's simualate Timeline events based on status
-                if (proj.status.includes('Auditado') || proj.project.lifecycleStatus === 'AUDITED') {
-                    allEvents.push({
-                        id: `audit-${proj.id}`,
-                        type: 'AUDIT',
-                        asset: proj.project.name,
-                        quantity: 0,
-                        from: proj.chain.auditor.name,
-                        to: 'Registro de Auditoria',
-                        hash: '0x' + Math.random().toString(16).substring(2, 10) + '...audit',
-                        timestamp: getTimeAgo(new Date(new Date(proj.timestamp).getTime() + 86400000 * 30)), // 30 days after mint
-                        status: 'confirmed',
-                        rawDate: new Date(new Date(proj.timestamp).getTime() + 86400000 * 30)
-                    });
-                }
-
-                if (proj.status.includes('Aposentado') || proj.project.lifecycleStatus === 'RETIRED') {
-                    allEvents.push({
-                        id: `burn-${proj.id}`,
-                        type: 'BURN',
-                        asset: proj.project.name,
-                        quantity: proj.quantity,
-                        from: proj.chain.emitter.name, // Holder
-                        to: 'Null Address (0x0...0)',
-                        hash: '0x' + Math.random().toString(16).substring(2, 10) + '...burn',
-                        timestamp: getTimeAgo(new Date(new Date(proj.timestamp).getTime() + 86400000 * 365)), // 1 yr after
-                        status: 'confirmed',
-                        rawDate: new Date(new Date(proj.timestamp).getTime() + 86400000 * 365)
-                    });
-                }
+            const transactions = await database.getTransactions();
+            const allEvents = transactions.map((transaction) => {
+                const rawDate = parseTransactionDate(transaction);
+                return {
+                    id: transaction.id,
+                    type: eventTypeByTransaction[transaction.type] || transaction.type.toUpperCase(),
+                    asset: transaction.asset,
+                    quantity: parseTransactionAmount(transaction),
+                    from: transaction.entities.from,
+                    to: transaction.entities.to,
+                    hash: transaction.hash,
+                    timestamp: getTimeAgo(rawDate),
+                    status: transaction.status,
+                    rawDate
+                };
             });
 
-            // Sort by Date Descending
             allEvents.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
             setEvents(allEvents);
             setLoading(false);
@@ -112,6 +91,13 @@ export default function PublicExplorer() {
         interval = seconds / 86400;
         if (interval > 1) return Math.floor(interval) + " dias atrás";
         return "Recentemente";
+    };
+
+    const eventStats = {
+        total: events.length,
+        volume: events.reduce((sum, event) => sum + event.quantity, 0),
+        assets: new Set(events.map(event => event.asset)).size,
+        confirmed: events.filter(event => event.status === 'completed' || event.status === 'confirmed').length,
     };
 
     const getTypeConfig = (type: string) => {
@@ -143,33 +129,33 @@ export default function PublicExplorer() {
                     <div className="flex flex-col items-center text-center gap-4">
                         <div className="inline-flex items-center gap-2 rounded-full border border-sinarca-neon/20 bg-sinarca-neon/5 px-4 py-1.5 backdrop-blur-md">
                             <Globe className="text-sinarca-neon w-4 h-4 animate-pulse" />
-                            <span className="text-xs font-semibold uppercase tracking-wide text-sinarca-neon">Rede Principal (Mainnet)</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-sinarca-neon">Ledger Persistido</span>
                         </div>
                         <h1 className="font-serif text-4xl md:text-5xl font-bold text-white leading-tight">
                             Explorador <span className="text-sinarca-neon">SINARCA</span>
                         </h1>
                         <p className="text-text-muted text-lg max-w-2xl">
-                            Acompanhe em tempo real todas as operações de registro, auditoria e transação de ativos ambientais na nossa blockchain pública.
+                            Acompanhe as operações registradas no banco transacional da plataforma SINARCA.
                         </p>
                     </div>
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10 max-w-4xl mx-auto">
                         <div className="bg-[#121f16] border border-sinarca-border rounded-lg p-4 text-center">
-                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Bloco Atual</p>
-                            <p className="text-xl font-mono font-bold text-white">#2,102,492</p>
+                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Eventos</p>
+                            <p className="text-xl font-mono font-bold text-white">{eventStats.total.toLocaleString('pt-BR')}</p>
                         </div>
                         <div className="bg-[#121f16] border border-sinarca-border rounded-lg p-4 text-center">
-                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Transações (24h)</p>
-                            <p className="text-xl font-mono font-bold text-sinarca-neon">12.4k</p>
+                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Confirmados</p>
+                            <p className="text-xl font-mono font-bold text-sinarca-neon">{eventStats.confirmed.toLocaleString('pt-BR')}</p>
                         </div>
                         <div className="bg-[#121f16] border border-sinarca-border rounded-lg p-4 text-center">
-                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Volume (24h)</p>
-                            <p className="text-xl font-mono font-bold text-white">450k tCO2e</p>
+                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Volume</p>
+                            <p className="text-xl font-mono font-bold text-white">{eventStats.volume.toLocaleString('pt-BR')} tCO2e</p>
                         </div>
                         <div className="bg-[#121f16] border border-sinarca-border rounded-lg p-4 text-center">
-                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Nós Validadores</p>
-                            <p className="text-xl font-mono font-bold text-blue-400">12 Ativos</p>
+                            <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Ativos</p>
+                            <p className="text-xl font-mono font-bold text-blue-400">{eventStats.assets.toLocaleString('pt-BR')}</p>
                         </div>
                     </div>
                 </div>

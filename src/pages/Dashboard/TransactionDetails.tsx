@@ -13,23 +13,38 @@ import {
     Copy,
     Share2
 } from 'lucide-react';
+import { database, type TransactionRecord } from '../../services/database';
 
 export default function TransactionDetails() {
     const { hash } = useParams();
     const navigate = useNavigate();
     const [copied, setCopied] = useState(false);
+    const [transaction, setTransaction] = useState<TransactionRecord | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Mock details based on hash type or default
-    // In a real app, we would fetchByHash(hash)
-    const txType = hash?.includes('mint') ? 'MINT' :
-        hash?.includes('burn') ? 'BURN' :
-            hash?.includes('audit') ? 'AUDIT' : 'TRANSFER';
+    useEffect(() => {
+        let mounted = true;
+        database.getTransactions()
+            .then((transactions) => {
+                const found = transactions.find(item => item.hash === hash || item.id === hash);
+                if (mounted) setTransaction(found || null);
+            })
+            .finally(() => {
+                if (mounted) setLoading(false);
+            });
+        return () => {
+            mounted = false;
+        };
+    }, [hash]);
 
     const handleCopy = () => {
-        if (hash) navigator.clipboard.writeText(hash);
+        if (transaction?.hash) navigator.clipboard.writeText(transaction.hash);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+
+    if (loading) return <div className="min-h-screen bg-[#050a06] text-white p-8">Carregando transação...</div>;
+    if (!transaction) return <div className="min-h-screen bg-[#050a06] text-white p-8">Transação não encontrada no banco.</div>;
 
     return (
         <div className="min-h-screen bg-[#050a06] text-white p-4 md:p-8 flex flex-col items-center">
@@ -47,11 +62,11 @@ export default function TransactionDetails() {
                                 Detalhes da Transação
                             </h1>
                             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-400 border border-emerald-800 text-sm font-bold uppercase tracking-wider">
-                                <CheckCircle className="w-4 h-4" /> Confirmada
+                                <CheckCircle className="w-4 h-4" /> {transaction.status}
                             </span>
                         </div>
                         <div className="mt-6 flex items-center gap-2 p-3 bg-[#050a06] rounded-lg border border-sinarca-border/50 font-mono text-sm md:text-base text-gray-300 break-all">
-                            {hash}
+                            {transaction.hash}
                             <button onClick={handleCopy} className="ml-auto text-text-muted hover:text-white shrink-0 p-2">
                                 {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                             </button>
@@ -64,18 +79,18 @@ export default function TransactionDetails() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-1">
                                 <p className="text-xs uppercase text-text-muted font-bold tracking-wider">Status</p>
-                                <p className="text-white font-medium flex items-center gap-2">Successo</p>
+                                <p className="text-white font-medium flex items-center gap-2">{transaction.status}</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-xs uppercase text-text-muted font-bold tracking-wider">Bloco</p>
+                                <p className="text-xs uppercase text-text-muted font-bold tracking-wider">Registro</p>
                                 <p className="text-sinarca-neon font-mono font-bold flex items-center gap-2">
-                                    <Box className="w-4 h-4" /> #21,940,292
+                                    <Box className="w-4 h-4" /> {transaction.id}
                                 </p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-xs uppercase text-text-muted font-bold tracking-wider">Timestamp</p>
                                 <p className="text-white font-mono flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-gray-500" /> 12 mins ago
+                                    <Clock className="w-4 h-4 text-gray-500" /> {transaction.date}
                                 </p>
                             </div>
                         </div>
@@ -95,7 +110,7 @@ export default function TransactionDetails() {
                                         </div>
                                         <div>
                                             <p className="text-sm text-text-muted">Tipo de Operação</p>
-                                            <p className="text-lg font-bold text-white">{txType === 'MINT' ? 'Emissão de Ativo (Mint)' : txType === 'BURN' ? 'Aposentadoria de Crédito' : 'Transferência'}</p>
+                                            <p className="text-lg font-bold text-white">{transaction.type}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-4">
@@ -103,8 +118,8 @@ export default function TransactionDetails() {
                                             <Network className="text-purple-400 w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-sm text-text-muted">Contrato Inteligente</p>
-                                            <p className="text-base font-mono text-sinarca-neon hover:underline cursor-pointer">0x71C...9A21</p>
+                                            <p className="text-sm text-text-muted">Ativo</p>
+                                            <p className="text-base font-mono text-sinarca-neon hover:underline cursor-pointer">{transaction.asset}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -124,7 +139,7 @@ export default function TransactionDetails() {
                                         </div>
                                         <div className="flex-1 overflow-hidden">
                                             <p className="text-xs text-text-muted">Origem</p>
-                                            <p className="font-mono text-sm text-white truncate">Protocolo SINARCA (Null Address)</p>
+                                            <p className="font-mono text-sm text-white truncate">{transaction.entities.from}</p>
                                         </div>
                                     </div>
 
@@ -134,7 +149,7 @@ export default function TransactionDetails() {
                                         </div>
                                         <div className="flex-1 overflow-hidden">
                                             <p className="text-xs text-text-muted">Destino</p>
-                                            <p className="font-mono text-sm text-white truncate">0xAgroSustentavel_Wallet</p>
+                                            <p className="font-mono text-sm text-white truncate">{transaction.entities.to}</p>
                                         </div>
                                     </div>
                                 </div>

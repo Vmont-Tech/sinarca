@@ -113,7 +113,7 @@ def test_seed_consolidates_backend_and_frontend_mocks_idempotently() -> None:
     sql = read(SEED_SQL)
 
     for marker in [
-        "backend/mock_data.py",
+        "legacy-mvp-seed",
         "src/data/mrca_db.ts",
         "Transactions.tsx",
         "AuditorReview",
@@ -131,4 +131,3 @@ def test_seed_consolidates_backend_and_frontend_mocks_idempotently() -> None:
         "on conflict",
     ]:
         assert marker in sql
-

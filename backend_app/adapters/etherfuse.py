@@ -9,12 +9,12 @@ from typing import Any, Literal
 
 from backend_app.adapters.liquidity import ISinarcaLiquidity
 
-EtherfuseMode = Literal["mock", "sandbox"]
+EtherfuseMode = Literal["local", "sandbox"]
 
 
 @dataclass(frozen=True)
 class EtherfuseConfig:
-    mode: EtherfuseMode = "mock"
+    mode: EtherfuseMode = "local"
     api_url: str | None = None
     api_key: str | None = None
 
@@ -22,7 +22,7 @@ class EtherfuseConfig:
     def from_env(cls) -> "EtherfuseConfig":
         api_url = os.getenv("ETHERFUSE_API_URL")
         api_key = os.getenv("ETHERFUSE_API_KEY")
-        mode = "sandbox" if api_url or api_key else "mock"
+        mode = "sandbox" if api_url or api_key else "local"
         return cls(mode=mode, api_url=api_url, api_key=api_key)
 
     def assert_sandbox_ready(self) -> None:
@@ -37,16 +37,16 @@ class EtherfuseAdapter(ISinarcaLiquidity):
         self.config = config or EtherfuseConfig.from_env()
 
     def confirm_collateral(self, project_id: str, amount_brl: float, pix_reference: str) -> dict[str, Any]:
-        if self.config.mode == "mock":
+        if self.config.mode == "local":
             return {
                 "provider": "etherfuse",
                 "instrument": "Tesouro Direto",
-                "mode": "mock",
+                "mode": "local",
                 "project_id": project_id,
                 "amount_brl": amount_brl,
                 "pix_reference": pix_reference,
                 "status": "CONFIRMED",
-                "external_reference": f"etherfuse-mock-{pix_reference}",
+                "external_reference": f"etherfuse-local-{pix_reference}",
             }
 
         self.config.assert_sandbox_ready()
@@ -57,11 +57,11 @@ class EtherfuseAdapter(ISinarcaLiquidity):
         )
 
     def release_funds(self, project_id: str, amount_brl: float) -> dict[str, Any]:
-        if self.config.mode == "mock":
+        if self.config.mode == "local":
             return {
                 "provider": "etherfuse",
                 "instrument": "Tesouro Direto",
-                "mode": "mock",
+                "mode": "local",
                 "project_id": project_id,
                 "amount_brl": amount_brl,
                 "status": "RELEASED",
@@ -71,11 +71,11 @@ class EtherfuseAdapter(ISinarcaLiquidity):
         return self._request("POST", "/collateral/release", {"project_id": project_id, "amount_brl": amount_brl})
 
     def status(self, reference: str) -> dict[str, Any]:
-        if self.config.mode == "mock":
+        if self.config.mode == "local":
             return {
                 "provider": "etherfuse",
                 "instrument": "Tesouro Direto",
-                "mode": "mock",
+                "mode": "local",
                 "reference": reference,
                 "status": "CONFIRMED",
             }

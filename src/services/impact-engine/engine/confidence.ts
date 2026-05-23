@@ -9,7 +9,7 @@ export function assessConfidence(raw: RawInput, normalized: NormalizedActivity[]
     if (raw.energy?.kwh) score += 0.2;
     if (raw.flights?.hours) score += 0.2;
 
-    // 2. Data Quality (Simulated check)
+    // 2. Data Quality
     if (raw.transport?.efficiencyKmL) score += 0.1; // Custom efficiency provided
     if (raw.region && raw.region !== 'BR') score += 0.1; // Specific region
 

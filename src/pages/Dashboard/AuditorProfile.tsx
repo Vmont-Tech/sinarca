@@ -86,7 +86,7 @@ export default function AuditorProfile() {
                     </div>
                 ) : (
                     <div className="text-center py-20 bg-sinarca-deep/50 rounded-xl border border-dashed border-sinarca-border">
-                        <p className="text-text-muted">Nenhum projeto auditado encontrado para este auditor nas simulações recentes.</p>
+                        <p className="text-text-muted">Nenhum projeto auditado encontrado para este auditor no banco.</p>
                     </div>
                 )}
             </div>

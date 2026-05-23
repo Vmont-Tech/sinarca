@@ -26,7 +26,7 @@ class AuditVerifyRequest(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     evidencias_url: list[str] = []
-    assinatura_digital: str = "demo-signature"
+    assinatura_digital: str = "assinatura-digital-pendente"
     auditor_id: str | int | None = None
 
 
@@ -129,4 +129,3 @@ def _audit_title(status: str) -> str:
     if status == "BLOCKED":
         return "Projeto bloqueado por auditoria"
     return "Recálculo solicitado pelo auditor"
-

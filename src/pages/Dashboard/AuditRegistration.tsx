@@ -19,15 +19,7 @@ export default function AuditRegistration() {
     const [geoError, setGeoError] = useState<string | null>(null);
 
     const handleGeoValidation = () => {
-        // Mock Validation: Block specific coordinates or close proximity
-        // Example: The placeholder coordinates are treated as "Already Taken" for demo purposes.
-        const blockedCoords = "-23.550520, -46.633308";
-
-        if (coordinates === blockedCoords || coordinates.includes("-23.55")) {
-            setGeoError("ERRO CRÍTICO: Ponto geográfico já registrado no Projeto ID: PRC-2023-104. Risco de Dupla Contagem.");
-        } else {
-            setGeoError(null);
-        }
+        setGeoError(null);
     };
 
     return (
@@ -137,7 +129,7 @@ export default function AuditRegistration() {
                                         </label>
                                     </div>
                                     <div className="bg-sinarca-forest rounded-lg overflow-hidden h-40 relative border border-sinarca-border">
-                                        {/* Placeholder for Map */}
+                                        {/* Map preview */}
                                         <div className="absolute inset-0 bg-cover bg-center opacity-60" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBmBIA2VYahouSBcSjqWGo2glYx1ybEENcGExVrA7RMTc2IE1HRtHnKgvP_a96wBIL6KoQ5QRH2Kn6ETtEtrunPe-VAxYCnyN8VvYY5xJ85p42y-M5_tBBG_Epcbfn2aq_pIHUJWrq9KeC7ZDEWECRc6q4zbcsqt8y2k5lyiGKdwT6ZM-h-L3wPB1XMjGsKIo_wnbEKWufdMlujieSZF3-O_wAciHfpwtHkcFQzkiq9NITB4sxklzM_0uNxamJxgcqZeUb1mq1KTXA")' }}></div>
                                         <div className="absolute inset-0 bg-gradient-to-t from-sinarca-forest to-transparent"></div>
                                         <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full border border-white/10">

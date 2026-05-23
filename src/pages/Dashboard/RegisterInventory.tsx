@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Save, CheckCircle, AlertTriangle } from 'lucide-react';
+import { apiPost } from '../../services/api';
 
 export default function RegisterInventory() {
     const navigate = useNavigate();
@@ -24,14 +25,16 @@ export default function RegisterInventory() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Logic here would normally POST to backend
-        // For now, we simulate success
-        setSuccess(true);
-        setLoading(false);
+        try {
+            await apiPost('/inventory/declare', {
+                escopo_1: Number(formData.scope1 || 0),
+                escopo_2: Number(formData.scope2 || 0),
+                escopo_3: Number(formData.grossRemovals || 0),
+            });
+            setSuccess(true);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (success) {

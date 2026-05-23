@@ -107,8 +107,10 @@ class ProjectCreate(BaseModel):
     description: str = ""
     project_type: str
     location: ProjectLocation
-    producer_id: str
+    producer_id: str | None = None
     certifier_id: str
+    area_hectares: float | None = None
+    carbon_stock: float | None = None
     tags: list[ProjectTagInput] | None = None
 
 

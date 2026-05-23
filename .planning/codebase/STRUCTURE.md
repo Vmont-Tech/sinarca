@@ -8,16 +8,16 @@
 sinarca/
 |-- .devcontainer/          # Ambiente Rust/Soroban
 |-- .planning/              # Planejamento, mapas, decisões e documentação organizada
-|-- backend/                # API Python atual e módulos legados
+|-- backend_app/            # API Python/FastAPI ativa
 |-- novas telas painel/     # Referências visuais geradas
 |-- public/                 # Assets públicos do Vite
 |-- soroban-contract/       # Contrato Soroban em Rust
 |-- src/                    # Aplicação frontend React/Vite
 |-- tests/                  # Testes Python e script GUI
-|-- Dockerfile              # Build combinado frontend + API Python
+|-- Dockerfile              # Runtime API Python
 |-- Dockerfile.api          # Runtime API Python
-|-- Dockerfile.frontend     # Runtime frontend atual, ainda dev-server
-|-- docker-compose.yml      # Compose existente, precisa ser refeito
+|-- Dockerfile.frontend     # Runtime frontend estático
+|-- docker-compose.yml      # Compose local API/web/Postgres externo
 |-- index.html              # Entrada Vite
 |-- package.json            # Manifesto frontend
 |-- pyproject.toml          # Manifesto Python
@@ -83,16 +83,15 @@ Fronteira de API e motores de domínio no navegador.
 - `src/services/database.ts`
 - `src/services/impact-engine/index.ts`
 
-### `backend/`
+### `backend_app/`
 
-Contém o runtime Python ativo e módulos legados.
+Contém o runtime Python ativo com FastAPI, SQLAlchemy async e módulos de domínio.
 
-- Runtime ativo: `backend/main.py`
-- Dados em memória: `backend/mock_data.py`
-- Adapter atual: `backend/services/stellar_service.py`
-- Routers não montados: `backend/api/*`
-- Infraestrutura legada: `backend/core/*`
-- Modelos legados: `backend/models/*`
+- Runtime ativo: `backend_app/main.py`
+- Configuração: `backend_app/core/config.py`
+- Banco: `backend_app/db/*`
+- Módulos HTTP/domínio: `backend_app/modules/*`
+- Adapters externos: `backend_app/adapters/*`
 
 ### `soroban-contract/`
 
@@ -123,7 +122,7 @@ Planejamento, decisões, mapas e documentação organizada.
 ## Entrypoints
 
 - Frontend: `index.html`, `src/main.tsx`, `src/App.tsx`.
-- API atual: `backend/main.py`.
+- API atual: `backend_app/main.py`.
 - Contrato Soroban: `soroban-contract/src/lib.rs` e `soroban-contract/src/contract.rs`.
 - Container combinado: `Dockerfile`.
 - Container API: `Dockerfile.api`.
@@ -138,10 +137,9 @@ Planejamento, decisões, mapas e documentação organizada.
 - Componente reutilizável: `src/components/`.
 - Serviço compartilhado: `src/services/`.
 
-### Nova API Python
+### API Python
 
-- Criar `backend_app/`.
-- Evitar acoplar a nova API a `backend/main.py`.
+- Evoluir `backend_app/` como runtime único.
 - Usar módulos por domínio: `auth`, `projects`, `audit`, `certifier`, `marketplace`, `ledger`, `retirements`.
 - Isolar adapters externos em `backend_app/adapters/`.
 

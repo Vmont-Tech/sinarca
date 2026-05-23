@@ -8,13 +8,8 @@ from fastapi.testclient import TestClient
 from backend_app.db.session import get_sessionmaker
 from backend_app.main import app
 from backend_app.modules.monitoring.service import MonitoringService
-from backend_app.modules.profiles.repository import reset_profile_repository
 
 client = TestClient(app)
-
-
-def setup_function() -> None:
-    reset_profile_repository()
 
 
 def auth_headers(email: str = "produtor@sinarca.com.br", password: str = "produtor") -> dict[str, str]:
@@ -187,6 +182,16 @@ def test_audit_queue_verify_and_monitoring_anomaly_block_project() -> None:
     detail = client.get(f"/api/v1/projects/{project['friendlyId']}")
     assert detail.status_code == 200
     assert detail.json()["project"]["status"] == "BLOCKED_AUDIT_REQUIRED"
+
+
+def test_project_monitoring_summary_comes_from_database() -> None:
+    response = client.get("/api/v1/monitoring/projects/PRC-2024-002")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project"]["friendlyId"] == "PRC-2024-002"
+    assert payload["baseline"]["ndviMean"] == 0.681
+    assert len(payload["tags"]) == 4
 
 
 def activate_project_for_marketplace(prefix: str | None = None, credit_potential: int = 1200) -> dict[str, object]:

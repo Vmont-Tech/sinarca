@@ -1,25 +1,88 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Leaf, Upload, CheckCircle2, ShieldCheck, PenTool } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiPost } from '../../services/api';
+import { database } from '../../services/database';
+
+const stateOptions = [
+    { id: 'to', state: 'Tocantins', city: 'Porto Nacional', lat: -10.70, lng: -48.41, svgX: 392, svgY: 292 },
+    { id: 'pa', state: 'Pará', city: 'Altamira', lat: -3.20, lng: -52.20, svgX: 325, svgY: 125 },
+    { id: 'am', state: 'Amazonas', city: 'Novo Aripuanã', lat: -7.21, lng: -60.36, svgX: 180, svgY: 160 },
+    { id: 'sc', state: 'Santa Catarina', city: 'Joinville', lat: -26.30, lng: -48.84, svgX: 310, svgY: 410 },
+];
 
 export default function AddProject() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+    const [error, setError] = useState('');
+    const [certifiers, setCertifiers] = useState<any[]>([]);
+    const [form, setForm] = useState({
+        name: '',
+        description: '',
+        bioma: 'Cerrado',
+        projectType: 'reforestation',
+        stateId: 'to',
+        areaHectares: '',
+        carbonStock: '',
+        certifierId: '',
+    });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    useEffect(() => {
+        const loadCatalog = async () => {
+            const loadedCertifiers = await database.getCertifiers();
+            setCertifiers(loadedCertifiers);
+            if (loadedCertifiers[0]?.id) {
+                setForm((current) => ({ ...current, certifierId: current.certifierId || loadedCertifiers[0].id }));
+            }
+        };
+        loadCatalog().catch((err) => setError(err instanceof Error ? err.message : 'Não foi possível carregar certificadoras.'));
+    }, []);
+
+    const updateField = (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setForm((current) => ({ ...current, [field]: event.target.value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         setSubmitting(true);
-        // Simulate API call for adding a project
-        setTimeout(() => {
-            setSubmitting(false);
+        const selectedState = stateOptions.find((option) => option.id === form.stateId) || stateOptions[0];
+        try {
+            const response = await apiPost<any>('/projects', {
+                name: form.name,
+                description: form.description || `Projeto submetido por ${user?.name || 'responsável SINARCA'}.`,
+                project_type: form.projectType,
+                producer_id: user?.role === 'producer' ? user.id : undefined,
+                certifier_id: form.certifierId,
+                area_hectares: Number(form.areaHectares),
+                carbon_stock: Number(form.carbonStock),
+                location: {
+                    city: selectedState.city,
+                    state: selectedState.state,
+                    stateId: selectedState.id,
+                    bioma: form.bioma,
+                    coordinates: {
+                        lat: selectedState.lat,
+                        lng: selectedState.lng,
+                        svgX: selectedState.svgX,
+                        svgY: selectedState.svgY,
+                    },
+                },
+            });
+            setCreatedProjectId(response?.project?.friendlyId || null);
             setSuccess(true);
-            setTimeout(() => {
-                navigate('/painel');
-            }, 2000);
-        }, 1500);
+            window.setTimeout(() => {
+                navigate(response?.project?.friendlyId ? `/painel/mrca/${response.project.friendlyId}` : '/painel/projetos');
+            }, 1600);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Não foi possível registrar o projeto.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (success) {
@@ -30,7 +93,7 @@ export default function AddProject() {
                 </div>
                 <h2 className="text-3xl font-bold text-black mb-4">Projeto Enviado com Sucesso!</h2>
                 <p className="text-gray-500 max-w-md mx-auto">
-                    Seu projeto foi assinado digitalmente e enviado para a fila da Certificadora. 
+                    {createdProjectId ? `Projeto ${createdProjectId} registrado no banco e enviado para a fila da Certificadora.` : 'Seu projeto foi registrado no banco e enviado para a fila da Certificadora.'}
                     Acompanhe o status na aba de certificações.
                 </p>
             </div>
@@ -45,6 +108,11 @@ export default function AddProject() {
             </div>
 
             <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col gap-8">
+                {error && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                        {error}
+                    </div>
+                )}
                 
                 {/* Basic Info */}
                 <div className="space-y-4">
@@ -54,28 +122,58 @@ export default function AddProject() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Nome do Projeto</label>
-                            <input required type="text" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Ex: Reflorestamento Vale Verde" />
+                            <input required type="text" value={form.name} onChange={updateField('name')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Nome oficial do projeto" />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Bioma</label>
-                            <select className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary">
-                                <option>Amazônia</option>
-                                <option>Cerrado</option>
-                                <option>Mata Atlântica</option>
-                                <option>Caatinga</option>
-                                <option>Pampa</option>
-                                <option>Pantanal</option>
+                            <select value={form.bioma} onChange={updateField('bioma')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary">
+                                <option value="Amazônia">Amazônia</option>
+                                <option value="Cerrado">Cerrado</option>
+                                <option value="Mata Atlântica">Mata Atlântica</option>
+                                <option value="Caatinga">Caatinga</option>
+                                <option value="Pampa">Pampa</option>
+                                <option value="Pantanal">Pantanal</option>
                             </select>
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Descrição</label>
+                        <textarea required value={form.description} onChange={updateField('description')} rows={3} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Descreva metodologia, área e objetivo ambiental" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Área Total (Hectares)</label>
-                            <input required type="number" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Ex: 5000" />
+                            <input required min="1" type="number" value={form.areaHectares} onChange={updateField('areaHectares')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Área em hectares" />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Potencial Estimado (tCO2e)</label>
-                            <input required type="number" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Ex: 150000" />
+                            <input required min="1" type="number" value={form.carbonStock} onChange={updateField('carbonStock')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Potencial de créditos" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">UF / Região</label>
+                            <select value={form.stateId} onChange={updateField('stateId')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary">
+                                {stateOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>{option.state}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Tipo</label>
+                            <select value={form.projectType} onChange={updateField('projectType')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary">
+                                <option value="reforestation">Restauração / Reflorestamento</option>
+                                <option value="forest_conservation">Conservação florestal</option>
+                                <option value="solar_energy">Energia renovável</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Certificadora</label>
+                            <select required value={form.certifierId} onChange={updateField('certifierId')} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 focus:outline-none focus:border-primary">
+                                {certifiers.map((certifier) => (
+                                    <option key={certifier.id} value={certifier.id}>{certifier.name}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </div>

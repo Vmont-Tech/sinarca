@@ -27,7 +27,7 @@ class MarketplaceService:
         statement = (
             select(Project)
             .join(EnvironmentalCredit, EnvironmentalCredit.project_id == Project.id)
-            .where(Project.status == "ACTIVE", EnvironmentalCredit.status == "AVAILABLE", EnvironmentalCredit.quantity_available > 0)
+            .where(Project.status.in_(["ACTIVE", "AVAILABLE"]), EnvironmentalCredit.status == "AVAILABLE", EnvironmentalCredit.quantity_available > 0)
             .order_by(Project.blockchain_timestamp.desc().nullslast(), Project.created_at.desc())
         )
         projects = []
@@ -266,6 +266,7 @@ def format_transaction(entry: LedgerEntry, account: LedgerAccount, project: Proj
         "amount": f"{abs(float(entry.amount)):g}",
         "unit": entry.unit,
         "date": metadata.get("date_label") or entry.created_at.isoformat(),
+        "createdAt": entry.created_at.isoformat(),
         "status": metadata.get("status") or ("pending" if event is not None and event.status == "PENDING" else "completed"),
         "hash": metadata.get("hash") or (event.transaction_hash if event is not None else entry.idempotency_key),
         "entities": {
@@ -274,4 +275,3 @@ def format_transaction(entry: LedgerEntry, account: LedgerAccount, project: Proj
         },
         "ledgerAccount": account.external_id,
     }
-

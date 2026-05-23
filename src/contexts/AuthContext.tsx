@@ -10,6 +10,8 @@ interface User {
     email: string;
     document: string;
     role: UserRole;
+    organization?: string;
+    phone?: string;
     avatar?: string;
     govLevel?: 'prata' | 'ouro';
 }
@@ -18,7 +20,6 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     login: (email: string, password: string, role?: UserRole) => Promise<void>;
-    loginWithGovBr: () => Promise<void>;
     register: (data: Partial<User> & { password: string }) => Promise<void>;
     updateProfile: (data: Partial<User>) => Promise<void>;
     logout: () => void;
@@ -27,21 +28,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SESSION_TTL_MS = Number(import.meta.env.VITE_SESSION_TTL_MS || 6 * 60 * 60 * 1000);
-const ALLOW_LOCAL_AUTH_FALLBACK = String(import.meta.env.VITE_ALLOW_LOCAL_AUTH_FALLBACK || 'false').toLowerCase() === 'true';
 const PUBLIC_ROLES: UserRole[] = ['producer', 'auditor', 'company', 'certifier'];
 
-const normalizeRole = (role?: string, fallback?: UserRole): UserRole => {
-    const normalized = (role || fallback || 'company') as UserRole;
+const normalizeRole = (role?: string, defaultRole?: UserRole): UserRole => {
+    const normalized = (role || defaultRole || 'company') as UserRole;
     if (normalized === 'admin') return 'company';
     return PUBLIC_ROLES.includes(normalized) ? normalized : 'company';
 };
 
-const normalizeUser = (raw: any, fallbackRole?: UserRole): User => ({
+const normalizeUser = (raw: any, requestedRole?: UserRole): User => ({
     id: String(raw?.id || `user-${Date.now()}`),
     name: raw?.name || raw?.nome || raw?.username || 'Usuário SINARCA',
     email: raw?.email || '',
     document: raw?.document || raw?.cpf || raw?.cnpj || '',
-    role: normalizeRole(raw?.role || raw?.tipo_usuario, fallbackRole),
+    role: normalizeRole(raw?.role || raw?.tipo_usuario, requestedRole),
+    organization: raw?.organization || raw?.organizacao,
+    phone: raw?.phone || raw?.telefone,
     avatar: raw?.avatar,
     govLevel: raw?.govLevel,
 });
@@ -49,6 +51,13 @@ const normalizeUser = (raw: any, fallbackRole?: UserRole): User => ({
 const sessionIsExpired = (expiresAt: string | null): boolean => {
     if (!expiresAt) return true;
     return new Date(expiresAt).getTime() <= Date.now();
+};
+
+const clearSessionStorage = () => {
+    localStorage.removeItem('sinarca_user');
+    localStorage.removeItem('sinarca_token');
+    localStorage.removeItem('sinarca_token_expires_at');
+    localStorage.removeItem('sinarca.localAuthUser');
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -73,15 +82,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 } catch (e) {
                     console.error('Sessão inválida no backend:', e);
                     setUser(null);
-                    localStorage.removeItem('sinarca_user');
-                    localStorage.removeItem('sinarca_token');
-                    localStorage.removeItem('sinarca_token_expires_at');
+                    clearSessionStorage();
                 }
             } else {
                 setUser(null);
-                localStorage.removeItem('sinarca_user');
-                localStorage.removeItem('sinarca_token');
-                localStorage.removeItem('sinarca_token_expires_at');
+                clearSessionStorage();
             }
             setIsLoading(false);
         };
@@ -112,53 +117,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const loginWithGovBr = async (): Promise<void> => {
-        if (!ALLOW_LOCAL_AUTH_FALLBACK) throw new Error('Gov.br simulado desativado neste ambiente.');
-        persistUser({
-            id: `gov-${Date.now()}`,
-            name: 'Cidadão Gov.br',
-            email: 'usuario@sinarca.com.br',
-            document: 'XXX.XXX.XXX-XX',
-            role: 'company',
-            govLevel: 'ouro',
-        });
-    };
-
     const register = async (data: Partial<User> & { password: string }): Promise<void> => {
         const safeData = { ...data, role: normalizeRole(data.role) };
-        try {
-            const response = await apiPost<any>('/auth/register', safeData);
-            if (response?.user) return;
-        } catch (apiError) {
-            console.warn('[SINARCA] Cadastro via API falhou.', apiError);
-            if (!ALLOW_LOCAL_AUTH_FALLBACK) throw new Error('Cadastro indisponível. Verifique API ou payload.');
+        const response = await apiPost<any>('/auth/register', safeData);
+        if (response?.user) {
+            persistUser(normalizeUser(response.user, safeData.role), response.token || response.access_token, response.expires_at);
+            return;
         }
-
-        if (!ALLOW_LOCAL_AUTH_FALLBACK) throw new Error('Cadastro local desativado.');
-
-        const newUser = {
-            id: `user-${Date.now()}`,
-            name: data.name || 'Novo Usuário',
-            email: data.email || '',
-            document: data.document || '',
-            role: safeData.role,
-            password: data.password,
-        };
-
-        const usersDb = JSON.parse(localStorage.getItem('sinarca_users_db') || '[]');
-        usersDb.push(newUser);
-        localStorage.setItem('sinarca_users_db', JSON.stringify(usersDb));
+        throw new Error('Cadastro indisponível. Verifique API ou payload.');
     };
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('sinarca_user');
-        localStorage.removeItem('sinarca_token');
-        localStorage.removeItem('sinarca_token_expires_at');
+        clearSessionStorage();
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, loginWithGovBr, register, updateProfile, logout, isLoading }}>
+        <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, updateProfile, logout, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

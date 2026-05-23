@@ -33,7 +33,6 @@ export async function runSIEv11(input: RawInput): Promise<SIEResult> {
     const compensation = compensationTranslator(total, uncertainty.level);
 
     // 5. Governance
-    // Generate simple hash (mock)
     const hash = 'SIE-v1.1-' + Math.random().toString(36).substring(7).toUpperCase();
 
     return {
@@ -53,5 +52,4 @@ export async function runSIEv11(input: RawInput): Promise<SIEResult> {
     };
 }
 
-// Fallback for legacy calls if any (optional, but keep things clean)
 export const runImpactEngine = runSIEv11;

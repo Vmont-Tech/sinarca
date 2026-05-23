@@ -1,79 +1,23 @@
-# =========================================
-# FRONTEND BUILD
-# =========================================
-FROM node:20 AS frontend
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-
-RUN npm run build
-
-
-# =========================================
-# APP + POSTGRES
-# =========================================
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-ENV DEBIAN_FRONTEND=noninteractive
+RUN pip install --no-cache-dir uv
 
-# Dependências do sistema
-RUN apt-get update && apt-get install -y \
-    nginx \
-    postgresql \
-    postgresql-contrib \
-    curl \
-    build-essential \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+COPY pyproject.toml uv.lock README.md ./
+COPY backend_app ./backend_app
 
-# Instala uv
-RUN pip install uv
+RUN uv pip install --system .
 
-# Copia projeto
-COPY . .
+RUN adduser --system --group appuser
+USER appuser
 
-# =========================================
-# PYTHON DEPENDENCIES
-# =========================================
-RUN if [ -f pyproject.toml ]; then \
-        uv pip install --system . ; \
-    elif [ -f requirements.txt ]; then \
-        pip install -r requirements.txt ; \
-    fi
+EXPOSE 5680
 
-# =========================================
-# FRONTEND
-# =========================================
-COPY --from=frontend /app/dist /app/frontend/dist
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5680/health', timeout=5)"
 
-# =========================================
-# POSTGRES CONFIG
-# =========================================
-ENV POSTGRES_DB=sinarca_db
-ENV POSTGRES_USER=sinarca
-ENV POSTGRES_PASSWORD=sinarca123
-
-RUN service postgresql start && \
-    su postgres -c "psql --command \"CREATE USER $POSTGRES_USER WITH SUPERUSER PASSWORD '$POSTGRES_PASSWORD';\"" && \
-    su postgres -c "createdb -O $POSTGRES_USER $POSTGRES_DB"
-
-# =========================================
-# DATABASE URL + FRONTEND
-# =========================================
-ENV DATABASE_URL=postgresql://sinarca:sinarca123@localhost:5432/sinarca_db
-ENV FRONTEND_DIST_DIR=/app/frontend/dist
-
-# =========================================
-# START SCRIPT
-# =========================================
-RUN printf '#!/bin/bash\nset -e\nservice postgresql start\nexec uvicorn backend.main:app --host 0.0.0.0 --port 80\n' > /start.sh && chmod +x /start.sh
-
-EXPOSE 80
-
-CMD ["/start.sh"]
+CMD ["uvicorn", "backend_app.main:app", "--host", "0.0.0.0", "--port", "5680"]

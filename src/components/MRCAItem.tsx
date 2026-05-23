@@ -16,6 +16,7 @@ interface MRCAItemProps {
     data: {
         id: string;
         projectId?: string;
+        friendlyId?: string;
         type: string;
         status: string;
         institution: { name: string; cnpj: string };
@@ -47,7 +48,7 @@ export const MRCAItem: React.FC<MRCAItemProps> = ({ data }) => {
     const location = useLocation();
     const isPublic = location.pathname.startsWith('/public') || location.pathname === '/' || location.pathname === '/landing';
 
-    // 1. Fallback Image State
+    // 1. Image Error State
     const [imgError, setImgError] = useState(false);
     const [showTechnical, setShowTechnical] = useState(false); // UX: Technical Toggle
 
@@ -56,7 +57,7 @@ export const MRCAItem: React.FC<MRCAItemProps> = ({ data }) => {
         "os padrões metodológicos internacionais citados. O SINARCA atua como infraestrutura de registro imutável.";
 
     const handleClick = () => {
-        const targetId = data.projectId || 'PRC-2024-882';
+        const targetId = data.friendlyId || data.projectId || data.id || 'PRC-2024-882';
         if (isPublic) {
             navigate(`/public/projeto/${targetId}`);
         } else {
@@ -66,7 +67,7 @@ export const MRCAItem: React.FC<MRCAItemProps> = ({ data }) => {
 
     const handleAction = (action: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        const targetId = data.projectId || 'PRC-2024-882';
+        const targetId = data.friendlyId || data.projectId || data.id || 'PRC-2024-882';
         if (isPublic) {
             navigate('/login', { state: { from: `/painel/${action}/${targetId}` } });
         } else {

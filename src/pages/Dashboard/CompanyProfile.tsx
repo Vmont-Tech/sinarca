@@ -20,9 +20,6 @@ export default function CompanyProfile() {
 
             const allProjects = await database.getMarketProjects({ limit: 100 });
             if (found) {
-                // If it's a developer, filter by developer name.
-                // If compensator, we don't have direct link in projects mock yet, but we will infer ownership or "support"
-                // For now, filter by institution name (developer)
                 const related = allProjects.filter((p: any) => p.institution.name === found.name);
                 setProjects(related);
             }

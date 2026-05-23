@@ -1,26 +1,23 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
     User,
     Shield,
-    Briefcase,
     FileSignature,
     Building2,
     Fingerprint,
     CheckCircle,
     XCircle,
     Calendar,
-    MapPin,
     Hash,
     Link as LinkIcon,
-    ChevronRight,
-    Award,
     Activity,
     Lock,
     Leaf
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { database } from '../../services/database';
 
-// --- MOCK CONSTANTS ---
 const USER_ROLES: any = {
     auditor: { label: 'Auditor Certificado', color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
     certifier: { label: 'Certificadora', color: 'text-sinarca-neon', bg: 'bg-sinarca-neon/10', border: 'border-sinarca-neon/20' },
@@ -36,94 +33,156 @@ const PERMISSIONS = [
     { id: 'transfer', label: 'Transacionar Ativos', allowedRoles: ['company', 'certifier', 'admin', 'producer'] },
 ];
 
-const MOCK_DB: any = {
-    'default': {
-        id: 'USR-2023-8821',
-        name: 'Carlos Mendes',
-        cpf: '332.***.***-89',
-        role: 'auditor',
-        position: 'Auditor Sênior Líder',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop',
-        joinedAt: '12 Ago 2022',
-        lastActive: 'Online Agora',
-        organization: { name: 'Global Verify Auditores Ltda', cnpj: '12.***.***/0001-90', authorizedBy: 'Roberto Silva (Diretor)', logo: 'GV' },
-        stats: { projectsAudited: 42, hashesSigned: 156, reputationScore: 98 },
-        activity: [
-            { id: 'TX-9901', action: 'Auditoria Finalizada', target: 'Reserva Juma (Fase 2)', date: 'Hoje, 09:30', hash: '0x8f2...a9c1', type: 'audit' },
-            { id: 'TX-9902', action: 'Validação de Documentos', target: 'Carbono Cerrado', date: 'Ontem, 16:45', hash: '0x3d4...g7h8', type: 'audit' },
-            { id: 'TX-9903', action: 'Check-in de Campo', target: 'Recuperação Florestal Amazônia', date: '01 Jan 2025, 10:00', hash: '0x1a2...b3c4', type: 'audit' }
-        ]
-    },
-    'banco-futuro': {
-        id: 'USR-2024-BF01',
-        name: 'Banco Futuro ESG',
-        cpf: 'N/A (CNPJ)',
-        role: 'company',
-        position: 'Diretoria de Sustentabilidade',
-        avatar: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?q=80&w=200&auto=format&fit=crop',
-        joinedAt: '10 Jan 2024',
-        lastActive: 'Há 2 min',
-        organization: { name: 'Banco Futuro S.A.', cnpj: '12.345.678/0001-90', authorizedBy: 'BACEN / CVM', logo: 'BF' },
-        stats: { projectsAudited: 0, hashesSigned: 1240, reputationScore: 100 },
-        activity: [
-            { id: 'TX-9001', action: 'Aposentadoria de Créditos', target: 'Reserva Juma (1.2M tCO2e)', date: '15 Fev 2025, 10:00', hash: '0x7f9...e4r5', type: 'retire' }
-        ]
-    },
-    'agrosustentavel': {
-        id: 'USR-2024-AG03',
-        name: 'AgroSustentável',
-        cpf: 'N/A (CNPJ)',
-        role: 'producer',
-        position: 'Gestão de Ativos Ambientais',
-        avatar: 'https://images.unsplash.com/photo-1625246333195-f8196ba083df?q=80&w=200&auto=format&fit=crop',
-        joinedAt: '15 Jun 2023',
-        lastActive: 'Há 5 horas',
-        organization: { name: 'AgroSustentável Ltda', cnpj: '98.765.432/0001-21', authorizedBy: 'MAPA', logo: 'AS' },
-        stats: { projectsAudited: 0, hashesSigned: 620, reputationScore: 95 },
-        activity: [
-            { id: 'TX-7001', action: 'Registro de Projeto', target: 'Carbono Cerrado', date: '01 Jan 2025, 05:00', hash: '0x1c9...f2a3', type: 'register' }
-        ]
-    }
+type ProfileView = {
+    id: string;
+    name: string;
+    cpf: string;
+    role: 'auditor' | 'certifier' | 'company' | 'producer' | 'admin';
+    position: string;
+    avatar?: string;
+    joinedAt: string;
+    lastActive: string;
+    organization: {
+        name: string;
+        cnpj: string;
+        authorizedBy: string;
+        logo: string;
+    };
+    stats: {
+        projectsAudited: number;
+        hashesSigned: number;
+        reputationScore: number;
+    };
+    activity: Array<{
+        id: string;
+        action: string;
+        target: string;
+        date: string;
+        hash: string;
+        type: string;
+    }>;
+};
+
+const initialsFor = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'SI';
+
+const roleFromCatalog = (entity: any): ProfileView['role'] => {
+    const raw = String(entity?.role || '').toLowerCase();
+    if (raw.includes('auditor')) return 'auditor';
+    if (raw.includes('certifier')) return 'certifier';
+    if (raw.includes('developer') || raw.includes('producer')) return 'producer';
+    if (raw.includes('registry') || raw.includes('admin')) return 'admin';
+    return 'company';
+};
+
+const positionForRole = (role: ProfileView['role']) => ({
+    auditor: 'Auditoria Credenciada',
+    certifier: 'Certificadora Autorizada',
+    company: 'Empresa Compradora',
+    producer: 'Gestão de Ativos Ambientais',
+    admin: 'Administração SINARCA',
+}[role]);
+
+const profileFromCatalogEntity = (entity: any): ProfileView => {
+    const role = roleFromCatalog(entity);
+    return {
+        id: String(entity.id),
+        name: entity.name,
+        cpf: entity.document || 'Documento não informado',
+        role,
+        position: positionForRole(role),
+        avatar: entity.logo,
+        joinedAt: entity.created_at || 'Registro SINARCA',
+        lastActive: 'Sincronizado com banco',
+        organization: {
+            name: entity.name,
+            cnpj: entity.document || 'Documento não informado',
+            authorizedBy: entity.authorized || entity.verified ? 'SINARCA' : 'Pendente',
+            logo: initialsFor(entity.name),
+        },
+        stats: {
+            projectsAudited: Number(entity.projects_audited || entity.projects || 0),
+            hashesSigned: 0,
+            reputationScore: entity.verified === false || entity.authorized === false ? 0 : 100,
+        },
+        activity: [],
+    };
+};
+
+const profileFromAuthenticatedUser = (user: any): ProfileView => {
+    const role = user.role || 'company';
+    const name = user.name || 'Usuário SINARCA';
+    return {
+        id: user.id,
+        name,
+        cpf: user.document || 'Documento não informado',
+        role,
+        position: positionForRole(role),
+        avatar: user.avatar,
+        joinedAt: 'Conta ativa',
+        lastActive: 'Sessão atual',
+        organization: {
+            name: user.organization || name,
+            cnpj: user.document || 'Documento não informado',
+            authorizedBy: 'Cadastro SINARCA',
+            logo: initialsFor(user.organization || name),
+        },
+        stats: {
+            projectsAudited: 0,
+            hashesSigned: 0,
+            reputationScore: 100,
+        },
+        activity: [],
+    };
 };
 
 export default function UserProfile() {
-    const navigate = useNavigate();
     const { id } = useParams();
     const { user } = useAuth();
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<ProfileView | null>(null);
+    const [loaded, setLoaded] = useState(false);
     const [activeTab, setActiveTab] = useState<'activity' | 'projects'>('activity');
 
     useEffect(() => {
-        if (id && MOCK_DB[id]) {
-            setProfile(MOCK_DB[id]);
-        } else if (id) {
-            setProfile({
-                ...MOCK_DB['default'],
-                name: `Organização ${id}`,
-                id: `USR-GEN-${id.substring(0, 4).toUpperCase()}`,
-                role: 'company'
-            });
-        } else if (user) {
-            // Check if user matches any mock for better demo
-            const mockKey = user.role === 'auditor' ? 'default' : 
-                          user.role === 'producer' ? 'agrosustentavel' : 
-                          user.role === 'company' ? 'banco-futuro' : 'default';
-            
-            const baseMock = MOCK_DB[mockKey] || MOCK_DB['default'];
-            
-            setProfile({
-                ...baseMock,
-                name: user.name || baseMock.name,
-                id: user.id || baseMock.id,
-                role: user.role || baseMock.role,
-                position: user.role === 'producer' ? 'Gestor de Ativos' : (baseMock.position || 'Membro SINARCA')
-            });
-        }
+        let mounted = true;
+        const loadProfile = async () => {
+            setLoaded(false);
+            try {
+                if (id) {
+                    const [companies, auditors, certifiers] = await Promise.all([
+                        database.getCompanies(),
+                        database.getAuditors(),
+                        database.getCertifiers(),
+                    ]);
+                    const entity = [...companies, ...auditors, ...certifiers].find((item: any) => String(item.id) === id || String(item.name) === id);
+                    if (mounted) setProfile(entity ? profileFromCatalogEntity(entity) : null);
+                    return;
+                }
+
+                if (user && mounted) {
+                    setProfile(profileFromAuthenticatedUser(user));
+                    return;
+                }
+
+                if (mounted) setProfile(null);
+            } finally {
+                if (mounted) setLoaded(true);
+            }
+        };
+
+        loadProfile();
+        return () => {
+            mounted = false;
+        };
     }, [id, user]);
 
-    if (!profile) return <div className="p-20 text-center text-primary flex flex-col items-center gap-4">
+    if (!loaded) return <div className="p-20 text-center text-primary flex flex-col items-center gap-4">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
         <p className="font-bold uppercase tracking-widest text-xs">Sincronizando Perfil...</p>
+    </div>;
+
+    if (!profile) return <div className="p-20 text-center text-primary flex flex-col items-center gap-4">
+        <User className="w-10 h-10 text-text-muted" />
+        <p className="font-bold uppercase tracking-widest text-xs">Perfil não encontrado no banco</p>
     </div>;
 
     const roleStyle = USER_ROLES[profile.role] || USER_ROLES.company;
@@ -297,15 +356,4 @@ export default function UserProfile() {
             </div>
         </div>
     );
-}
-function Share2(props: any) {
-    return (
-        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3" />
-            <circle cx="6" cy="12" r="3" />
-            <circle cx="18" cy="19" r="3" />
-            <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" />
-            <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
-        </svg>
-    )
 }

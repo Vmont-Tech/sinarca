@@ -38,6 +38,7 @@ export type TransactionRecord = {
     amount: string;
     unit: string;
     date: string;
+    createdAt?: string;
     status: string;
     hash: string;
     entities: {
@@ -51,11 +52,42 @@ export type TransactionsResponse = {
     transactions: TransactionRecord[];
 };
 
-const asArray = <T,>(value: any, key: string, fallback: T[]): T[] => {
+export type MonitoringProjectResponse = {
+    success: boolean;
+    project: ProjectMRCA;
+    baseline: {
+        sentinelSceneId: string;
+        baselineHash: string;
+        pointsAnalyzed: number;
+        vegetationCoverPct: number;
+        ndviMean: number;
+        capturedAt: string;
+        evidenceUri?: string;
+    };
+    tags: Array<{
+        id: string;
+        position: string;
+        status: string;
+        lastSeenAt?: string;
+        latitude: number;
+        longitude: number;
+    }>;
+    events: Array<{
+        id: string;
+        type: string;
+        chain: string;
+        hash?: string;
+        status: string;
+        amount?: number;
+        createdAt: string;
+    }>;
+};
+
+const asArray = <T,>(value: any, key: string, defaultValue: T[]): T[] => {
     if (Array.isArray(value)) return value;
     if (Array.isArray(value?.[key])) return value[key];
     if (Array.isArray(value?.data)) return value.data;
-    return fallback;
+    return defaultValue;
 };
 
 const getProjectsFromApi = async (): Promise<ProjectMRCA[]> => {
@@ -80,7 +112,7 @@ const mapProjectToFeedItem = (proj: ProjectMRCA) => {
 
     return {
         id: proj.id,
-        projectId: proj.id,
+        projectId: proj.friendlyId,
         friendlyId: proj.friendlyId,
         type: typeKey,
         status: statusIcon,
@@ -187,6 +219,14 @@ export const database = {
     getTransactions: async (): Promise<TransactionRecord[]> => {
         const response = await apiGet<TransactionsResponse>('/transactions');
         return asArray<TransactionRecord>(response, 'transactions', []);
+    },
+
+    getMonitoringProject: async (id: string): Promise<MonitoringProjectResponse> => {
+        const response = await apiGet<MonitoringProjectResponse>(`/monitoring/projects/${encodeURIComponent(id)}`);
+        if (!response?.project || !response?.baseline) {
+            throw new Error('Resposta inválida da API de monitoramento');
+        }
+        return response;
     },
 
     // LEGACY REDIRECT: getMRCAs aponta para MarketProjects para compatibilidade.

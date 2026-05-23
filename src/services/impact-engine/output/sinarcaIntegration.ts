@@ -1,18 +1,20 @@
+import { apiGet } from '../../api';
+
 export function calculateTotalAcquisition(
     _targetTon: number
 ): number {
-    return _targetTon; // Simplified for now
+    return _targetTon;
 }
 
-export async function linkToSinarca(_targetTon: number) {
-    // Mock integration - In real world, this fetches /api/marketplace/projects
-    // filtered by availability matching the target.
-
-    // Simulate delay
-    await new Promise(r => setTimeout(r, 200));
-
-    return [
-        { id: '1', name: 'Florestal Amazonia Preserv', pricePerTon: 35.0, available: 5000 },
-        { id: '2', name: 'Reforest Mata Atlântica', pricePerTon: 42.5, available: 1200 }
-    ];
+export async function linkToSinarca(targetTon: number) {
+    const response = await apiGet<any>('/marketplace');
+    const credits = Array.isArray(response?.credits) ? response.credits : [];
+    return credits
+        .map((project: any) => ({
+            id: project.friendlyId || project.id,
+            name: project.name,
+            pricePerTon: Number(project.metrics?.investmentValue || 0) / Math.max(Number(project.metrics?.carbonStock || 1), 1),
+            available: Number(project.metrics?.carbonStock || 0),
+        }))
+        .filter((project: any) => project.available >= targetTon);
 }

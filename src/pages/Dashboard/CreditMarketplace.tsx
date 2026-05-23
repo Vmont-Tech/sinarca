@@ -66,7 +66,7 @@ export default function CreditMarketplace() {
                     <p className="text-sm font-bold uppercase tracking-widest text-primary">Fluxo MVP</p>
                     <h1 className="text-3xl font-black text-gray-950">Marketplace de Créditos</h1>
                     <p className="mt-2 max-w-3xl text-gray-600">
-                        Empresa compradora seleciona créditos ambientais, simula compra, registra taxa de 4,5% e recebe hash Stellar/mock rastreável.
+                        Empresa compradora seleciona créditos ambientais, registra taxa de 4,5% e recebe hash transacional rastreável.
                     </p>
                 </div>
                 <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-700">

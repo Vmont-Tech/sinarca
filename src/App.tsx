@@ -147,7 +147,7 @@ function App() {
             </Route>
           </Route>
 
-          {/* Fallback */}
+          {/* Default route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

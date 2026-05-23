@@ -21,19 +21,19 @@
                            v
 +-------------------------------------------------------------+
 | API FastAPI ativa                                             |
-| `backend/main.py`, rotas inline em `/api/v1/*`,               |
-| dados em memória e adapter Stellar em modo mock/parcial       |
+| `backend_app/main.py`, routers `/api/v1/*`,                   |
+| SQLAlchemy async, JWT/Argon2 e Postgres                       |
 +--------------------------+----------------------------------+
                            |
                            v
 +-------------------------------------------------------------+
-| Camadas de apoio, legado e deploy                             |
-| `backend/api/*` não montado, `backend/models/*` não usado,    |
-| contrato Soroban em Rust e Dockerfiles de runtime             |
+| Camadas de apoio e integrações                                |
+| `backend_app/db/*`, `backend_app/modules/*`,                  |
+| adapters Stellar/Soroban/Etherfuse/Polygon e contrato Rust    |
 +-------------------------------------------------------------+
 ```
 
-O sistema atual é um monorepo com frontend React/Vite, backend Python/FastAPI em modo MVP e contrato Soroban separado. A API em produção local é `backend/main.py`; os módulos SQLAlchemy em `backend/api/*`, `backend/core/*` e `backend/models/*` existem como esqueleto/legado e não devem ser tratados como runtime ativo.
+O sistema é um monorepo com frontend React/Vite, API Python/FastAPI em `backend_app/`, Postgres/Supabase como fonte durável e contrato Soroban separado. O backend legado foi aposentado nos artefatos de runtime/deploy.
 
 ## Responsabilidades principais
 
@@ -43,16 +43,16 @@ O sistema atual é um monorepo com frontend React/Vite, backend Python/FastAPI e
 | Rotas | Registrar rotas públicas e protegidas. | `src/App.tsx` |
 | Layout público | Cabeçalho, rodapé e shell das páginas públicas. | `src/layouts/PublicLayout.tsx` |
 | Layout dashboard | Sidebar por papel, top bar e `<Outlet />` para `/painel/*`. | `src/layouts/DashboardLayout.tsx` |
-| Autenticação no navegador | Estado de usuário, token, login, cadastro, perfil e fallback local. | `src/contexts/AuthContext.tsx` |
+| Autenticação no navegador | Estado de usuário, token, login, cadastro, perfil e expiração. | `src/contexts/AuthContext.tsx` |
 | Guarda de rota | Bloqueio de `/painel/*` quando o usuário não está autenticado. | `src/components/ProtectedRoute.tsx` |
 | Cliente HTTP | Base URL, bearer token, JSON/FormData e conversão de erros. | `src/services/api.ts` |
-| Fachada de dados | Mapeamento de projetos, certificadoras, auditores, empresas, inventário e mapas. | `src/services/database.ts` |
+| Fachada de dados | Mapeamento de projetos, certificadoras, auditores, empresas, inventário e transações. | `src/services/database.ts` |
 | Motor de impacto | Cálculo local SIE v1.1 no navegador. | `src/services/impact-engine/` |
-| API ativa | Rotas `/health` e `/api/v1/*`, sessões e dados em memória. | `backend/main.py`, `backend/mock_data.py` |
-| Adapter blockchain | Transferência/burn simulados e preparação para Stellar. | `backend/services/stellar_service.py` |
-| Persistência planejada | Modelos, sessão e routers SQLAlchemy não montados. | `backend/core/`, `backend/api/`, `backend/models/` |
+| API ativa | Rotas `/health` e `/api/v1/*`, guards, serviços de domínio e persistência. | `backend_app/main.py`, `backend_app/api/router.py`, `backend_app/modules/*` |
+| Persistência | Modelos SQLAlchemy async, sessões e seed Postgres. | `backend_app/db/*`, `supabase/seed.sql` |
+| Adapters externos | Portas para Stellar/Soroban, Etherfuse, Polygon e Transfero. | `backend_app/adapters/*` |
 | Contrato on-chain | Locked mint, unlock, transfer, burn e views. | `soroban-contract/src/contract.rs` |
-| Deploy | Imagem combinada e imagens separadas de API/frontend. | `Dockerfile`, `Dockerfile.api`, `Dockerfile.frontend` |
+| Deploy | Imagens separadas de API/frontend e compose Dokploy. | `Dockerfile`, `Dockerfile.api`, `Dockerfile.frontend`, `docker-compose*.yml` |
 
 ## Fluxos arquiteturais
 
@@ -63,67 +63,62 @@ O sistema atual é um monorepo com frontend React/Vite, backend Python/FastAPI e
 3. Páginas públicas renderizam diretamente; rotas `/painel/*` passam por `ProtectedRoute`.
 4. Páginas de dados chamam `database.*` ou `api*`.
 5. `src/services/api.ts` adiciona token, serializa corpo e chama `${API_BASE_URL}${path}`.
-6. `backend/main.py` responde a rota ativa e lê/muta `backend/mock_data.py`.
-7. `src/services/database.ts` adapta a resposta para feed, mapa, detalhe e painéis.
+6. `backend_app` executa validação, autorização e serviços de domínio.
+7. Dados críticos são lidos e gravados em Postgres.
 
 ### Autenticação
 
-1. `AuthProvider` lê `sinarca_token`, `sinarca_user` e expiração do `localStorage`.
+1. `AuthProvider` lê `sinarca_token` e expiração do `localStorage`.
 2. Login envia `{ email, dadoLogin, password, role? }` para `/api/v1/auth/login`.
-3. `backend/main.py` valida usuário em memória e gera token opaco em `ACTIVE_SESSIONS`.
+3. `backend_app` valida Argon2 no perfil persistido e emite JWT/refresh token.
 4. O frontend persiste token, usuário e `expires_at`.
-5. A reconstrução deve mover essa lógica para Supabase Auth/JWT ou auth própria com senha hash, expiração no servidor e guards por papel.
+5. `/api/v1/auth/me` é a fonte de verdade para restaurar sessão.
 
 ### Marketplace e aposentadoria
 
 1. `CreditMarketplace` lê `/marketplace`.
-2. Compra usa `/marketplace/buy`, chama `StellarService.transfer_credit`, registra transação e reduz estoque em memória.
-3. `RetireCredits` ainda chama `http://127.0.0.1:5680/...` diretamente; isso precisa ser substituído por `apiPost('/marketplace/compensate', ...)`.
-4. A reconstrução deve trocar mutações em memória por transações no Supabase Postgres e ledger idempotente.
+2. Compra usa `/marketplace/buy`, grava compra, evento de cadeia e lançamento no ledger.
+3. Aposentadoria usa `/marketplace/compensate`, grava certificado, burn/evento e baixa de saldo.
+4. `/transactions` lê lançamentos persistidos no ledger.
 
 ### Auditoria e certificação
 
 1. `AuditorReview` consome `/audit/queue` e `/audit/verify/:projectId`.
 2. `CertifierReview` consome `/certifier/queue` e `/certifier/projects/:projectId/decision`.
-3. `backend/main.py` altera status e timeline em listas globais.
-4. A API nova deve persistir laudos, evidências, decisões e eventos auditáveis.
+3. Decisões, laudos, evidências, créditos e trilha de auditoria são persistidos.
 
 ### Deploy atual
 
-O `Dockerfile` raiz constrói o frontend, instala a API Python e serve a SPA via fallback estático em FastAPI. `Dockerfile.api` expõe API Python na porta 5680. `Dockerfile.frontend` usa Vite dev server e não é um runtime estático de produção. `docker-compose.yml` existe, mas está inválido para uso confiável.
+O `Dockerfile` raiz e `Dockerfile.api` executam `backend_app.main:app` na porta 5680. `Dockerfile.frontend` entrega o build Vite estático. `docker-compose.yml` cobre o fluxo local e `docker-compose.dokploy.yml` define o contrato de produção com API, web e Postgres/Supabase externo.
 
 ## Restrições e fontes canônicas
 
-- Fonte canônica do contrato ativo: `backend/main.py`, `backend/mock_data.py`, `src/services/api.ts`, `src/services/database.ts` e `src/contexts/AuthContext.tsx`.
+- Fonte canônica da API: `backend_app/main.py`, `backend_app/api/router.py`, `backend_app/modules/*`, `backend_app/db/*`.
+- Fonte canônica dos dados iniciais: `supabase/seed.sql`.
 - Fonte canônica do frontend: `src/App.tsx`, `src/layouts/*`, `src/services/*` e páginas em `src/pages/`.
-- `backend/api/*` e `backend/models/*` são referência/legado até serem explicitamente conectados.
-- `soroban-contract/src/contract.rs` é a fonte candidata do contrato Soroban; `backend/main.py` não chama o contrato on-chain.
-- A reconstrução aprovada segue Python/FastAPI, com Node.js/TypeScript mantido apenas como alternativa documentada.
+- `soroban-contract/src/contract.rs` é a fonte do contrato Soroban.
+- Supabase é usado nesta fase apenas como Postgres via `DATABASE_URL`.
 
 ## Anti-padrões a evitar
 
-### Adicionar endpoint em router não montado
-
-Adicionar rotas em `backend/api/*` não altera a API atual, porque `backend/main.py` não inclui esses routers. Enquanto a API antiga existir, mudanças de runtime precisam estar em `backend/main.py`; na reconstrução, devem entrar no novo pacote `backend_app/`.
-
 ### Bypassar `src/services/api.ts`
 
-Chamadas diretas como a de `RetireCredits` ignoram `VITE_API_URL`, bearer token, proxy Vite e deploy em container. Novas chamadas devem usar `apiGet`, `apiPost` ou `apiPatch`.
+Chamadas diretas ignoram `VITE_API_URL`, bearer token, proxy Vite e deploy em container. Novas chamadas devem usar `apiGet`, `apiPost` ou `apiPatch`.
 
-### Assumir que PostgreSQL já é o storage ativo
+### Reintroduzir estado de domínio fora do banco
 
-O runtime atual usa listas/dicionários em memória. A migração para Supabase deve ser uma fase explícita com migrations, seed, RLS e testes.
+Projetos, perfis, transações, laudos, créditos, certificados e exemplos navegáveis devem vir do Postgres ou do seed inicial.
 
 ### Planejar só pela documentação antiga
 
-Há divergências históricas entre docs e código, como menções a bibliotecas que não estão no `package.json`. Para o próximo corte, a verdade operacional deve vir do código ativo e ser refletida de volta na documentação.
+Há divergências históricas entre docs e código. Para novos cortes, a verdade operacional deve vir do código ativo e ser refletida de volta na documentação.
 
-## Direção arquitetural para a reconstrução
+## Direção arquitetural
 
-- Criar `backend_app/` como nova API FastAPI isolada.
-- Congelar contrato `/api/v1` antes de substituir `backend/main.py`.
-- Usar Supabase Postgres como fonte de dados durável.
-- Escolher explicitamente Supabase Auth/JWT ou auth própria com Argon2/JWT.
-- Implementar guards por papel desde o primeiro corte.
+- Manter `backend_app/` como runtime único.
+- Manter contrato `/api/v1` coberto por testes.
+- Usar Supabase Postgres como fonte durável.
+- Evoluir auth própria ou Supabase Auth apenas com decisão explícita.
+- Manter guards por papel desde o primeiro corte.
 - Isolar Stellar, Soroban, Etherfuse e Polygon atrás de adapters.
 - Separar deploy em `sinarca-api` e `sinarca-web`, acionados pelo mesmo commit em `main`.

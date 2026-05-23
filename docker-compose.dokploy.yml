@@ -8,6 +8,11 @@ services:
         required: false
     environment:
       BACKEND_RUNTIME: backend_app
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-}
     ports:
       - "${API_PORT:-5680}:5680"
     healthcheck:

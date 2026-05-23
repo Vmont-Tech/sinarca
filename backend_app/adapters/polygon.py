@@ -8,12 +8,12 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Literal
 
-PolygonMode = Literal["mock", "testnet"]
+PolygonMode = Literal["local", "testnet"]
 
 
 @dataclass(frozen=True)
 class PolygonConfig:
-    mode: PolygonMode = "mock"
+    mode: PolygonMode = "local"
     rpc_url: str | None = None
     vault_address: str | None = None
 
@@ -22,7 +22,7 @@ class PolygonConfig:
         rpc_url = os.getenv("POLYGON_RPC_URL")
         vault_address = os.getenv("POLYGON_VAULT_ADDRESS")
         explicit_mode = os.getenv("POLYGON_MODE")
-        mode: PolygonMode = "testnet" if explicit_mode == "testnet" or rpc_url or vault_address else "mock"
+        mode: PolygonMode = "testnet" if explicit_mode == "testnet" or rpc_url or vault_address else "local"
         return cls(mode=mode, rpc_url=rpc_url, vault_address=vault_address)
 
     def assert_testnet_ready(self) -> None:
@@ -46,17 +46,17 @@ class PolygonVaultAdapter:
     ) -> dict[str, Any]:
         _validate_lock_inputs(chain, vault_address, source_token_address, source_tx_hash, amount)
 
-        if self.config.mode == "mock":
+        if self.config.mode == "local":
             return {
                 "success": True,
-                "mode": "mock",
+                "mode": "local",
                 "chain": "polygon",
                 "vault_address": vault_address,
                 "source_token_address": source_token_address,
                 "source_tx_hash": source_tx_hash,
                 "amount": amount,
                 "status": "LOCK_CONFIRMED",
-                "hash": _mock_hash(source_tx_hash),
+                "hash": _local_hash(source_tx_hash),
             }
 
         self.config.assert_testnet_ready()
@@ -87,7 +87,7 @@ class PolygonVaultAdapter:
             "wrapped_stellar_asset": wrapped_stellar_asset,
             "amount": amount,
             "status": "WRAPPED_MINT_REQUESTED",
-            "hash": _mock_hash(f"{project_id}:{wrapped_stellar_asset}:{amount}"),
+            "hash": _local_hash(f"{project_id}:{wrapped_stellar_asset}:{amount}"),
         }
 
     def _rpc(self, method: str, params: list[Any]) -> Any:
@@ -125,5 +125,5 @@ def _validate_lock_inputs(chain: str, vault_address: str, source_token_address: 
         raise ValueError("amount deve ser maior que zero")
 
 
-def _mock_hash(seed: str) -> str:
-    return "polygon_mock_" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+def _local_hash(seed: str) -> str:
+    return "polygon_local_" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]

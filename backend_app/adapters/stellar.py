@@ -7,12 +7,12 @@ import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
-StellarMode = Literal["mock", "testnet", "live"]
+StellarMode = Literal["local", "testnet", "live"]
 
 
 @dataclass(frozen=True)
 class StellarAdapterConfig:
-    mode: StellarMode = "mock"
+    mode: StellarMode = "local"
     network: str = "testnet"
     horizon_url: str | None = None
     soroban_rpc_url: str | None = None
@@ -34,7 +34,7 @@ class StellarAdapterConfig:
         )
 
     def assert_ready(self) -> None:
-        if self.mode == "mock":
+        if self.mode == "local":
             return
 
         missing: list[str] = []
@@ -152,12 +152,12 @@ class SorobanCreditAdapter:
 
 def _mode_from_env() -> StellarMode:
     explicit_mode = os.getenv("STELLAR_MODE")
-    if explicit_mode in {"mock", "testnet", "live"}:
+    if explicit_mode in {"local", "testnet", "live"}:
         return explicit_mode
 
     enabled = os.getenv("STELLAR_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
     if not enabled:
-        return "mock"
+        return "local"
 
     network = os.getenv("STELLAR_NETWORK", "testnet").strip().lower()
     return "live" if network in {"live", "mainnet", "public"} else "testnet"

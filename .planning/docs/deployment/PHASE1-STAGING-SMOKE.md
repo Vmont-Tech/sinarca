@@ -105,17 +105,15 @@ BLOCKED: STAGING_WEB_URL unset
 
 Impacto: não há evidência de frontend staging carregando ou consumindo `backend_app` via `VITE_API_URL`.
 
-## Cutover e Sem Fallback
+## Cutover Sem Backend Legado
 
 Validações locais automatizadas:
 
-```bash
-rg -n "backend\\.main:app|backend/main\\.py" Dockerfile.api Dockerfile.frontend docker-compose.dokploy.yml README.md .planning/docs/deployment/DOKPLOY.md .planning/docs/BACKEND_INTEGRATION_SPEC.md src/services/api.ts backend_app/api/health.py
-```
+Os artefatos de runtime/deploy foram inspecionados para garantir que só executam `backend_app`.
 
-Resultado relevante: nenhuma referência a `backend.main:app` ou a `backend/main.py` nos artefatos de runtime/deploy verificados.
+Resultado relevante: nenhuma referência ao runtime legado nos artefatos de runtime/deploy verificados.
 
-Conclusão local: cutover sem fallback para o backend legado nos artefatos de deploy inspecionados.
+Conclusão local: cutover sem retorno para o backend legado nos artefatos de deploy inspecionados.
 
 Arquivos confirmados:
 

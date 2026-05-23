@@ -9,44 +9,42 @@
 - **Auth:** bearer token lido de `localStorage` (`sinarca_token`).
 - **Proxy local:** `vite.config.ts` encaminha `/api` para `http://localhost:5680`.
 - **Fachada de domínio:** `src/services/database.ts`.
-- **Ponto frágil:** `src/pages/Dashboard/RetireCredits.tsx` bypassa o helper e chama `http://127.0.0.1:5680` diretamente.
+- **Contrato:** chamadas de negócio passam por `apiGet`, `apiPost` ou `apiPatch`.
 
 ## API FastAPI ativa
 
-- **Entrada:** `backend/main.py`.
-- **Prefixo:** `API_PREFIX = "/api/v1"`.
+- **Entrada:** `backend_app/main.py`.
+- **Prefixo:** `/api/v1`.
 - **Health:** `GET /health`.
-- **Auth:** token opaco em `ACTIVE_SESSIONS`, sem persistência.
-- **Dados:** `backend/mock_data.py`.
-- **SPA fallback:** `FRONTEND_DIST_DIR` permite servir `dist/` pela API.
+- **Auth:** JWT com senha Argon2 e perfis persistidos.
+- **Dados:** Postgres via SQLAlchemy async.
 
 ## Supabase
 
-- **Status atual:** não integrado ao runtime.
-- **Ausências detectadas:** sem `@supabase/supabase-js`, sem cliente Supabase Python e sem referências de código a Supabase.
-- **Uso alvo:** Postgres local/produção, RLS, service role somente no backend e opção de Supabase Auth/JWT.
-- **Atenção:** o uso de Supabase deve ser implementado como integração nova, não como pressuposto existente.
+- **Status atual:** usado como Postgres local/produção via `DATABASE_URL`.
+- **Decisão atual:** sem cliente Supabase no frontend e sem dependência de Supabase Auth nesta fase.
+- **Uso alvo:** Postgres durável com migrations e seed idempotente.
 
 ## Banco de dados
 
-- **PostgreSQL planejado:** `DATABASE_URL` existe em `backend/core/database.py`, `Dockerfile` e `docker-compose.yml`.
-- **ORM legado:** SQLAlchemy em `backend/models/*`, não usado por `backend/main.py`.
-- **Extensão:** `backend/core/database.py` tenta criar `vector`, mas o deploy atual não garante pgvector.
-- **Ação alvo:** migrations versionadas, Supabase CLI local, Alembic e seed idempotente.
+- **PostgreSQL ativo:** `DATABASE_URL` é obrigatório para `backend_app`.
+- **ORM ativo:** SQLAlchemy async em `backend_app/db/models.py`.
+- **Seed:** `supabase/seed.sql` consolida dados de exemplo persistidos.
+- **Ação alvo:** manter migrations versionadas e seed idempotente.
 
 ## Stellar e Soroban
 
-- **Adapter atual:** `backend/services/stellar_service.py`.
-- **Modo funcional:** mock/local quando `STELLAR_ENABLED=false`.
+- **Adapters atuais:** `backend_app/adapters/stellar.py`, `backend_app/adapters/polygon.py`, `backend_app/adapters/etherfuse.py`, `backend_app/adapters/transfero.py`.
+- **Modo funcional:** local/sandbox quando credenciais externas não estão configuradas.
 - **Configurações:** `STELLAR_NETWORK`, `STELLAR_HORIZON_URL`, chaves de issuer/distributor e `STELLAR_ASSET_CODE`.
 - **Contrato Soroban:** `soroban-contract/src/contract.rs`, usando `soroban-sdk`.
-- **Lacuna:** `backend/main.py` não chama o contrato Soroban real.
+- **Lacuna:** integração live ainda depende de chaves/RPCs reais.
 - **Ação alvo:** criar adapter com portas explícitas para mint, unlock, transfer, burn e status.
 
 ## Storage de documentos
 
-- **Ativo:** upload em `backend/main.py` lê arquivo e retorna metadados; não há persistência real.
-- **Legado:** `backend/services/s3_services.py` aponta para `boto3`, `cryptography` e um `settings` ausente.
+- **Ativo:** documentos de referência são persistidos em metadata/URI no banco.
+- **Lacuna:** storage externo real ainda precisa política de bucket, hash, owner e retenção.
 - **Ação alvo:** storage externo com validação de extensão, magic bytes, hash, tamanho, owner e retenção.
 
 ## Serviços externos do frontend
@@ -62,11 +60,11 @@
 
 ## Deploy e CI/CD
 
-- **Dockerfile combinado:** constrói Vite, instala Python e roda FastAPI na porta 80.
-- **Dockerfile.api:** roda `uvicorn backend.main:app` na porta 5680.
-- **Dockerfile.frontend:** usa Vite dev server; precisa virar runtime estático de produção.
-- **Compose:** `docker-compose.yml` está inválido para uso confiável.
-- **Dokploy:** não há arquivo específico; o plano alvo é `docker-compose.dokploy.yml` ou dois apps no mesmo repo/branch `main`.
+- **Dockerfile raiz:** roda `backend_app.main:app` na porta 5680.
+- **Dockerfile.api:** roda `backend_app.main:app` na porta 5680.
+- **Dockerfile.frontend:** entrega o build Vite estático.
+- **Compose local:** `docker-compose.yml` usa `backend_app` e espera Supabase/Postgres externo.
+- **Dokploy:** `docker-compose.dokploy.yml` usa `backend_app` e deve receber `DATABASE_URL`, `JWT_SECRET_KEY` e `CORS_ORIGINS` reais.
 - **CI:** não há workflows detectados em `.github/workflows/`.
 
 ## Variáveis relevantes
@@ -75,24 +73,13 @@ Frontend:
 
 - `VITE_API_URL`
 - `VITE_SESSION_TTL_MS`
-- `VITE_ALLOW_LOCAL_AUTH_FALLBACK`
 
-Backend atual:
+Backend:
 
 - `CORS_ORIGINS`
-- `SESSION_TTL_HOURS`
-- `ALLOW_DEMO_AUTH_FALLBACK`
-- `MERCHANT_TRANSACTION_FEE_RATE`
-- `ISSUER_FUND_YIELD_RATE`
-- `MAX_UPLOAD_BYTES`
-- `FRONTEND_DIST_DIR`
-
-Backend alvo:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
 - `DATABASE_URL`
+- `JWT_SECRET_KEY`
+- `APP_ENV`
 - `STELLAR_*`
 - `ETHERFUSE_*`
 - `POLYGON_*`

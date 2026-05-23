@@ -62,24 +62,15 @@ export default function ImpactLeaders() {
                 let rankingData: Leader[] = [];
 
                 if (activeTab === 'companies') {
-                    // Rank Companies by Total Impact (Credits Purchased/Retired + Developed)
-                    // Note: Ideally we sum from projects where company is Developer or Compensator
-                    // For now using the pre-aggregated 'total_impact' from COMPANIES_DB as it is the canonical source for this mock
-                    // But let's verify if we can aggregate from projects to be "real"
-                    // Aggregation from projects:
                     rankingData = companies.map((comp: any) => {
-                        // Calculate real impact from projects if possible, else use db value
                         const developedProjects = rawProjects.filter((p: any) => p.institution.name === comp.name);
                         const developedImpact = developedProjects.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0);
-
-                        // Use calculated developedImpact strictly to ensure consistency with profile views
-                        const finalImpact = developedImpact;
 
                         return {
                             id: comp.id,
                             name: comp.name,
                             sector: comp.role === 'Developer' ? 'Desenvolvedor' : 'Compensador',
-                            totalImpact: finalImpact,
+                            totalImpact: developedImpact,
                             secondaryMetric: developedProjects.length, // Projects count
                             status: 'Ativo',
                             rank: 0,

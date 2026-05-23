@@ -13,34 +13,83 @@ import {
   Fingerprint,
   Navigation
 } from 'lucide-react';
+import { database, type MonitoringProjectResponse } from '../../services/database';
 
-// Mock Data for the Monitor
-const PROJECT_INFO = {
-    id: "PRC-2024-882",
-    name: "Reserva Juma - Gleba A",
-    location: "Manicoré, Amazonas",
-    area: "1,200 ha",
-    owner: "Carbon Green Ltda",
-    lastSatellitePass: "Hoje, 04:32 AM",
-    currentNDVI: 0.84,
-    status: "protected" // or "alert"
+const MONITORED_PROJECT_ID = 'PRC-2024-002';
+
+const formatDateTime = (value?: string) => {
+    if (!value) return 'Sem registro';
+    return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(new Date(value));
 };
-
-const QTAGS_STATUS = [
-    { id: "TAG-01", position: "Norte", status: "online", lastSeen: "2 min atrás" },
-    { id: "TAG-02", position: "Leste", status: "online", lastSeen: "5 min atrás" },
-    { id: "TAG-03", position: "Sul", status: "online", lastSeen: "1 min atrás" },
-    { id: "TAG-04", position: "Oeste", status: "online", lastSeen: "10 min atrás" },
-];
 
 export default function MonitoringNDVI() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [viewMode, setViewMode] = useState<'ndvi' | 'natural' | 'thermal'>('ndvi');
+    const [monitoring, setMonitoring] = useState<MonitoringProjectResponse | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const handleRefresh = () => {
-        setIsRefreshing(true);
-        setTimeout(() => setIsRefreshing(false), 2000);
+    const loadMonitoring = async () => {
+        const response = await database.getMonitoringProject(MONITORED_PROJECT_ID);
+        setMonitoring(response);
     };
+
+    useEffect(() => {
+        let mounted = true;
+        database.getMonitoringProject(MONITORED_PROJECT_ID)
+            .then((response) => {
+                if (mounted) setMonitoring(response);
+            })
+            .finally(() => {
+                if (mounted) setLoading(false);
+            });
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await loadMonitoring();
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    if (loading) return <div className="p-20 text-center text-primary">Carregando monitoramento...</div>;
+    if (!monitoring) return <div className="p-20 text-center text-primary">Monitoramento não encontrado no banco.</div>;
+
+    const project = monitoring.project;
+    const baseline = monitoring.baseline;
+    const protectedProject = !['BLOCKED_AUDIT_REQUIRED', 'SUSPENDED'].includes(project.status);
+    const activityItems = monitoring.events.length > 0
+        ? monitoring.events.map(event => ({
+            id: event.id,
+            icon: event.type === 'TRANSFER' ? ArrowUpRight : Satellite,
+            title: `${event.type} ${event.chain}`.trim(),
+            description: event.hash || event.status,
+            date: formatDateTime(event.createdAt),
+            color: event.type === 'TRANSFER' ? 'text-blue-400' : 'text-sinarca-neon',
+        }))
+        : project.timeline.map((item, index) => ({
+            id: `${project.friendlyId}-${index}`,
+            icon: Info,
+            title: item.title,
+            description: item.desc,
+            date: item.date,
+            color: 'text-primary',
+        }));
+    const metricCards = [
+        { label: 'NDVI Atual', val: baseline.ndviMean.toFixed(3), trend: `${baseline.vegetationCoverPct.toFixed(1)}% veg.`, icon: Leaf, color: 'text-sinarca-neon' },
+        { label: 'Pontos Analisados', val: baseline.pointsAnalyzed.toLocaleString('pt-BR'), trend: 'Sentinel', icon: Info, color: 'text-blue-400' },
+        { label: 'Status Projeto', val: protectedProject ? 'OK' : 'Bloq.', trend: project.status, icon: AlertCircle, color: protectedProject ? 'text-sinarca-neon' : 'text-orange-400' },
+        { label: 'Captura Base', val: formatDateTime(baseline.capturedAt), trend: baseline.sentinelSceneId.slice(0, 4), icon: Calendar, color: 'text-primary' },
+    ];
 
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6 animate-in fade-in duration-700">
@@ -52,20 +101,20 @@ export default function MonitoringNDVI() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sinarca-neon/10 border border-sinarca-neon/20 text-sinarca-neon text-[10px] font-bold uppercase tracking-wider">
                             <Satellite className="w-3 h-3" /> Monitoramento Sentinel-2
                         </span>
-                        <span className="text-gray-500 text-xs font-mono">{PROJECT_INFO.id}</span>
+                        <span className="text-gray-500 text-xs font-mono">{project.friendlyId}</span>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{PROJECT_INFO.name}</h1>
+                    <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{project.name}</h1>
                     <p className="text-text-muted flex items-center gap-1 text-sm">
-                        <Navigation className="w-3 h-3" /> {PROJECT_INFO.location}
+                        <Navigation className="w-3 h-3" /> {project.location.city}, {project.location.state}
                     </p>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <div className="bg-sinarca-deep border border-sinarca-border rounded-xl p-3 flex flex-col items-end">
                         <span className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Status da Reserva</span>
-                        <div className="flex items-center gap-2 text-sinarca-neon">
+                        <div className={`flex items-center gap-2 ${protectedProject ? 'text-sinarca-neon' : 'text-orange-400'}`}>
                             <ShieldCheck className="w-5 h-5" />
-                            <span className="text-lg font-bold uppercase tracking-widest">Protegido</span>
+                            <span className="text-lg font-bold uppercase tracking-widest">{protectedProject ? 'Protegido' : 'Bloqueado'}</span>
                         </div>
                     </div>
                     <button 
@@ -85,7 +134,7 @@ export default function MonitoringNDVI() {
                     {/* Imagem do Mapa (Simulada) */}
                     <div className="absolute inset-0">
                         <img 
-                            src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1600&auto=format&fit=crop" 
+                            src={project.image}
                             className={`w-full h-full object-cover transition-all duration-1000 ${viewMode === 'ndvi' ? 'hue-rotate-[80deg] saturate-[1.5] brightness-[0.8]' : viewMode === 'thermal' ? 'invert sepia saturate-[2]' : ''}`}
                             alt="Map View"
                         />
@@ -128,8 +177,8 @@ export default function MonitoringNDVI() {
                         </div>
                         <div className="h-2 w-full bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full mb-3"></div>
                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-white font-mono">Médio: 0.84</span>
-                            <span className="text-[10px] text-sinarca-neon font-bold">+2.4% vs mês ant.</span>
+                            <span className="text-xs text-white font-mono">Médio: {baseline.ndviMean.toFixed(3)}</span>
+                            <span className="text-[10px] text-sinarca-neon font-bold">{baseline.vegetationCoverPct.toFixed(1)}% cobertura</span>
                         </div>
                     </div>
 
@@ -152,7 +201,7 @@ export default function MonitoringNDVI() {
                             <span className="text-[10px] text-sinarca-neon font-bold px-2 py-0.5 rounded bg-sinarca-neon/10">Inviolável</span>
                         </div>
                         <div className="space-y-4">
-                            {QTAGS_STATUS.map(tag => (
+                            {monitoring.tags.map(tag => (
                                 <div key={tag.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-sinarca-forest flex items-center justify-center">
@@ -160,7 +209,7 @@ export default function MonitoringNDVI() {
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-white">{tag.id} ({tag.position})</p>
-                                            <p className="text-[10px] text-text-muted">{tag.lastSeen}</p>
+                                            <p className="text-[10px] text-text-muted">{formatDateTime(tag.lastSeenAt)}</p>
                                         </div>
                                     </div>
                                     <div className="w-2 h-2 rounded-full bg-sinarca-neon shadow-[0_0_8px_rgba(0,255,148,0.5)]"></div>
@@ -178,30 +227,19 @@ export default function MonitoringNDVI() {
                             <History className="w-4 h-4 text-primary" /> Atividades Recentes
                         </h3>
                         <div className="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-px before:bg-white/10">
-                            <div className="relative pl-8">
-                                <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-sinarca-deep border border-sinarca-neon flex items-center justify-center z-10">
-                                    <Satellite className="w-3 h-3 text-sinarca-neon" />
-                                </div>
-                                <p className="text-xs font-bold text-white">Nova Imagem Sentinel-2</p>
-                                <p className="text-[10px] text-text-muted mb-1">Processamento de NDVI concluído sem anomalias.</p>
-                                <span className="text-[9px] text-gray-600 font-mono">Hoje, 04:32 AM</span>
-                            </div>
-                            <div className="relative pl-8">
-                                <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-sinarca-deep border border-primary flex items-center justify-center z-10">
-                                    <Info className="w-3 h-3 text-primary" />
-                                </div>
-                                <p className="text-xs font-bold text-white">Verificação de Chaves NIST</p>
-                                <p className="text-[10px] text-text-muted mb-1">Protocolo PQC-2024 renovado com sucesso.</p>
-                                <span className="text-[9px] text-gray-600 font-mono">Ontem, 22:15 PM</span>
-                            </div>
-                            <div className="relative pl-8">
-                                <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-sinarca-deep border border-blue-400 flex items-center justify-center z-10">
-                                    <ArrowUpRight className="w-3 h-3 text-blue-400" />
-                                </div>
-                                <p className="text-xs font-bold text-white">Aporte de Créditos</p>
-                                <p className="text-[10px] text-text-muted mb-1">Transferência de 500 tCO2e confirmada on-chain.</p>
-                                <span className="text-[9px] text-gray-600 font-mono">12 Jan, 14:40 PM</span>
-                            </div>
+                            {activityItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <div key={item.id} className="relative pl-8">
+                                        <div className={`absolute left-0 top-1 w-6 h-6 rounded-full bg-sinarca-deep border border-current flex items-center justify-center z-10 ${item.color}`}>
+                                            <Icon className="w-3 h-3" />
+                                        </div>
+                                        <p className="text-xs font-bold text-white">{item.title}</p>
+                                        <p className="text-[10px] text-text-muted mb-1">{item.description}</p>
+                                        <span className="text-[9px] text-gray-600 font-mono">{item.date}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -209,12 +247,7 @@ export default function MonitoringNDVI() {
 
             {/* 3. RODAPÉ DE MÉTRICAS DETALHADAS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { label: 'NDVI Atual', val: '0.84', trend: '+0.02', icon: Leaf, color: 'text-sinarca-neon' },
-                    { label: 'Umidade Solo', val: '62%', trend: '-4%', icon: Info, color: 'text-blue-400' },
-                    { label: 'Prob. Incêndio', val: '2.1%', trend: 'Estável', icon: AlertCircle, color: 'text-orange-400' },
-                    { label: 'Próxima Passagem', val: '14 Jan', trend: 'S-2A', icon: Calendar, color: 'text-primary' },
-                ].map((stat, i) => (
+                {metricCards.map((stat, i) => (
                     <div key={i} className="bg-sinarca-deep border border-sinarca-border rounded-2xl p-6 hover:bg-white/5 transition-colors group">
                         <div className="flex justify-between items-start mb-4">
                             <div className={`p-3 rounded-xl bg-white/5 group-hover:scale-110 transition-transform ${stat.color}`}>

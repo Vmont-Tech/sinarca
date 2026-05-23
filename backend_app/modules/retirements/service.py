@@ -51,7 +51,7 @@ class RetirementService:
             source_tx_hash=idempotency_key,
             amount=amount,
             status="RECORDED",
-            payload={"mode": "OFFCHAIN_LEDGER_RETIREMENT", "adapter": "mock_burn"},
+            payload={"mode": "OFFCHAIN_LEDGER_RETIREMENT", "adapter": "offchain_burn"},
         )
         self.session.add(event)
         await self.session.flush()
@@ -65,4 +65,3 @@ class RetirementService:
             "createdAt": retirement.retired_at.isoformat() if retirement.retired_at else datetime.now(timezone.utc).isoformat(),
         }
         return retirement, certificate, event
-

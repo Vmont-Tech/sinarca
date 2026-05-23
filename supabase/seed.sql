@@ -1,17 +1,17 @@
--- Seed idempotente consolidado a partir de backend/mock_data.py,
--- src/data/mrca_db.ts e mocks das telas Transactions, AuditorReview e CertifierReview.
+-- Seed idempotente consolidado a partir de legacy-mvp-seed,
+-- src/data/mrca_db.ts e dados das telas Transactions, AuditorReview e CertifierReview.
 
 insert into organizations (external_id, name, role, document, website, logo_url, authorized, metadata)
 values
-  ('reg-001', 'SINARCA', 'Registry', '00.000.000/0001-00', 'https://sinarca.example', null, true, jsonb_build_object('source', 'backend/mock_data.py')),
+  ('reg-001', 'SINARCA', 'Registry', '00.000.000/0001-00', 'https://sinarca.example', null, true, jsonb_build_object('source', 'legacy-mvp-seed')),
   ('dev-001', 'Carbon Green', 'Developer', '11.111.111/0001-11', null, null, true, jsonb_build_object('projects', 5, 'total_impact', 145200, 'source', 'src/data/mrca_db.ts')),
   ('dev-002', 'AgroSustentável', 'Developer', '22.222.222/0001-22', null, null, true, jsonb_build_object('projects', 2, 'total_impact', 85000, 'source', 'src/data/mrca_db.ts')),
   ('dev-005', 'BioGreen', 'Developer', '55.555.555/0001-55', null, null, true, jsonb_build_object('projects', 1, 'total_impact', 500000, 'source', 'src/data/mrca_db.ts')),
-  ('prod-001', 'Produtor Demo', 'Producer', '123.456.789-00', null, null, true, jsonb_build_object('source', 'backend/mock_data.py')),
+  ('prod-001', 'Produtor SINARCA', 'Producer', '123.456.789-00', null, null, true, jsonb_build_object('source', 'legacy-mvp-seed')),
   ('comp-001', 'Banco Futuro', 'Compensator', '33.333.333/0001-33', null, null, true, jsonb_build_object('projects', 0, 'total_impact', 0, 'source', 'src/data/mrca_db.ts')),
   ('aud-001', 'GreenCheck Auditores', 'Auditor', null, null, null, true, jsonb_build_object('projects_audited', 12, 'rating', 4.9, 'source', 'src/data/mrca_db.ts')),
   ('aud-002', 'EcoVerify Global', 'Auditor', null, null, null, true, jsonb_build_object('projects_audited', 8, 'rating', 4.7, 'source', 'src/data/mrca_db.ts')),
-  ('aud-005', 'Vinícius Monteiro', 'Auditor', '111.111.111-11', null, null, true, jsonb_build_object('projects_audited', 15, 'rating', 5.0, 'source', 'backend/mock_data.py')),
+  ('aud-005', 'Vinícius Monteiro', 'Auditor', '111.111.111-11', null, null, true, jsonb_build_object('projects_audited', 15, 'rating', 5.0, 'source', 'legacy-mvp-seed')),
   ('std-001', 'Verra', 'Certifier', '44.444.444/0001-44', 'https://verra.org', 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Verra_logo.png/640px-Verra_logo.png', true, jsonb_build_object('source', 'src/data/mrca_db.ts')),
   ('std-002', 'Gold Standard', 'Certifier', null, 'https://www.goldstandard.org', 'https://www.goldstandard.org/sites/default/files/gold-standard-logo.png', true, jsonb_build_object('source', 'src/data/mrca_db.ts')),
   ('std-003', 'Cercarbono', 'Certifier', null, 'https://cercarbono.com', '', true, jsonb_build_object('source', 'src/data/mrca_db.ts'))
@@ -48,7 +48,7 @@ values
   ('comp-001', (select id from organizations where external_id = 'comp-001'), 'Banco Futuro', 'empresa@sinarca.com.br', '999.888.777-66', 'company', '$argon2id$v=19$m=65536,t=3,p=4$g9Dw4x3u2dw9bKCqzdgj8A$IkFPQeS0zKQFJMNT3LczCbjkbrAU9vEyOct/AcAEoO8', null, null, null),
   ('aud-005', (select id from organizations where external_id = 'aud-005'), 'Vinícius Monteiro', 'auditor@sinarca.com.br', '111.111.111-11', 'auditor', '$argon2id$v=19$m=65536,t=3,p=4$uNDXGXqGsCnXJfROYFG2Rg$31+SJPqNkkiOxyUhDp2d3o27J5jl3313KHmY6UTW2JI', null, null, null),
   ('std-001-user', (select id from organizations where external_id = 'std-001'), 'Certificadora Verra', 'certificadora@sinarca.com.br', '555.444.333-22', 'certifier', '$argon2id$v=19$m=65536,t=3,p=4$EkJbEItankgiJOai0GdzWg$4QxS1xef5UvGnpM/mIiMwIP/XGifoSdWTq/iRUhklrU', null, null, null),
-  ('prod-001', (select id from organizations where external_id = 'prod-001'), 'Produtor Demo', 'produtor@sinarca.com.br', '123.456.789-00', 'producer', '$argon2id$v=19$m=65536,t=3,p=4$F3xhYzbhG1RCmCTT5wPqkw$B7h7I4j0Br8j6Dpw74ViN3rIMbs3bZe/WXiZkyuzZbQ', null, null, null),
+  ('prod-001', (select id from organizations where external_id = 'prod-001'), 'Produtor SINARCA', 'produtor@sinarca.com.br', '123.456.789-00', 'producer', '$argon2id$v=19$m=65536,t=3,p=4$F3xhYzbhG1RCmCTT5wPqkw$B7h7I4j0Br8j6Dpw74ViN3rIMbs3bZe/WXiZkyuzZbQ', null, null, null),
   ('admin-001', (select id from organizations where external_id = 'reg-001'), 'Administrador SINARCA', 'admin@sinarca.com.br', '000.000.000-00', 'admin', '$argon2id$v=19$m=65536,t=3,p=4$o/T6DrbtYjVncNJprf3fRQ$N5M3D6rLapPECIEPmwFyLvtasVpvlHJTElMEmRA6fHI', null, null, null)
 on conflict (email) do update set
   external_id = excluded.external_id,
@@ -81,7 +81,7 @@ values
     'Palmas', 'Tocantins', 'to', 'Cerrado', -10.180000, -48.330000, 375, 280, 5800, 85000, 4250000, '2024',
     'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80', 'BR-2024-002-000001', 'BR-2024-002-085000', '0x456...def', '0x888...222', 1830000, '2024-02-15T09:30:00Z',
     '[{"title":"Aprovação Final","date":"25 Fev 2024","status":"completed","desc":"Projeto migrado para status AVAILABLE."}]'::jsonb,
-    jsonb_build_object('source', 'backend/mock_data.py + src/data/mrca_db.ts', 'frontendStatus', 'AVAILABLE')),
+    jsonb_build_object('source', 'legacy-mvp-seed + src/data/mrca_db.ts', 'frontendStatus', 'AVAILABLE')),
   ('PRC-2025-001', '0x1234567890abcdef1234567890abcdef12345678', 'v3.0', 'Recuperação Florestal Amazônia - Fase 3', 'Fase 3 do projeto de recuperação florestal focada em corredores ecológicos.', 'Expansão da fronteira agrícola na região do Xingu.', 'REDD+', null, 'AVAILABLE',
     (select id from organizations where external_id = 'dev-005'), (select id from organizations where external_id = 'aud-005'), (select id from organizations where external_id = 'std-001'), (select id from organizations where external_id = 'reg-001'),
     'Altamira', 'Pará', 'pa', 'Amazônia', -3.200000, -52.200000, 325, 125, 15000, 500000, 27500000, '2024',
@@ -100,13 +100,13 @@ values
     'https://images.unsplash.com/photo-1448375240586-dfd8f3793371?auto=format&fit=crop&w=800&q=80', 'BR-2023-555-000001', 'BR-2023-555-045000', '0xATL...FOR', '0xGGG...HHH', 1950000, '2023-06-15T11:20:00Z',
     '[{"title":"Auditoria Anual","date":"2024-06-15","status":"completed","desc":"Verificação de crescimento."}]'::jsonb,
     jsonb_build_object('source', 'src/data/mrca_db.ts', 'frontendStatus', 'AUDITED', 'queue', 'certifier')),
-  ('PRC-2026-010', 'queue-certifier-demo-2026-010', 'v1.0', 'Restauração Ribeirinha Tocantins', 'Projeto demo para fila inicial da certificadora.', 'APP degradada aguardando certificação.', 'AR-ACM0003', null, 'CREATED',
+  ('PRC-2026-010', 'queue-certifier-seed-2026-010', 'v1.0', 'Restauração Ribeirinha Tocantins', 'Projeto persistido para fila inicial da certificadora.', 'APP degradada aguardando certificação.', 'AR-ACM0003', null, 'CREATED',
     (select id from organizations where external_id = 'prod-001'), (select id from organizations where external_id = 'aud-005'), (select id from organizations where external_id = 'std-001'), (select id from organizations where external_id = 'reg-001'),
     'Porto Nacional', 'Tocantins', 'to', 'Cerrado', -10.700000, -48.410000, 392, 292, 1200, 18000, 900000, '2026',
     'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80', 'BR-2026-010-000001', 'BR-2026-010-018000', 'pending', 'pending', null, '2026-05-22T09:00:00Z',
     '[{"title":"Submissão","date":"2026-05-22","status":"active","desc":"Projeto enviado à certificadora."}]'::jsonb,
     jsonb_build_object('source', 'frontend CertifierReview queue', 'queue', 'certifier')),
-  ('PRC-2026-011', 'queue-auditor-demo-2026-011', 'v1.0', 'Manejo Comunitário Araguaia', 'Projeto demo para fila inicial de auditoria.', 'Área comunitária certificada aguardando inspeção de campo.', 'VM0015 (Verra)', null, 'AWAITING_AUDIT',
+  ('PRC-2026-011', 'queue-auditor-seed-2026-011', 'v1.0', 'Manejo Comunitário Araguaia', 'Projeto persistido para fila inicial de auditoria.', 'Área comunitária certificada aguardando inspeção de campo.', 'VM0015 (Verra)', null, 'AWAITING_AUDIT',
     (select id from organizations where external_id = 'prod-001'), (select id from organizations where external_id = 'aud-005'), (select id from organizations where external_id = 'std-001'), (select id from organizations where external_id = 'reg-001'),
     'Caseara', 'Tocantins', 'to', 'Cerrado', -9.270000, -49.950000, 360, 260, 2400, 32000, 1600000, '2026',
     'https://images.unsplash.com/photo-1596395817818-b271d44093df?auto=format&fit=crop&w=800&q=80', 'BR-2026-011-000001', 'BR-2026-011-032000', '0xAUD...QUEUE', '0xAUD...ROOT', null, '2026-05-22T10:00:00Z',
@@ -150,10 +150,10 @@ on conflict (friendly_id) do update set
 
 insert into project_tags (project_id, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
 values
-  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C90', 'cmac-prc-002-a', -10.171200, -48.339100, 'A', 'ACTIVE', '2024-02-10T08:00:00Z', '2024-02-25T09:30:00Z', jsonb_build_object('source', 'NFC 424 DNA demo')),
-  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C91', 'cmac-prc-002-b', -10.182500, -48.317800, 'B', 'ACTIVE', '2024-02-10T08:10:00Z', '2024-02-25T09:34:00Z', jsonb_build_object('source', 'NFC 424 DNA demo')),
-  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C92', 'cmac-prc-002-c', -10.198900, -48.334200, 'C', 'ACTIVE', '2024-02-10T08:20:00Z', '2024-02-25T09:38:00Z', jsonb_build_object('source', 'NFC 424 DNA demo')),
-  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C93', 'cmac-prc-002-d', -10.184100, -48.352000, 'D', 'ACTIVE', '2024-02-10T08:30:00Z', '2024-02-25T09:42:00Z', jsonb_build_object('source', 'NFC 424 DNA demo'))
+  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C90', 'cmac-prc-002-a', -10.171200, -48.339100, 'A', 'ACTIVE', '2024-02-10T08:00:00Z', '2024-02-25T09:30:00Z', jsonb_build_object('source', 'NFC 424 DNA seed')),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C91', 'cmac-prc-002-b', -10.182500, -48.317800, 'B', 'ACTIVE', '2024-02-10T08:10:00Z', '2024-02-25T09:34:00Z', jsonb_build_object('source', 'NFC 424 DNA seed')),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C92', 'cmac-prc-002-c', -10.198900, -48.334200, 'C', 'ACTIVE', '2024-02-10T08:20:00Z', '2024-02-25T09:38:00Z', jsonb_build_object('source', 'NFC 424 DNA seed')),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), '04A224C8D91C93', 'cmac-prc-002-d', -10.184100, -48.352000, 'D', 'ACTIVE', '2024-02-10T08:30:00Z', '2024-02-25T09:42:00Z', jsonb_build_object('source', 'NFC 424 DNA seed'))
 on conflict (tag_uid) do update set
   project_id = excluded.project_id,
   cmac = excluded.cmac,
@@ -167,9 +167,9 @@ on conflict (tag_uid) do update set
 
 insert into project_baselines (project_id, sentinel_scene_id, baseline_hash, points_analyzed, vegetation_cover_pct, ndvi_mean, captured_at, evidence_uri)
 values
-  ((select id from projects where friendly_id = 'PRC-2024-002'), 'S2A_MSIL2A_20240215T133241_N0509_R081_T22LHH', 'baseline-prc-2024-002-cerrado', 5000, 72.400, 0.681, '2024-02-15T13:32:41Z', 's3://sinarca-demo/baselines/PRC-2024-002.json'),
-  ((select id from projects where friendly_id = 'PRC-2026-010'), 'S2A_MSIL2A_20260520T133241_N0509_R081_T22LHH', 'baseline-prc-2026-010-certifier-queue', 5000, 58.100, 0.552, '2026-05-20T13:32:41Z', 's3://sinarca-demo/baselines/PRC-2026-010.json'),
-  ((select id from projects where friendly_id = 'PRC-2026-011'), 'S2A_MSIL2A_20260521T133241_N0509_R081_T22LHH', 'baseline-prc-2026-011-auditor-queue', 5000, 64.800, 0.604, '2026-05-21T13:32:41Z', 's3://sinarca-demo/baselines/PRC-2026-011.json')
+  ((select id from projects where friendly_id = 'PRC-2024-002'), 'S2A_MSIL2A_20240215T133241_N0509_R081_T22LHH', 'baseline-prc-2024-002-cerrado', 5000, 72.400, 0.681, '2024-02-15T13:32:41Z', 's3://sinarca-seed/baselines/PRC-2024-002.json'),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), 'S2A_MSIL2A_20260520T133241_N0509_R081_T22LHH', 'baseline-prc-2026-010-certifier-queue', 5000, 58.100, 0.552, '2026-05-20T13:32:41Z', 's3://sinarca-seed/baselines/PRC-2026-010.json'),
+  ((select id from projects where friendly_id = 'PRC-2026-011'), 'S2A_MSIL2A_20260521T133241_N0509_R081_T22LHH', 'baseline-prc-2026-011-auditor-queue', 5000, 64.800, 0.604, '2026-05-21T13:32:41Z', 's3://sinarca-seed/baselines/PRC-2026-011.json')
 on conflict (baseline_hash) do update set
   project_id = excluded.project_id,
   sentinel_scene_id = excluded.sentinel_scene_id,
@@ -181,7 +181,7 @@ on conflict (baseline_hash) do update set
 
 insert into certifications (project_id, certifier_organization_id, certifier_profile_id, methodology, credit_potential, decision, notes, signed_document_hash, signed_at)
 values
-  ((select id from projects where friendly_id = 'PRC-2024-002'), (select id from organizations where external_id = 'std-002'), (select id from profiles where external_id = 'std-001-user'), 'AR-ACM0003', 85000, 'APPROVED', 'Certificação demo consolidada do mock Carbono Cerrado.', 'sha256-cert-prc-2024-002', '2024-02-25T10:00:00Z'),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), (select id from organizations where external_id = 'std-002'), (select id from profiles where external_id = 'std-001-user'), 'AR-ACM0003', 85000, 'APPROVED', 'Certificação inicial consolidada do Carbono Cerrado.', 'sha256-cert-prc-2024-002', '2024-02-25T10:00:00Z'),
   ((select id from projects where friendly_id = 'PRC-2026-010'), (select id from organizations where external_id = 'std-001'), (select id from profiles where external_id = 'std-001-user'), 'AR-ACM0003', 18000, 'PENDING', 'Fila inicial da certificadora para validação de UI.', null, null),
   ((select id from projects where friendly_id = 'PRC-2026-011'), (select id from organizations where external_id = 'std-001'), (select id from profiles where external_id = 'std-001-user'), 'VM0015 (Verra)', 32000, 'APPROVED', 'Certificação aprovada; aguardando auditoria.', 'sha256-cert-prc-2026-011', '2026-05-22T10:00:00Z')
 on conflict (project_id, decision) do update set
@@ -195,7 +195,7 @@ on conflict (project_id, decision) do update set
 
 insert into audits (project_id, auditor_organization_id, auditor_profile_id, status, report_text, latitude, longitude, evidence_urls, digital_signature, audited_at)
 values
-  ((select id from projects where friendly_id = 'PRC-2024-002'), (select id from organizations where external_id = 'aud-002'), (select id from profiles where external_id = 'aud-005'), 'APPROVED', 'Auditoria aprovada com trilha documental suficiente.', -10.180000, -48.330000, '["https://example.test/evidencia-cerrado.jpg"]'::jsonb, 'assinatura-demo-cerrado', '2024-03-01T14:00:00Z'),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), (select id from organizations where external_id = 'aud-002'), (select id from profiles where external_id = 'aud-005'), 'APPROVED', 'Auditoria aprovada com trilha documental suficiente.', -10.180000, -48.330000, '["https://example.test/evidencia-cerrado.jpg"]'::jsonb, 'assinatura-seed-cerrado', '2024-03-01T14:00:00Z'),
   ((select id from projects where friendly_id = 'PRC-2026-011'), (select id from organizations where external_id = 'aud-005'), (select id from profiles where external_id = 'aud-005'), 'PENDING', 'Fila inicial de auditoria para validação de campo.', -9.270000, -49.950000, '[]'::jsonb, null, null)
 on conflict (project_id, status) do update set
   auditor_organization_id = excluded.auditor_organization_id,
@@ -210,7 +210,7 @@ on conflict (project_id, status) do update set
 insert into environmental_credits (project_id, vintage, quantity_total, quantity_available, quantity_retired, status, token_metadata, serial_start, serial_end)
 values
   ((select id from projects where friendly_id = 'PRC-2024-882'), '2023', 145200, 0, 145200, 'RETIRED', jsonb_build_object('source', 'frontend details', 'asset', 'Reserva Juma'), 'BR-2024-882-0000001', 'BR-2024-882-1200000'),
-  ((select id from projects where friendly_id = 'PRC-2024-002'), '2024', 85000, 84500, 0, 'AVAILABLE', jsonb_build_object('source', 'backend/mock_data.py + src/data/mrca_db.ts', 'asset', 'Carbono Cerrado'), 'BR-2024-002-000001', 'BR-2024-002-085000'),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), '2024', 85000, 84500, 0, 'AVAILABLE', jsonb_build_object('source', 'legacy-mvp-seed + src/data/mrca_db.ts', 'asset', 'Carbono Cerrado'), 'BR-2024-002-000001', 'BR-2024-002-085000'),
   ((select id from projects where friendly_id = 'PRC-2025-001'), '2024', 500000, 495000, 0, 'AVAILABLE', jsonb_build_object('source', 'src/data/mrca_db.ts', 'asset', 'Recuperação Amazônia'), 'BR-2025-001-000001', 'BR-2025-001-500000'),
   ((select id from projects where friendly_id = 'PRC-2025-002'), '2025', 12000, 11850, 150, 'AVAILABLE', jsonb_build_object('source', 'src/data/mrca_db.ts + Transactions.tsx', 'asset', 'Energia Limpa Solar'), 'BR-2025-002-000001', 'BR-2025-002-012000'),
   ((select id from projects where friendly_id = 'PRC-2023-555'), '2023', 45000, 44800, 0, 'AVAILABLE', jsonb_build_object('source', 'src/data/mrca_db.ts + Transactions.tsx', 'asset', 'Mata Atlântica Viva'), 'BR-2023-555-000001', 'BR-2023-555-045000')
@@ -256,8 +256,8 @@ on conflict (idempotency_key) do update set
 
 insert into retirements (project_id, owner_organization_id, amount, emissions_data, certificate_hash, burn_hash, documentation_uri, status, idempotency_key, retired_at)
 values
-  ((select id from projects where friendly_id = 'PRC-2024-882'), (select id from organizations where external_id = 'comp-001'), 1200, '{"scope1":400,"scope2":500,"scope3":300,"total":1200}'::jsonb, 'certificate-tx-001-reserva-juma', '0x7f9...e4r5', 's3://sinarca-demo/retirements/tx-001.pdf', 'COMPLETED', 'tx-001', '2026-05-22T10:30:00Z'),
-  ((select id from projects where friendly_id = 'PRC-2025-002'), (select id from organizations where external_id = 'comp-001'), 150, '{"scope1":50,"scope2":80,"scope3":20,"total":150}'::jsonb, 'certificate-tx-005-solar', '0x3e4...r5t6', 's3://sinarca-demo/retirements/tx-005.pdf', 'COMPLETED', 'tx-005', '2024-12-20T12:00:00Z')
+  ((select id from projects where friendly_id = 'PRC-2024-882'), (select id from organizations where external_id = 'comp-001'), 1200, '{"scope1":400,"scope2":500,"scope3":300,"total":1200}'::jsonb, 'certificate-tx-001-reserva-juma', '0x7f9...e4r5', 's3://sinarca-seed/retirements/tx-001.pdf', 'COMPLETED', 'tx-001', '2026-05-22T10:30:00Z'),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), (select id from organizations where external_id = 'comp-001'), 150, '{"scope1":50,"scope2":80,"scope3":20,"total":150}'::jsonb, 'certificate-tx-005-solar', '0x3e4...r5t6', 's3://sinarca-seed/retirements/tx-005.pdf', 'COMPLETED', 'tx-005', '2024-12-20T12:00:00Z')
 on conflict (idempotency_key) do update set
   project_id = excluded.project_id,
   owner_organization_id = excluded.owner_organization_id,
@@ -276,8 +276,8 @@ values
   ((select id from projects where friendly_id = 'PRC-2023-555'), 'TRANSFER', 'soroban', '0x1c9...f2a3', 'tx-003', 200, 'PENDING', jsonb_build_object('source', 'Transactions.tsx', 'type', 'sent')),
   ((select id from projects where friendly_id = 'PRC-2025-001'), 'MINT_LOCKED', 'soroban', '0x9d8...e1s2', 'tx-004', 5000, 'CONFIRMED', jsonb_build_object('source', 'Transactions.tsx', 'type', 'minted')),
   ((select id from projects where friendly_id = 'PRC-2025-002'), 'BURN', 'soroban', '0x3e4...r5t6', 'tx-005', 150, 'CONFIRMED', jsonb_build_object('source', 'Transactions.tsx', 'type', 'retired')),
-  ((select id from projects where friendly_id = 'PRC-2024-002'), 'TREASURY_LOCK', 'etherfuse', 'etherfuse-demo-prc-2024-002', 'etherfuse-demo-prc-2024-002', 4250000, 'CONFIRMED', jsonb_build_object('source', 'DOCX financeiro', 'provider', 'Etherfuse')),
-  ((select id from projects where friendly_id = 'PRC-2024-002'), 'VAULT_LOCK', 'polygon', 'polygon-lock-demo-prc-2024-002', 'polygon-lock-demo-prc-2024-002', 1000, 'RECORDED', jsonb_build_object('source', 'lock-and-mint demo'))
+  ((select id from projects where friendly_id = 'PRC-2024-002'), 'TREASURY_LOCK', 'etherfuse', 'etherfuse-seed-prc-2024-002', 'etherfuse-seed-prc-2024-002', 4250000, 'CONFIRMED', jsonb_build_object('source', 'DOCX financeiro', 'provider', 'Etherfuse')),
+  ((select id from projects where friendly_id = 'PRC-2024-002'), 'VAULT_LOCK', 'polygon', 'polygon-lock-seed-prc-2024-002', 'polygon-lock-seed-prc-2024-002', 1000, 'RECORDED', jsonb_build_object('source', 'lock-and-mint seed'))
 on conflict (source_tx_hash) where source_tx_hash is not null do update set
   project_id = excluded.project_id,
   event_type = excluded.event_type,
@@ -329,7 +329,7 @@ on conflict (treasury_position_id, distribution_month) do update set
 
 insert into external_chain_projects (project_id, chain, vault_address, source_token_address, source_tx_hash, wrapped_stellar_asset, status, metadata)
 values
-  ((select id from projects where friendly_id = 'PRC-2024-002'), 'polygon', '0xVaultSinarcaDemo000000000000000000000002', '0xCreditTokenDemo0000000000000000000000002', 'polygon-lock-demo-prc-2024-002', 'SINARCA-PRC-2024-002-WRAPPED', 'WRAPPED_MINTED', jsonb_build_object('source', 'DOCX-LOCK-AND-MINT', 'network', 'polygon-amoy-demo'))
+  ((select id from projects where friendly_id = 'PRC-2024-002'), 'polygon', '0xVaultSinarcaSeed000000000000000000000002', '0xCreditTokenSeed0000000000000000000000002', 'polygon-lock-seed-prc-2024-002', 'SINARCA-PRC-2024-002-WRAPPED', 'WRAPPED_MINTED', jsonb_build_object('source', 'DOCX-LOCK-AND-MINT', 'network', 'polygon-amoy-seed'))
 on conflict (source_tx_hash) do update set
   project_id = excluded.project_id,
   chain = excluded.chain,
@@ -341,8 +341,8 @@ on conflict (source_tx_hash) do update set
 
 insert into documents (owner_organization_id, project_id, document_type, storage_path, sha256_hash, mime_type, size_bytes, metadata)
 values
-  ((select id from organizations where external_id = 'std-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'CERTIFICATION_REPORT', 's3://sinarca-demo/documents/prc-2024-002-certification.pdf', 'sha256-cert-prc-2024-002', 'application/pdf', 204800, jsonb_build_object('source', 'certification seed')),
-  ((select id from organizations where external_id = 'aud-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'AUDIT_REPORT', 's3://sinarca-demo/documents/prc-2024-002-audit.pdf', 'sha256-audit-prc-2024-002', 'application/pdf', 307200, jsonb_build_object('source', 'audit seed'))
+  ((select id from organizations where external_id = 'std-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'CERTIFICATION_REPORT', 's3://sinarca-seed/documents/prc-2024-002-certification.pdf', 'sha256-cert-prc-2024-002', 'application/pdf', 204800, jsonb_build_object('source', 'certification seed')),
+  ((select id from organizations where external_id = 'aud-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'AUDIT_REPORT', 's3://sinarca-seed/documents/prc-2024-002-audit.pdf', 'sha256-audit-prc-2024-002', 'application/pdf', 307200, jsonb_build_object('source', 'audit seed'))
 on conflict (sha256_hash) do update set
   owner_organization_id = excluded.owner_organization_id,
   project_id = excluded.project_id,

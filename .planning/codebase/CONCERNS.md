@@ -4,16 +4,16 @@
 
 ## Dívidas técnicas
 
-### Backend dividido entre API demo e API SQLAlchemy não usada
+### Runtime legado aposentado ainda aparece em histórico Git
 
-- **Problema:** a API que roda é `backend/main.py`; os routers em `backend/api/*` não são montados.
-- **Arquivos:** `backend/main.py`, `backend/api/*`, `backend/core/database.py`, `backend/models/*`.
-- **Impacto:** portar ou ampliar os routers SQLAlchemy sem conectá-los não altera o comportamento do produto.
-- **Ação:** usar `backend/main.py` e os serviços do frontend como contrato ativo; reconstruir uma API limpa em `backend_app/`.
+- **Problema:** artefatos históricos podem reaparecer em cherry-picks ou merges.
+- **Arquivos:** `backend_app/*`, `Dockerfile*`, `docker-compose*.yml`.
+- **Impacto:** reintroduzir runtime antigo quebraria o contrato de Postgres como fonte durável.
+- **Ação:** manter `tests/contract/test_backend_runtime_cutover.py` como guarda do cutover.
 
 ### Manifesto Python incompleto para os módulos legados
 
-- **Problema:** `pyproject.toml` e `uv.lock` cobrem o app demo, mas módulos legados importam pacotes não declarados.
+- **Problema:** `pyproject.toml` e `uv.lock` cobrem o app ativo, mas módulos históricos importavam pacotes não declarados.
 - **Pacotes citados em código:** `sqlalchemy`, `passlib`, `python-jose`, `brutils`, `slowapi`, `boto3`, `cryptography`, `stellar_sdk`, `requests`.
 - **Impacto:** importações limpas falham e tornam perigoso reaproveitar arquivos por aparência.
 - **Ação:** declarar dependências apenas para a nova API e classificar legado como referência, código morto ou fonte de requisito.
@@ -44,11 +44,11 @@
 
 ## Bugs e fragilidades conhecidas
 
-### Stellar habilitado quebra compra no marketplace
+### Stellar/Soroban externos dependem de credenciais
 
-- **Sintoma:** com `STELLAR_ENABLED=true`, `transfer_credit()` pode não retornar o shape esperado por `/marketplace/buy`.
-- **Arquivos:** `backend/services/stellar_service.py`, `backend/main.py`.
-- **Mitigação:** manter modo mock até implementar adapter real com testes.
+- **Sintoma:** sem chaves e RPCs reais, operações externas precisam permanecer em modo local/sandbox explícito.
+- **Arquivos:** `backend_app/adapters/stellar.py`, `backend_app/adapters/etherfuse.py`, `backend_app/adapters/polygon.py`.
+- **Mitigação:** manter contratos de adapter e persistir eventos gerados pelos serviços de domínio.
 
 ### Código Stellar real é inalcançável/parcial
 
@@ -78,15 +78,15 @@
 
 ## Segurança
 
-### Auth demo com senha em texto puro
+### Auth precisa seguir evoluindo para produção
 
-- **Risco:** usuários e senhas em `backend/mock_data.py`; login compara senha em texto puro.
-- **Ação:** usar Supabase Auth/JWT ou auth própria com Argon2, refresh token e expiração no servidor.
+- **Risco:** a fase atual usa auth própria com Argon2/JWT, mas ainda precisa endurecimento de refresh token, rotação e política de produção.
+- **Ação:** evoluir auth própria ou Supabase Auth com contrato explícito e testes de papéis.
 
-### Tokens process-local
+### Refresh token e rotação
 
-- **Risco:** `ACTIVE_SESSIONS` perde sessão em restart e não escala horizontalmente.
-- **Ação:** usar JWT com expiração validada no servidor ou sessão persistida.
+- **Risco:** auth própria já usa JWT, mas ainda precisa estratégia produtiva de refresh/rotação/revogação.
+- **Ação:** definir refresh token persistido ou migrar para Supabase Auth em fase explícita.
 
 ### Rotas de negócio sem autorização suficiente
 
@@ -107,7 +107,7 @@
 
 - O bundle Vite já emite aviso de chunk grande; adicionar lazy routes antes de expandir páginas pesadas.
 - Páginas buscam listas grandes e remapeiam no cliente; a API nova deve expor paginação/filtros.
-- Dados em memória impedem multi-worker, restart seguro e escala horizontal.
+- Repositórios em memória não devem ser reintroduzidos; dados críticos ficam em Postgres.
 - Uploads são memory-bound; storage deve ser externo.
 - Não há rate limiting ativo na API que roda.
 

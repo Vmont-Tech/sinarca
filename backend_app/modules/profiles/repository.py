@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Iterable, cast as typing_cast
+from typing import cast as typing_cast
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend_app.core.config import get_settings
 from backend_app.core.roles import UserRole
-from backend_app.core.security import hash_password
-from backend_app.db.models import Profile
-from backend_app.db.session import is_database_configured
+from backend_app.db.models import Organization, Profile
 
 
 @dataclass
@@ -41,68 +38,6 @@ class ProfileRecord:
         }
 
 
-class InMemoryProfileRepository:
-    def __init__(self) -> None:
-        self._profiles: dict[str, ProfileRecord] = {}
-        self.reset()
-
-    def reset(self) -> None:
-        self._profiles = {}
-        for seed in _seed_profiles():
-            self._profiles[seed.id] = seed
-
-    def list(self) -> Iterable[ProfileRecord]:
-        return self._profiles.values()
-
-    def get_by_id(self, user_id: str) -> ProfileRecord | None:
-        return self._profiles.get(user_id)
-
-    def get_by_login(self, login: str) -> ProfileRecord | None:
-        normalized = login.strip().lower()
-        return next(
-            (
-                profile
-                for profile in self._profiles.values()
-                if profile.email.lower() == normalized or profile.document.lower() == normalized
-            ),
-            None,
-        )
-
-    def email_exists(self, email: str) -> bool:
-        normalized = email.strip().lower()
-        return any(profile.email.lower() == normalized for profile in self._profiles.values())
-
-    def create(
-        self,
-        *,
-        name: str,
-        email: str,
-        document: str,
-        role: UserRole,
-        password_hash_value: str,
-    ) -> ProfileRecord:
-        user_id = f"user-{len(self._profiles) + 1:03d}"
-        profile = ProfileRecord(
-            id=user_id,
-            name=name,
-            email=email,
-            document=document,
-            role=role,
-            password_hash=password_hash_value,
-        )
-        self._profiles[profile.id] = profile
-        return profile
-
-    def update(self, user_id: str, **updates: str | None) -> ProfileRecord | None:
-        profile = self.get_by_id(user_id)
-        if profile is None:
-            return None
-        for field, value in updates.items():
-            if value is not None and hasattr(profile, field):
-                setattr(profile, field, value)
-        return profile
-
-
 class SQLAlchemyProfileRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -110,7 +45,7 @@ class SQLAlchemyProfileRepository:
     async def get_by_id(self, user_id: str) -> ProfileRecord | None:
         result = await self.session.execute(select(Profile).where(_profile_identity_filter(user_id)))
         profile = result.scalar_one_or_none()
-        return _record_from_model(profile) if profile is not None else None
+        return await self._record_from_profile(profile) if profile is not None else None
 
     async def get_by_login(self, login: str) -> ProfileRecord | None:
         normalized = login.strip().lower()
@@ -123,7 +58,7 @@ class SQLAlchemyProfileRepository:
             )
         )
         profile = result.scalar_one_or_none()
-        return _record_from_model(profile) if profile is not None else None
+        return await self._record_from_profile(profile) if profile is not None else None
 
     async def email_exists(self, email: str) -> bool:
         normalized = email.strip().lower()
@@ -149,7 +84,7 @@ class SQLAlchemyProfileRepository:
         )
         self.session.add(profile)
         await self.session.flush()
-        return _record_from_model(profile)
+        return await self._record_from_profile(profile)
 
     async def update(self, user_id: str, **updates: str | None) -> ProfileRecord | None:
         result = await self.session.execute(select(Profile).where(_profile_identity_filter(user_id)))
@@ -157,33 +92,60 @@ class SQLAlchemyProfileRepository:
         if profile is None:
             return None
 
+        organization_name = updates.pop("organization", None)
+        if organization_name is not None:
+            await self._upsert_profile_organization(profile, organization_name)
+
         field_map = {"avatar": "avatar_url", "govLevel": "gov_level"}
         for field, value in updates.items():
             model_field = field_map.get(field, field)
             if value is not None and hasattr(profile, model_field):
                 setattr(profile, model_field, value)
         await self.session.flush()
-        return _record_from_model(profile)
+        return await self._record_from_profile(profile)
+
+    async def _record_from_profile(self, profile: Profile) -> ProfileRecord:
+        organization_name: str | None = None
+        if profile.organization_id is not None:
+            result = await self.session.execute(select(Organization.name).where(Organization.id == profile.organization_id))
+            organization_name = result.scalar_one_or_none()
+        return _record_from_model(profile, organization_name)
+
+    async def _upsert_profile_organization(self, profile: Profile, organization_name: str) -> None:
+        normalized_name = organization_name.strip()
+        if not normalized_name:
+            return
+
+        if profile.organization_id is not None:
+            result = await self.session.execute(select(Organization).where(Organization.id == profile.organization_id))
+            organization = result.scalar_one_or_none()
+            if organization is not None:
+                organization.name = normalized_name
+                return
+
+        external_id = f"{profile.external_id or profile.id}-organization"
+        result = await self.session.execute(select(Organization).where(Organization.external_id == external_id))
+        organization = result.scalar_one_or_none()
+        if organization is None:
+            organization = Organization(
+                external_id=external_id,
+                name=normalized_name,
+                role=_organization_role_for_profile(profile.role),
+                document=profile.document,
+                authorized=False,
+            )
+            self.session.add(organization)
+            await self.session.flush()
+        else:
+            organization.name = normalized_name
+        profile.organization_id = organization.id
 
 
-def get_profile_repository(session: AsyncSession | None = None) -> InMemoryProfileRepository | SQLAlchemyProfileRepository:
-    if session is not None:
-        return SQLAlchemyProfileRepository(session)
-
-    settings = get_settings()
-    if is_database_configured(settings.database_url) and settings.app_env.strip().lower() == "production":
-        raise RuntimeError("Repositório de perfis em memória bloqueado em produção; forneça AsyncSession")
-    return profile_repository
+def get_profile_repository(session: AsyncSession) -> SQLAlchemyProfileRepository:
+    return SQLAlchemyProfileRepository(session)
 
 
-def reset_profile_repository() -> None:
-    settings = get_settings()
-    if is_database_configured(settings.database_url) and settings.app_env.strip().lower() == "production":
-        raise RuntimeError("Reset do repositório em memória bloqueado em produção")
-    profile_repository.reset()
-
-
-def _record_from_model(profile: Profile) -> ProfileRecord:
+def _record_from_model(profile: Profile, organization_name: str | None = None) -> ProfileRecord:
     return ProfileRecord(
         id=profile.external_id or str(profile.id),
         name=profile.name,
@@ -191,11 +153,21 @@ def _record_from_model(profile: Profile) -> ProfileRecord:
         document=profile.document or "",
         role=typing_cast(UserRole, profile.role),
         password_hash=profile.password_hash,
-        organization=None,
+        organization=organization_name,
         phone=profile.phone,
         avatar=profile.avatar_url,
         govLevel=profile.gov_level,
     )
+
+
+def _organization_role_for_profile(role: str) -> str:
+    return {
+        "producer": "Producer",
+        "auditor": "Auditor",
+        "company": "Compensator",
+        "certifier": "Certifier",
+        "admin": "Registry",
+    }.get(role, "Compensator")
 
 
 def _profile_identity_filter(user_id: str):
@@ -205,41 +177,3 @@ def _profile_identity_filter(user_id: str):
     except ValueError:
         pass
     return or_(*filters)
-
-
-def _seed_profiles() -> list[ProfileRecord]:
-    return [
-        _seed_profile("prod-001", "Produtor Demo", "produtor@sinarca.com.br", "222.222.222-22", "producer", "produtor"),
-        _seed_profile("aud-005", "Auditor Demo", "auditor@sinarca.com.br", "11.111.111-11", "auditor", "auditor"),
-        _seed_profile(
-            "std-001",
-            "Certificadora Demo",
-            "certificadora@sinarca.com.br",
-            "44.444.444/0001-44",
-            "certifier",
-            "certificadora",
-        ),
-        _seed_profile("comp-001", "Banco Futuro", "empresa@sinarca.com.br", "33.333.333/0001-33", "company", "empresa"),
-        _seed_profile("admin-001", "Admin SINARCA", "admin@sinarca.com.br", "00.000.000/0001-00", "admin", "admin"),
-    ]
-
-
-def _seed_profile(
-    user_id: str,
-    name: str,
-    email: str,
-    document: str,
-    role: UserRole,
-    password: str,
-) -> ProfileRecord:
-    return ProfileRecord(
-        id=user_id,
-        name=name,
-        email=email,
-        document=document,
-        role=role,
-        password_hash=hash_password(password),
-    )
-
-
-profile_repository = InMemoryProfileRepository()

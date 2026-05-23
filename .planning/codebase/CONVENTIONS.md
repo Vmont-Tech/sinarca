@@ -12,11 +12,11 @@
 - Serviços compartilhados ficam em `src/services/`; UI reutilizável fica em `src/components/`.
 - Chamadas HTTP devem passar por `src/services/api.ts`.
 
-### Backend Python atual e reconstrução
+### Backend Python atual
 
-- Módulos Python usam snake_case: `stellar_service.py`, `file_validator.py`, `mock_data.py`.
-- O app ativo está em `backend/main.py`.
-- A reconstrução deve usar um pacote novo, por exemplo `backend_app/`, para evitar misturar runtime novo com legado.
+- Módulos Python usam snake_case: `routes.py`, `service.py`, `repository.py`.
+- O app ativo está em `backend_app/main.py`.
+- Novos módulos devem entrar em `backend_app/` seguindo os limites `core`, `db`, `adapters` e `modules`.
 - Nomes de domínio podem preservar termos de negócio em português quando já existirem, mas APIs públicas devem ser documentadas e testadas.
 
 ### Contrato de API
@@ -62,8 +62,8 @@
 
 ## Riscos de migração
 
-- Não adicionar rotas novas apenas em `backend/api/*`; elas não são montadas.
+- Não adicionar rotas fora de `backend_app/api/router.py` ou dos routers montados por ele.
 - Não chamar endpoints com URL absoluta no frontend.
 - Não assumir que `README.md` reflete o código atual sem validação.
 - Não usar `docker-compose.yml` como base de produção sem reescrever e validar.
-- Não remover Python até a nova API FastAPI passar nos testes de contrato e UAT.
+- Não reintroduzir runtime legado nem repositórios em memória.

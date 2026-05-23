@@ -1,7 +1,7 @@
 import type { RawInput, ProfileType } from '../types';
 
 export function validateRanges(input: RawInput, profile: ProfileType) {
-    // Just a placeholder for console warnings or UI flags.
+    // Range guard for console warnings or UI flags.
     // Real validation happens in UI limits or Classification Engine alerts.
     if (profile === 'PF') {
         if (input.energy) {

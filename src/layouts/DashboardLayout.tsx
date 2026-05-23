@@ -51,11 +51,33 @@ export default function DashboardLayout() {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
     const [sidebarOpen, setSidebarOpen] = React.useState(false);
+    const [accountMenuOpen, setAccountMenuOpen] = React.useState(false);
+    const accountMenuRef = React.useRef<HTMLDivElement>(null);
 
     const handleLogout = () => {
+        setAccountMenuOpen(false);
         logout();
-        navigate('/');
+        navigate('/login', { replace: true });
     };
+
+    React.useEffect(() => {
+        const handleDocumentClick = (event: MouseEvent) => {
+            if (!accountMenuRef.current?.contains(event.target as Node)) {
+                setAccountMenuOpen(false);
+            }
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setAccountMenuOpen(false);
+        };
+
+        document.addEventListener('click', handleDocumentClick);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('click', handleDocumentClick);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, []);
 
     const isProducer = user?.role === 'producer' || user?.role === 'admin';
     const isCertifier = user?.role === 'certifier';
@@ -166,17 +188,59 @@ export default function DashboardLayout() {
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
                         </button>
 
-                        <div className="flex items-center gap-4 pl-8 border-l border-gray-100">
-                            <div className="text-right">
-                                <p className="text-sm font-bold text-black leading-none mb-1">{user?.name || 'Usuário'}</p>
-                                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
-                                    {isProducer ? 'Produtor' : isCertifier ? 'Certificadora' : isAuditor ? 'Auditor de Impacto' : 'Empresa Compradora'}
-                                </p>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden">
-                                <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=00ff94&color=fff`} alt="Avatar" className="w-full h-full object-cover" />
-                            </div>
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <div className="relative pl-8 border-l border-gray-100" ref={accountMenuRef}>
+                            <button
+                                type="button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setAccountMenuOpen((open) => !open);
+                                }}
+                                aria-haspopup="menu"
+                                aria-expanded={accountMenuOpen}
+                                className="flex items-center gap-4 rounded-2xl px-3 py-2 text-left transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-black leading-none mb-1">{user?.name || 'Usuário'}</p>
+                                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
+                                        {isProducer ? 'Produtor' : isCertifier ? 'Certificadora' : isAuditor ? 'Auditor de Impacto' : 'Empresa Compradora'}
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden">
+                                    <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=00ff94&color=fff`} alt="Avatar" className="w-full h-full object-cover" />
+                                </div>
+                                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {accountMenuOpen && (
+                                <div
+                                    role="menu"
+                                    onClick={(event) => event.stopPropagation()}
+                                    className="absolute right-0 top-full z-50 mt-3 w-72 rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl shadow-black/10"
+                                >
+                                    <div className="px-4 py-3 border-b border-gray-50">
+                                        <p className="text-sm font-bold text-black truncate">{user?.name || 'Usuário'}</p>
+                                        <p className="text-xs text-gray-400 truncate">{user?.email || 'sessão ativa'}</p>
+                                    </div>
+                                    <Link
+                                        to="/painel/configuracoes"
+                                        role="menuitem"
+                                        onClick={() => setAccountMenuOpen(false)}
+                                        className="mt-2 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50 hover:text-black"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        Configurações
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={handleLogout}
+                                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        Sair da conta
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

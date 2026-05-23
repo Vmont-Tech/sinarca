@@ -148,7 +148,7 @@ export default function GlobalMap() {
                             filteredProjects.map(project => (
                                 <div
                                     key={project.id}
-                                    onClick={() => navigate(`/painel/mrca/${project.id}`)}
+                                    onClick={() => navigate(`/painel/mrca/${project.friendlyId || project.id}`)}
                                     onMouseEnter={() => setHoveredProject(project)}
                                     className="p-3 rounded-lg bg-[#1d271b] hover:bg-[#2a3928] border border-transparent hover:border-sinarca-neon/30 transition-all cursor-pointer group"
                                 >
@@ -217,7 +217,7 @@ export default function GlobalMap() {
                             <g
                                 key={project.id}
                                 className="cursor-pointer group/marker"
-                                onClick={() => navigate(`/painel/mrca/${project.id}`)}
+                                onClick={() => navigate(`/painel/mrca/${project.friendlyId || project.id}`)}
                                 onMouseEnter={(e) => {
                                     setHoveredProject(project);
                                     handleMouseMove(e as any);
@@ -301,7 +301,7 @@ export default function GlobalMap() {
                             </div>
 
                             <button
-                                onClick={() => navigate(`/painel/mrca/${hoveredProject.id}`)}
+                                onClick={() => navigate(`/painel/mrca/${hoveredProject.friendlyId || hoveredProject.id}`)}
                                 className="w-full flex items-center justify-center gap-2 bg-sinarca-neon hover:bg-[#32c418] text-[#0a120a] font-bold text-xs py-2.5 rounded-lg uppercase tracking-wider shadow-lg shadow-sinarca-neon/20 transition-colors"
                             >
                                 Ver Detalhes

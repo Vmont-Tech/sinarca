@@ -19,7 +19,7 @@ const RoleBtn = ({ active, onClick, label, icon }: { active: boolean, onClick: (
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, register, loginWithGovBr } = useAuth();
+    const { login, register } = useAuth();
     const from = location.state?.from || '/painel';
 
     const [scrolled, setScrolled] = useState(false);
@@ -82,9 +82,7 @@ const Login = () => {
                 password: regPass,
                 role: role
             });
-            alert("Cadastro realizado com sucesso! Utilize suas novas credenciais para acessar.");
-            setActiveTab('login');
-            setEmail(regCorpEmail);
+            navigate(from, { replace: true });
         } catch (err: any) {
             setError(err.message || 'Erro ao realizar cadastro.');
         } finally {
@@ -92,20 +90,7 @@ const Login = () => {
         }
     };
 
-    const handleGovLogin = async () => {
-        setError('');
-        setLoading(true);
-        try {
-            await loginWithGovBr();
-            navigate(from, { replace: true });
-        } catch (err: any) {
-            setError('Não foi possível autenticar com Gov.br');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const openPlaceholder = (msg: string) => (e: React.MouseEvent) => {
+    const openStaticNotice = (msg: string) => (e: React.MouseEvent) => {
         e.preventDefault();
         alert(msg);
     };
@@ -257,16 +242,6 @@ const Login = () => {
                                         {loading ? "Processando..." : "Entrar no Portal"}
                                     </button>
 
-                                    <div className="flex flex-col gap-3 pt-4">
-                                        <button 
-                                            type="button"
-                                            onClick={handleGovLogin}
-                                            className="w-full border border-white/5 bg-white/5 text-white font-bold text-[10px] uppercase tracking-widest py-4 rounded-2xl hover:bg-white/10 transition-all flex items-center justify-center gap-3"
-                                        >
-                                            <span className="w-5 h-5 bg-[#1351b4] rounded-full flex items-center justify-center text-[10px]">G</span>
-                                            Entrar com Gov.br
-                                        </button>
-                                    </div>
                                 </form>
                             )}
 
@@ -336,7 +311,7 @@ const Login = () => {
                                             className="mt-1 bg-white/5 border-white/5"
                                         />
                                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
-                                            Li e concordo com os <button type="button" onClick={openPlaceholder('Exibindo Termos de Uso...')} className="text-emerald-500 hover:underline">Termos</button> e <button type="button" onClick={openPlaceholder('Exibindo Política de Privacidade...')} className="text-emerald-500 hover:underline">Políticas</button> do SINARCA.
+                                            Li e concordo com os <button type="button" onClick={openStaticNotice('Exibindo Termos de Uso...')} className="text-emerald-500 hover:underline">Termos</button> e <button type="button" onClick={openStaticNotice('Exibindo Política de Privacidade...')} className="text-emerald-500 hover:underline">Políticas</button> do SINARCA.
                                         </p>
                                     </div>
 
@@ -353,9 +328,9 @@ const Login = () => {
                         {/* Natural Footer */}
                         <div className="text-[#9cba9c]/60 text-[10px] text-center uppercase tracking-widest">
                              <div className="flex items-center justify-center gap-6 mb-4">
-                                <button onClick={openPlaceholder('Termos de Uso')} className="hover:text-white transition-colors">Termos de Uso</button>
+                                <button onClick={openStaticNotice('Termos de Uso')} className="hover:text-white transition-colors">Termos de Uso</button>
                                 <span className="size-1 rounded-full bg-[#3b543b]"></span>
-                                <button onClick={openPlaceholder('Política de Privacidade')} className="hover:text-white transition-colors">Política de Privacidade</button>
+                                <button onClick={openStaticNotice('Política de Privacidade')} className="hover:text-white transition-colors">Política de Privacidade</button>
                             </div>
                              <p>© {new Date().getFullYear()} SINARCA. Todos os direitos reservados.</p>
                         </div>

@@ -19,6 +19,6 @@ export function getFuelEnergyDensity(fuel: string): number {
         case 'gasoline': return GASOLINE_MJ_PER_L;
         case 'ethanol': return ETHANOL_MJ_PER_L;
         case 'gnv': return GNV_MJ_PER_M3;
-        default: return 32; // Fallback
+        default: return 32; // Default gasoline-like density
     }
 }

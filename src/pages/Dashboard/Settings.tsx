@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
     User, 
@@ -9,15 +10,17 @@ import {
     Lock, 
     Save, 
     Upload,
-    FileText
+    FileText,
+    LogOut
 } from 'lucide-react';
 
 export default function Settings() {
-    const { user, updateProfile } = useAuth();
+    const navigate = useNavigate();
+    const { user, updateProfile, logout } = useAuth();
     const [name, setName] = useState(user?.name || '');
     const [email, setEmail] = useState(user?.email || '');
-    const [company, setCompany] = useState((user as any)?.organization || 'Banco Futuro');
-    const [phone, setPhone] = useState((user as any)?.phone || '+55 (11) 99999-9999');
+    const [company, setCompany] = useState(user?.organization || '');
+    const [phone, setPhone] = useState(user?.phone || '');
     
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
@@ -33,6 +36,11 @@ export default function Settings() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login', { replace: true });
     };
 
     return (
@@ -175,6 +183,20 @@ export default function Settings() {
                             <div className="w-14 h-8 bg-primary rounded-full relative cursor-pointer p-1">
                                 <div className="w-6 h-6 bg-white rounded-full absolute right-1"></div>
                             </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between gap-4 p-6 bg-white rounded-3xl border border-gray-100">
+                            <div>
+                                <h5 className="text-sm font-bold text-black uppercase tracking-tight">Sessão ativa</h5>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Sair do SINARCA</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                className="shrink-0 px-5 py-3 bg-black text-white font-bold text-xs uppercase tracking-widest rounded-2xl flex items-center gap-2 hover:bg-red-600 transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" /> Sair
+                            </button>
                         </div>
                     </div>
                 </div>

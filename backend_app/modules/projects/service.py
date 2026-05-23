@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend_app.db.models import Organization, Project, ProjectBaseline, ProjectTag
+from backend_app.db.models import Organization, Profile, Project, ProjectBaseline, ProjectTag
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
@@ -62,7 +62,7 @@ class ProjectsService:
         if payload.tags is not None and len(payload.tags) != 4:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar exatamente 4 tags NFC")
 
-        producer = await self._get_organization(payload.producer_id)
+        producer = await self._resolve_producer(payload.producer_id, actor_id)
         certifier = await self._get_organization(payload.certifier_id)
         registry = await self._get_first_organization_by_role("registry")
         auditor = await self._get_first_organization_by_role("auditor")
@@ -94,8 +94,8 @@ class ProjectsService:
             longitude=Decimal(str(payload.location.coordinates.lng)),
             svg_x=Decimal(str(payload.location.coordinates.svgX)) if payload.location.coordinates.svgX is not None else None,
             svg_y=Decimal(str(payload.location.coordinates.svgY)) if payload.location.coordinates.svgY is not None else None,
-            area_hectares=Decimal(str(_area_from_tags(payload.tags))),
-            carbon_stock=Decimal(str(_credit_potential_from_baseline(baseline))),
+            area_hectares=Decimal(str(payload.area_hectares or _area_from_tags(payload.tags))),
+            carbon_stock=Decimal(str(payload.carbon_stock or _credit_potential_from_baseline(baseline))),
             investment_value_brl=Decimal("0"),
             vintage=str(now.year),
             image_url="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80",
@@ -112,7 +112,7 @@ class ProjectsService:
                     "desc": "Projeto registrado na API persistente e aguardando certificação.",
                 }
             ],
-            metadata_={"project_type": payload.project_type, "baseline_adapter": "deterministic_mock"},
+            metadata_={"project_type": payload.project_type, "baseline_adapter": "deterministic_baseline"},
         )
         self.session.add(project)
         await self.session.flush()
@@ -120,13 +120,13 @@ class ProjectsService:
         self.session.add(
             ProjectBaseline(
                 project_id=project.id,
-                sentinel_scene_id=f"MOCK_SENTINEL_{friendly_id}",
+                sentinel_scene_id=f"SINARCA_SENTINEL_{friendly_id}",
                 baseline_hash=baseline.baseline_hash,
                 points_analyzed=baseline.points_analyzed,
                 vegetation_cover_pct=Decimal(str(baseline.vegetation_cover_pct)),
                 ndvi_mean=Decimal(str(baseline.ndvi_mean)),
                 captured_at=baseline.captured_at,
-                evidence_uri=f"s3://sinarca-demo/baselines/{friendly_id}.json",
+                evidence_uri=f"s3://sinarca-seed/baselines/{friendly_id}.json",
             )
         )
 
@@ -229,10 +229,10 @@ class ProjectsService:
             methodology_link=project.methodology_link,
             image=project.image_url or "",
             entities=ProjectEntities(
-                developer=entity_from_org(orgs.get(project.developer_organization_id), fallback_role="Developer"),
-                auditor=entity_from_org(orgs.get(project.auditor_organization_id), fallback_role="Auditor"),
-                certifier=entity_from_org(orgs.get(project.certifier_organization_id), fallback_role="Certifier"),
-                registry=entity_from_org(orgs.get(project.registry_organization_id), fallback_role="Registry"),
+                developer=entity_from_org(orgs.get(project.developer_organization_id), default_role="Developer"),
+                auditor=entity_from_org(orgs.get(project.auditor_organization_id), default_role="Auditor"),
+                certifier=entity_from_org(orgs.get(project.certifier_organization_id), default_role="Certifier"),
+                registry=entity_from_org(orgs.get(project.registry_organization_id), default_role="Registry"),
             ),
             blockchain=BlockchainData(
                 initialHash=project.source_hash or project.friendly_id,
@@ -262,6 +262,46 @@ class ProjectsService:
         organization = result.scalar_one_or_none()
         if organization is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Organização {organization_id} não encontrada")
+        return organization
+
+    async def _resolve_producer(self, producer_id: str | None, actor_id: str | None) -> Organization:
+        if producer_id:
+            return await self._get_organization(producer_id)
+
+        profile: Profile | None = None
+        if actor_id:
+            filters = [Profile.external_id == actor_id]
+            try:
+                filters.append(Profile.id == uuid.UUID(actor_id))
+            except ValueError:
+                pass
+            profile = (await self.session.execute(select(Profile).where(or_(*filters)))).scalar_one_or_none()
+
+        if profile is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Produtor responsável não encontrado")
+
+        if profile.organization_id is not None:
+            organization = (
+                await self.session.execute(select(Organization).where(Organization.id == profile.organization_id))
+            ).scalar_one_or_none()
+            if organization is not None:
+                return organization
+
+        external_id = f"{profile.external_id or profile.id}-organization"
+        organization = (
+            await self.session.execute(select(Organization).where(Organization.external_id == external_id))
+        ).scalar_one_or_none()
+        if organization is None:
+            organization = Organization(
+                external_id=external_id,
+                name=profile.name,
+                role="Producer",
+                document=profile.document,
+                authorized=False,
+            )
+            self.session.add(organization)
+            await self.session.flush()
+        profile.organization_id = organization.id
         return organization
 
     async def _get_first_organization_by_role(self, role: str) -> Organization | None:
@@ -319,10 +359,10 @@ def catalog_item(organization: Organization) -> dict[str, Any]:
     return item
 
 
-def entity_from_org(organization: Organization | None, *, fallback_role: str) -> ParticipatingEntity:
+def entity_from_org(organization: Organization | None, *, default_role: str) -> ParticipatingEntity:
     if organization is None:
-        return ParticipatingEntity(id="pending", name="Pendente", role=fallback_role, verified=False)
-    normalized_role = ROLE_LABELS.get(organization.role.strip().lower(), fallback_role)
+        return ParticipatingEntity(id="pending", name="Pendente", role=default_role, verified=False)
+    normalized_role = ROLE_LABELS.get(organization.role.strip().lower(), default_role)
     return ParticipatingEntity(
         id=organization.external_id,
         name=organization.name,
