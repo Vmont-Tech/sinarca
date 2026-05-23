@@ -56,3 +56,19 @@ def test_auditor_queue_exposes_field_evidence_review_and_report_submission() -> 
     assert "const latitude = draft.latitude ? Number(draft.latitude) : undefined;" in auditor_review
     assert "const longitude = draft.longitude ? Number(draft.longitude) : undefined;" in auditor_review
     assert "Área preservada conforme baseline" in auditor_review
+
+
+def test_auditor_queue_filters_by_project_code_and_location_and_signs_with_auditor_name() -> None:
+    auditor_review = read("src/pages/Dashboard/AuditorReview.tsx")
+
+    assert "const { user } = useAuth();" in auditor_review
+    assert "createDefaultDraft(user?.name)" in auditor_review
+    assert "Assinado digitalmente por ${auditorName}" in auditor_review
+    assert "searchTerm" in auditor_review
+    assert "locationFilter" in auditor_review
+    assert "filteredItems" in auditor_review
+    assert "filteredItems.slice(start, start + pageSize)" in auditor_review
+    assert "Buscar por projeto ou código" in auditor_review
+    assert "Todos os locais/UFs" in auditor_review
+    assert "project.friendlyId" in auditor_review
+    assert "project.location.stateId" in auditor_review

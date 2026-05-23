@@ -10,10 +10,13 @@ import {
     Fingerprint,
     Link as LinkIcon,
     Loader2,
+    MapPin,
     RotateCcw,
     Satellite,
+    Search,
 } from 'lucide-react';
 import { apiGet, apiPatch } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { database, type MonitoringProjectResponse } from '../../services/database';
 
 type AuditItem = {
@@ -58,13 +61,13 @@ const checkLabels: Record<AuditCheckKey, string> = {
     producerControl: 'Produtor mantém controle da área',
 };
 
-const createDefaultDraft = (): AuditDraft => ({
+const createDefaultDraft = (auditorName?: string): AuditDraft => ({
     observations: '',
     conclusion: 'Projeto em conformidade. Recomenda-se desbloqueio e disponibilização dos créditos ambientais.',
     latitude: '',
     longitude: '',
     evidenceUrls: '',
-    signature: 'Assinado digitalmente pelo auditor responsável',
+    signature: auditorName ? `Assinado digitalmente por ${auditorName}` : 'Assinado digitalmente pelo auditor responsável',
     checks: {
         tagsLocated: false,
         tagsIntact: false,
@@ -86,6 +89,11 @@ const formatDateTime = (value?: string) => {
         minute: '2-digit',
     }).format(new Date(value));
 };
+
+const normalizeText = (value: string | number | null | undefined) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 
 const splitEvidenceUrls = (value: string) => value
     .split(/\n|,/)
@@ -130,15 +138,18 @@ const buildAuditReport = (
 };
 
 export default function AuditorReview() {
+    const { user } = useAuth();
     const [items, setItems] = React.useState<AuditItem[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [message, setMessage] = React.useState('');
     const [currentPage, setCurrentPage] = React.useState(1);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [locationFilter, setLocationFilter] = React.useState('all');
     const [activeProjectId, setActiveProjectId] = React.useState<string | null>(null);
     const [monitoringByProject, setMonitoringByProject] = React.useState<Record<string, MonitoringProjectResponse>>({});
     const [evidenceLoading, setEvidenceLoading] = React.useState<string | null>(null);
     const [evidenceError, setEvidenceError] = React.useState('');
-    const [draft, setDraft] = React.useState<AuditDraft>(() => createDefaultDraft());
+    const [draft, setDraft] = React.useState<AuditDraft>(() => createDefaultDraft(user?.name));
 
     const loadQueue = React.useCallback(async () => {
         setLoading(true);
@@ -156,6 +167,11 @@ export default function AuditorReview() {
         loadQueue();
     }, [loadQueue]);
 
+    React.useEffect(() => {
+        setCurrentPage(1);
+        setActiveProjectId(null);
+    }, [searchTerm, locationFilter]);
+
     const openEvidenceReview = async (project: AuditItem) => {
         const projectKey = project.friendlyId || project.id;
         if (activeProjectId === projectKey) {
@@ -164,7 +180,7 @@ export default function AuditorReview() {
         }
 
         setActiveProjectId(projectKey);
-        setDraft(createDefaultDraft());
+        setDraft(createDefaultDraft(user?.name));
         setEvidenceError('');
         if (monitoringByProject[projectKey]) return;
 
@@ -227,11 +243,41 @@ export default function AuditorReview() {
         await loadQueue();
     };
 
-    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const locationOptions = React.useMemo(() => {
+        const options = new Map<string, string>();
+        items.forEach((project) => {
+            const city = project.location.city;
+            const state = project.location.state;
+            const uf = project.location.stateId || state;
+            const value = normalizeText(`${city}|${state}|${uf}`);
+            options.set(value, `${city}, ${state}`);
+        });
+        return Array.from(options.entries())
+            .map(([value, label]) => ({ value, label }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+    }, [items]);
+
+    const filteredItems = React.useMemo(() => {
+        const query = normalizeText(searchTerm);
+        return items.filter((project) => {
+            const projectText = normalizeText([
+                project.name,
+                project.nome,
+                project.friendlyId,
+                project.id,
+            ].join(' '));
+            const locationText = normalizeText(`${project.location.city}|${project.location.state}|${project.location.stateId}`);
+            const matchesSearch = !query || projectText.includes(query);
+            const matchesLocation = locationFilter === 'all' || locationText === locationFilter;
+            return matchesSearch && matchesLocation;
+        });
+    }, [items, locationFilter, searchTerm]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
     const paginatedItems = React.useMemo(() => {
         const start = (currentPage - 1) * pageSize;
-        return items.slice(start, start + pageSize);
-    }, [currentPage, items]);
+        return filteredItems.slice(start, start + pageSize);
+    }, [currentPage, filteredItems]);
 
     return (
         <div className="space-y-8">
@@ -250,9 +296,41 @@ export default function AuditorReview() {
 
             {message && <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">{message}</div>}
 
+            <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm lg:grid-cols-[1fr_280px]">
+                <label className="space-y-1">
+                    <span className="text-xs font-bold uppercase text-gray-400">Buscar por projeto ou código</span>
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <input
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            className="h-11 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-blue-500"
+                            placeholder="Nome, código PRC ou hash"
+                        />
+                    </div>
+                </label>
+                <label className="space-y-1">
+                    <span className="text-xs font-bold uppercase text-gray-400">Local/UF</span>
+                    <div className="relative">
+                        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <select
+                            value={locationFilter}
+                            onChange={(event) => setLocationFilter(event.target.value)}
+                            className="h-11 w-full appearance-none rounded-xl border border-gray-200 bg-white pl-9 pr-8 text-sm font-semibold text-gray-800 outline-none transition focus:border-blue-500"
+                        >
+                            <option value="all">Todos os locais/UFs</option>
+                            {locationOptions.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                </label>
+            </div>
+
             <div className="grid gap-5">
                 {loading && <div className="rounded-2xl bg-white p-8 shadow-sm">Carregando fila de auditoria...</div>}
                 {!loading && items.length === 0 && <div className="rounded-2xl bg-white p-8 shadow-sm">Nenhum projeto pendente de auditoria.</div>}
+                {!loading && items.length > 0 && filteredItems.length === 0 && <div className="rounded-2xl bg-white p-8 shadow-sm">Nenhum projeto encontrado com os filtros selecionados.</div>}
 
                 {paginatedItems.map((project) => (
                     <article key={project.id} className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -423,10 +501,10 @@ export default function AuditorReview() {
                     </article>
                 ))}
 
-                {!loading && items.length > pageSize && (
+                {!loading && filteredItems.length > pageSize && (
                     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm font-semibold text-gray-500">
-                            Página {currentPage} de {totalPages}
+                            Página {currentPage} de {totalPages} · {filteredItems.length} projetos
                         </p>
                         <div className="flex items-center gap-2">
                             <button
