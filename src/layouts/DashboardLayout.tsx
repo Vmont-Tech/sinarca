@@ -147,7 +147,6 @@ export default function DashboardLayout() {
                             <>
                                 <SidebarItem to="/painel/certificadora" icon={ShieldCheck} label="Fila Certificadora" active={location.pathname === '/painel/certificadora'} theme={sidebarTheme} />
                                 <SidebarItem to="/painel/certificadora/cadastro" icon={TreePine} label="Cadastrar Projeto" active={location.pathname === '/painel/certificadora/cadastro'} theme={sidebarTheme} />
-                                <SidebarItem to="/painel/transacoes" icon={History} label="Ledger" active={location.pathname === '/painel/transacoes'} theme={sidebarTheme} />
                             </>
                         )}
 
