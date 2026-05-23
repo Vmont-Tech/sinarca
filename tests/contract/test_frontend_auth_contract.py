@@ -43,3 +43,12 @@ def test_frontend_auth_does_not_keep_local_user_database_fallback() -> None:
     assert "PROJECT_INFO" not in monitoring
     assert "QTAGS_STATUS" not in monitoring
     assert "based on hash" not in transaction_details
+
+
+def test_certifier_navigation_keeps_single_traceability_item() -> None:
+    dashboard_layout = read("src/layouts/DashboardLayout.tsx")
+    certifier_block = dashboard_layout.split("{isCertifier && (", 1)[1].split("{isAuditor && (", 1)[0]
+
+    assert 'label="Ledger"' not in certifier_block
+    assert dashboard_layout.count('to="/painel/transacoes" icon={History}') == 1
+    assert 'label="Rastreabilidade"' in dashboard_layout
