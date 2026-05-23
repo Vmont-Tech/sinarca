@@ -72,3 +72,14 @@ def test_auditor_queue_filters_by_project_code_and_location_and_signs_with_audit
     assert "Todos os locais/UFs" in auditor_review
     assert "project.friendlyId" in auditor_review
     assert "project.location.stateId" in auditor_review
+
+
+def test_audit_report_preview_has_hover_copy_button() -> None:
+    auditor_review = read("src/pages/Dashboard/AuditorReview.tsx")
+
+    assert "copyReportPreview" in auditor_review
+    assert "navigator.clipboard.writeText(reportPreview)" in auditor_review
+    assert "Copiar relatório" in auditor_review
+    assert "Relatório copiado" in auditor_review
+    assert "group-hover:opacity-100" in auditor_review
+    assert "focus:opacity-100" in auditor_review

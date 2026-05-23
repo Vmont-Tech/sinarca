@@ -5,6 +5,7 @@ import {
     ChevronLeft,
     ChevronRight,
     ClipboardCheck,
+    Copy,
     Crosshair,
     FileCheck2,
     Fingerprint,
@@ -150,6 +151,7 @@ export default function AuditorReview() {
     const [evidenceLoading, setEvidenceLoading] = React.useState<string | null>(null);
     const [evidenceError, setEvidenceError] = React.useState('');
     const [draft, setDraft] = React.useState<AuditDraft>(() => createDefaultDraft(user?.name));
+    const [copiedProjectId, setCopiedProjectId] = React.useState<string | null>(null);
 
     const loadQueue = React.useCallback(async () => {
         setLoading(true);
@@ -241,6 +243,20 @@ export default function AuditorReview() {
         });
         setMessage(`Auditoria registrada: ${status}`);
         await loadQueue();
+    };
+
+    const copyReportPreview = async (project: AuditItem) => {
+        const projectKey = project.friendlyId || project.id;
+        const reportPreview = buildAuditReport(project, monitoringByProject[projectKey], draft, 'APPROVED');
+        try {
+            await navigator.clipboard.writeText(reportPreview);
+            setCopiedProjectId(projectKey);
+            window.setTimeout(() => {
+                setCopiedProjectId((current) => current === projectKey ? null : current);
+            }, 1800);
+        } catch {
+            setEvidenceError('Não foi possível copiar o relatório para a área de transferência.');
+        }
     };
 
     const locationOptions = React.useMemo(() => {
@@ -478,8 +494,20 @@ export default function AuditorReview() {
                                     </div>
                                 </section>
 
-                                <div className="rounded-xl bg-gray-950 p-4 text-xs text-gray-100">
-                                    <p className="mb-2 font-black uppercase tracking-widest text-gray-400">Prévia do relatório</p>
+                                <div className="group relative rounded-xl bg-gray-950 p-4 text-xs text-gray-100">
+                                    <div className="mb-2 flex items-center justify-between gap-3 pr-28">
+                                        <p className="font-black uppercase tracking-widest text-gray-400">Prévia do relatório</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyReportPreview(project)}
+                                        className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white opacity-0 shadow-sm transition hover:bg-white/20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-300 group-hover:opacity-100"
+                                        title="Copiar relatório"
+                                        aria-label="Copiar relatório"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                        {copiedProjectId === (project.friendlyId || project.id) ? 'Relatório copiado' : 'Copiar relatório'}
+                                    </button>
                                     <pre className="max-h-72 overflow-auto whitespace-pre-wrap font-mono leading-relaxed">
                                         {buildAuditReport(project, monitoringByProject[project.friendlyId || project.id], draft, 'APPROVED')}
                                     </pre>
