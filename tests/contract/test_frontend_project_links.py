@@ -92,7 +92,12 @@ def test_audit_report_evidence_uses_mock_file_picker_instead_of_url_textarea() -
     assert "multiple" in auditor_review
     assert "accept=\"image/*,.pdf,.doc,.docx,.heic\"" in auditor_review
     assert "Fotos/documentos da vistoria" in auditor_review
+    assert "MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES = 10 * 1024 * 1024" in auditor_review
+    assert "Limite máximo: 10 MB por arquivo" in auditor_review
+    assert "file.size <= MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES" in auditor_review
+    assert "Arquivos acima de 10 MB não foram anexados" in auditor_review
     assert "Arquivos selecionados" in auditor_review
+    assert "Tamanho:" in auditor_review
     assert auditor_review.index("Checklist de campo") < auditor_review.index("Fotos/documentos da vistoria") < auditor_review.index("Relatório de auditoria")
     assert "addMockEvidenceFiles" in auditor_review
     assert "removeMockEvidenceFile" in auditor_review

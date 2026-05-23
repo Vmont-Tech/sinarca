@@ -62,6 +62,9 @@ const formatNumber = (value: number | null | undefined) => (value ?? 0).toLocale
 const getAreaHa = (project: AuditItem) => project.metrics?.totalAreaHa ?? project.area_hectares;
 const getCarbonStock = (project: AuditItem) => project.metrics?.carbonStock ?? project.carbonStock;
 const pageSize = 5;
+const MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_AUDIT_EVIDENCE_FILE_LIMIT_TEXT = 'Limite máximo: 10 MB por arquivo';
+const MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX = 'Arquivos acima de 10 MB não foram anexados';
 const checkLabels: Record<AuditCheckKey, string> = {
     tagsLocated: '4 tags NFC 424 DNA localizadas em campo',
     tagsIntact: 'Tags intactas e funcionais',
@@ -222,13 +225,21 @@ export default function AuditorReview() {
         if (!files || files.length === 0) return;
         const projectKey = project.friendlyId || project.id;
         const timestamp = Date.now();
-        const evidenceFiles = Array.from(files).map((file, index) => ({
+        const selectedFiles = Array.from(files);
+        const acceptedFiles = selectedFiles.filter((file) => file.size <= MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES);
+        const rejectedFiles = selectedFiles.filter((file) => file.size > MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES);
+        const evidenceFiles = acceptedFiles.map((file, index) => ({
             id: `${timestamp}-${index}-${file.name}`,
             name: file.name,
             size: file.size,
             type: file.type || 'arquivo local',
             mockUrl: `mock://auditoria/${projectKey}/${encodeURIComponent(file.name)}`,
         }));
+        setEvidenceError(
+            rejectedFiles.length > 0
+                ? `${MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX}: ${rejectedFiles.map((file) => file.name).join(', ')}.`
+                : ''
+        );
         setDraft((current) => ({
             ...current,
             evidenceFiles: [...current.evidenceFiles, ...evidenceFiles],
@@ -494,6 +505,7 @@ export default function AuditorReview() {
                                         </div>
                                         <div className="space-y-2">
                                             <span className="text-xs font-bold uppercase text-gray-400">Fotos/documentos da vistoria</span>
+                                            <p className="text-xs font-semibold text-gray-500">{MAX_AUDIT_EVIDENCE_FILE_LIMIT_TEXT}</p>
                                             <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center transition hover:border-blue-300 hover:bg-blue-50">
                                                 <FileUp className="h-6 w-6 text-blue-600" />
                                                 <span className="mt-2 text-sm font-bold text-gray-800">Selecionar arquivos</span>
@@ -516,7 +528,8 @@ export default function AuditorReview() {
                                                         <div key={file.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2">
                                                             <div className="min-w-0">
                                                                 <p className="truncate text-sm font-bold text-gray-800">{file.name}</p>
-                                                                <p className="text-xs text-gray-500">{formatFileSize(file.size)} · {file.mockUrl}</p>
+                                                                <p className="text-xs text-gray-500">Tamanho: {formatFileSize(file.size)}</p>
+                                                                <p className="break-all text-xs text-gray-500">{file.mockUrl}</p>
                                                             </div>
                                                             <button
                                                                 type="button"
