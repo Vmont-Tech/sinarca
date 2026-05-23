@@ -492,30 +492,6 @@ export default function AuditorReview() {
                                                 </label>
                                             ))}
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-gray-500">
-                                            <FileCheck2 className="h-4 w-4 text-blue-600" />
-                                            Relatório de auditoria
-                                        </div>
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            <label className="space-y-1">
-                                                <span className="text-xs font-bold uppercase text-gray-400">Latitude do auditor</span>
-                                                <input value={draft.latitude} onChange={(event) => updateDraft('latitude', event.target.value)} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="-15.794200" />
-                                            </label>
-                                            <label className="space-y-1">
-                                                <span className="text-xs font-bold uppercase text-gray-400">Longitude do auditor</span>
-                                                <input value={draft.longitude} onChange={(event) => updateDraft('longitude', event.target.value)} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="-47.882200" />
-                                            </label>
-                                        </div>
-                                        <button type="button" onClick={useCurrentLocation} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
-                                            <Crosshair className="h-4 w-4" /> Usar GPS atual
-                                        </button>
-                                        <label className="block space-y-1">
-                                            <span className="text-xs font-bold uppercase text-gray-400">Observações</span>
-                                            <textarea value={draft.observations} onChange={(event) => updateDraft('observations', event.target.value)} rows={3} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Descreva integridade das tags, estado da área, amostras coletadas e qualquer divergência encontrada." />
-                                        </label>
                                         <div className="space-y-2">
                                             <span className="text-xs font-bold uppercase text-gray-400">Fotos/documentos da vistoria</span>
                                             <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center transition hover:border-blue-300 hover:bg-blue-50">
@@ -556,6 +532,30 @@ export default function AuditorReview() {
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-gray-500">
+                                            <FileCheck2 className="h-4 w-4 text-blue-600" />
+                                            Relatório de auditoria
+                                        </div>
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <label className="space-y-1">
+                                                <span className="text-xs font-bold uppercase text-gray-400">Latitude do auditor</span>
+                                                <input value={draft.latitude} onChange={(event) => updateDraft('latitude', event.target.value)} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="-15.794200" />
+                                            </label>
+                                            <label className="space-y-1">
+                                                <span className="text-xs font-bold uppercase text-gray-400">Longitude do auditor</span>
+                                                <input value={draft.longitude} onChange={(event) => updateDraft('longitude', event.target.value)} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="-47.882200" />
+                                            </label>
+                                        </div>
+                                        <button type="button" onClick={useCurrentLocation} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+                                            <Crosshair className="h-4 w-4" /> Usar GPS atual
+                                        </button>
+                                        <label className="block space-y-1">
+                                            <span className="text-xs font-bold uppercase text-gray-400">Observações</span>
+                                            <textarea value={draft.observations} onChange={(event) => updateDraft('observations', event.target.value)} rows={3} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Descreva integridade das tags, estado da área, amostras coletadas e qualquer divergência encontrada." />
+                                        </label>
                                         <label className="block space-y-1">
                                             <span className="text-xs font-bold uppercase text-gray-400">Conclusão</span>
                                             <textarea value={draft.conclusion} onChange={(event) => updateDraft('conclusion', event.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" />

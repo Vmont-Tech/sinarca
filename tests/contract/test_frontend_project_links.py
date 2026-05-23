@@ -93,6 +93,7 @@ def test_audit_report_evidence_uses_mock_file_picker_instead_of_url_textarea() -
     assert "accept=\"image/*,.pdf,.doc,.docx,.heic\"" in auditor_review
     assert "Fotos/documentos da vistoria" in auditor_review
     assert "Arquivos selecionados" in auditor_review
+    assert auditor_review.index("Checklist de campo") < auditor_review.index("Fotos/documentos da vistoria") < auditor_review.index("Relatório de auditoria")
     assert "addMockEvidenceFiles" in auditor_review
     assert "removeMockEvidenceFile" in auditor_review
     assert "mock://auditoria/${projectKey}/${encodeURIComponent(file.name)}" in auditor_review
