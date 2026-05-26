@@ -409,3 +409,13 @@ def test_project_document_upload_persists_project_link_and_audit_event() -> None
     assert audit_event.metadata_["friendly_id"] == project["friendlyId"]
     assert audit_event.metadata_["document_type"] == "LEGAL_OWNERSHIP"
     assert audit_event.metadata_["sha256"] == upload["sha256"]
+
+    dossier_response = client.get(f"/api/v1/projects/{project['friendlyId']}/public-dossier")
+    assert dossier_response.status_code == 200
+    documents = dossier_response.json()["documents"]
+    assert any(
+        item["type"] == "LEGAL_OWNERSHIP"
+        and item["sha256Hash"] == upload["sha256"]
+        and item["storagePath"] == upload["storage_path"]
+        for item in documents
+    )

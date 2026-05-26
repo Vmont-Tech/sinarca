@@ -85,10 +85,21 @@ export type ProjectPublicDossier = {
     baseline: Record<string, any> | null;
     certifications: Array<Record<string, any>>;
     audits: Array<Record<string, any>>;
-    documents: Array<Record<string, any>>;
+    documents: ProjectDossierDocument[];
     credits: Array<Record<string, any>>;
     transactions: TransactionRecord[];
     chainEvents: Array<Record<string, any>>;
+};
+
+export type ProjectDossierDocument = {
+    id: string;
+    type: string;
+    storagePath: string;
+    sha256Hash: string;
+    mimeType: string;
+    sizeBytes: number;
+    uploadedAt: string;
+    metadata?: Record<string, any>;
 };
 
 export type PublicProfileResponse = {

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ChevronLeft, FileText, Leaf, Loader2, MapPin, Radio, ScanLine, ShieldCheck, Upload, WifiOff } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, FileCheck, FileText, Leaf, Loader2, MapPin, RefreshCw, Radio, ScanLine, ShieldCheck, Trash2, Upload, WifiOff, XCircle } from 'lucide-react';
 import ProjectGeofencePreview from '../../components/ProjectGeofencePreview';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiPost } from '../../services/api';
 import { database } from '../../services/database';
 import { detectFieldCapabilities, getNfcCaptureStatus, requestCurrentPosition } from '../../services/fieldCapture';
+import { uploadProjectDocument, type ProjectDocumentType, type UploadedProjectDocument } from '../../services/projectDocuments';
 import {
     REQUIRED_VERTICES,
     averageCoordinates,
@@ -32,6 +33,17 @@ type ProjectFormState = {
     certifierId: string;
 };
 
+type DocumentStatus = 'local' | 'uploading' | 'uploaded' | 'error';
+
+type ProjectDocumentDraft = {
+    id: string;
+    documentType: ProjectDocumentType;
+    file: File;
+    status: DocumentStatus;
+    uploaded?: UploadedProjectDocument;
+    error?: string;
+};
+
 const steps: Array<{ id: StepId; label: string; icon: React.ElementType }> = [
     { id: 'project', label: 'Projeto', icon: Leaf },
     { id: 'qtags', label: 'QTAGs', icon: ScanLine },
@@ -48,6 +60,14 @@ const projectTypeOptions = [
 ];
 
 const methodologyOptions = ['VM0015 (Verra)', 'AR-ACM0003', 'ACM0002', 'Metodologia própria em revisão'];
+
+const documentTypeOptions: Array<{ value: ProjectDocumentType; label: string }> = [
+    { value: 'LEGAL_OWNERSHIP', label: 'Documento legal' },
+    { value: 'CAR', label: 'CAR' },
+    { value: 'FOREST_INVENTORY', label: 'Inventário florestal' },
+    { value: 'KML_OR_SHP', label: 'KML/SHP' },
+    { value: 'OTHER', label: 'Outro' },
+];
 
 const initialForm: ProjectFormState = {
     name: '',
@@ -70,6 +90,40 @@ const numericValueIsPositive = (value: string) => {
 
 const normalizeStateId = (value: string) => value.trim().slice(0, 2).toLowerCase();
 
+const formatBytes = (value: number) => `${value.toLocaleString('pt-BR')} bytes`;
+
+const truncateHash = (value?: string) => {
+    if (!value) return 'Hash pendente';
+    return value.length > 16 ? `${value.slice(0, 10)}...${value.slice(-6)}` : value;
+};
+
+const documentTypeLabel = (type: ProjectDocumentType) => (
+    documentTypeOptions.find((item) => item.value === type)?.label || type
+);
+
+const documentStatusLabel = (status: DocumentStatus) => {
+    if (status === 'uploaded') return 'enviado';
+    if (status === 'uploading') return 'enviando';
+    if (status === 'error') return 'erro';
+    return 'local';
+};
+
+const validateRequiredDocuments = (documents: ProjectDocumentDraft[]) => {
+    const activeDocuments = documents.filter((item) => item.status !== 'error');
+    const hasLegal = activeDocuments.some((item) => item.documentType === 'LEGAL_OWNERSHIP' || item.documentType === 'CAR');
+    const hasInventory = activeDocuments.some((item) => item.documentType === 'FOREST_INVENTORY');
+    const errors: string[] = [];
+
+    if (!hasLegal) errors.push('Envie um documento legal ou CAR.');
+    if (!hasInventory) errors.push('Envie o inventário florestal.');
+
+    documents.filter((item) => item.status === 'error').forEach((item) => {
+        errors.push(`${item.file.name}: ${item.error || 'falha no upload'}`);
+    });
+
+    return { valid: errors.length === 0, errors };
+};
+
 export default function AddProject() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -85,10 +139,13 @@ export default function AddProject() {
     const [loadingCatalog, setLoadingCatalog] = useState(true);
     const [form, setForm] = useState<ProjectFormState>(initialForm);
     const [tags, setTags] = useState<ProjectTagDraft[]>(createEmptyProjectTagDrafts);
+    const [selectedDocumentType, setSelectedDocumentType] = useState<ProjectDocumentType>('LEGAL_OWNERSHIP');
+    const [documents, setDocuments] = useState<ProjectDocumentDraft[]>([]);
 
     const currentStepIndex = steps.findIndex((item) => item.id === step);
     const needsProducerSelection = user?.role !== 'producer';
     const tagValidation = useMemo(() => validateTagDrafts(tags), [tags]);
+    const documentValidation = useMemo(() => validateRequiredDocuments(documents), [documents]);
     const fieldCapabilities = useMemo(() => detectFieldCapabilities(), []);
     const nfcCaptureStatus = useMemo(() => getNfcCaptureStatus(), []);
     const [locationLoadingVertex, setLocationLoadingVertex] = useState<VertexLabel | null>(null);
@@ -170,6 +227,71 @@ export default function AddProject() {
         }
     };
 
+    const updateDocument = (id: string, patch: Partial<ProjectDocumentDraft>) => {
+        setDocuments((current) => current.map((item) => (
+            item.id === id ? { ...item, ...patch } : item
+        )));
+    };
+
+    const handleDocumentSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFiles = Array.from(event.target.files || []);
+        if (selectedFiles.length === 0) return;
+
+        setDocuments((current) => [
+            ...current,
+            ...selectedFiles.map((file) => ({
+                id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${file.name}`,
+                documentType: selectedDocumentType,
+                file,
+                status: 'local' as DocumentStatus,
+            })),
+        ]);
+        event.target.value = '';
+    };
+
+    const removeDocument = (id: string) => {
+        setDocuments((current) => current.filter((item) => item.id !== id || item.status === 'uploaded'));
+    };
+
+    const uploadPendingDocuments = async (projectId: string) => {
+        let failed = false;
+
+        for (const documentItem of documents) {
+            if (documentItem.status === 'uploaded') continue;
+            updateDocument(documentItem.id, { status: 'uploading', error: undefined });
+            try {
+                const uploaded = await uploadProjectDocument(projectId, documentItem.documentType, documentItem.file);
+                updateDocument(documentItem.id, { status: 'uploaded', uploaded, error: undefined });
+            } catch (err) {
+                failed = true;
+                updateDocument(documentItem.id, {
+                    status: 'error',
+                    error: err instanceof Error ? err.message : 'Não foi possível enviar o documento.',
+                });
+            }
+        }
+
+        return !failed;
+    };
+
+    const retryDocumentUploads = async () => {
+        if (!createdProjectId) return;
+        setSubmitting(true);
+        setError('');
+        try {
+            const uploaded = await uploadPendingDocuments(createdProjectId);
+            if (!uploaded) {
+                setStep('documents');
+                setError('Projeto criado, mas um ou mais documentos falharam no upload.');
+                return;
+            }
+            setSuccess(true);
+            window.setTimeout(() => navigate(`/painel/mrca/${createdProjectId}`), 1600);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const validateProjectStep = () => {
         const errors: Record<string, string> = {};
         if (!form.name.trim()) errors.name = 'Informe o nome oficial do projeto.';
@@ -196,10 +318,13 @@ export default function AddProject() {
         if (targetStep === 'qtags') {
             return tagValidation.valid;
         }
+        if (targetStep === 'documents') {
+            return documentValidation.valid;
+        }
         if (targetStep === 'review') {
             const projectErrors = validateProjectStep();
             setFieldErrors(projectErrors);
-            return Object.keys(projectErrors).length === 0 && tagValidation.valid;
+            return Object.keys(projectErrors).length === 0 && tagValidation.valid && documentValidation.valid;
         }
         return true;
     };
@@ -229,34 +354,49 @@ export default function AddProject() {
         setError('');
         if (!validateStep('review')) {
             setError('Não foi possível criar o projeto. Revise os campos destacados e tente novamente.');
-            setStep(Object.keys(validateProjectStep()).length > 0 ? 'project' : 'qtags');
+            setStep(Object.keys(validateProjectStep()).length > 0 ? 'project' : !tagValidation.valid ? 'qtags' : 'documents');
             return;
         }
 
         setSubmitting(true);
         try {
-            const coordinates = averageCoordinates(tags);
-            const response = await apiPost<any>('/projects', {
-                name: form.name.trim(),
-                description: `${form.description.trim()}\n\nMetodologia declarada: ${form.methodology}`,
-                project_type: form.projectType,
-                producer_id: user?.role === 'producer' ? user.id : form.producerId,
-                certifier_id: form.certifierId,
-                area_hectares: Number(form.areaHectares),
-                carbon_stock: Number(form.carbonStock),
-                location: {
-                    city: form.city.trim(),
-                    state: form.state.trim().toUpperCase(),
-                    stateId: normalizeStateId(form.state),
-                    bioma: form.bioma,
-                    coordinates,
-                },
-                tags: normalizeProjectTags(tags),
-            });
-            setCreatedProjectId(response?.project?.friendlyId || null);
+            let projectId = createdProjectId;
+            if (!projectId) {
+                const coordinates = averageCoordinates(tags);
+                const response = await apiPost<any>('/projects', {
+                    name: form.name.trim(),
+                    description: `${form.description.trim()}\n\nMetodologia declarada: ${form.methodology}`,
+                    project_type: form.projectType,
+                    producer_id: user?.role === 'producer' ? user.id : form.producerId,
+                    certifier_id: form.certifierId,
+                    area_hectares: Number(form.areaHectares),
+                    carbon_stock: Number(form.carbonStock),
+                    location: {
+                        city: form.city.trim(),
+                        state: form.state.trim().toUpperCase(),
+                        stateId: normalizeStateId(form.state),
+                        bioma: form.bioma,
+                        coordinates,
+                    },
+                    tags: normalizeProjectTags(tags),
+                });
+                projectId = response?.project?.friendlyId || null;
+                setCreatedProjectId(projectId);
+            }
+
+            if (!projectId) {
+                throw new Error('Projeto criado sem identificador para upload de documentos.');
+            }
+
+            const uploaded = await uploadPendingDocuments(projectId);
+            if (!uploaded) {
+                setStep('documents');
+                throw new Error('Projeto criado, mas um ou mais documentos falharam no upload.');
+            }
+
             setSuccess(true);
             window.setTimeout(() => {
-                navigate(response?.project?.friendlyId ? `/painel/mrca/${response.project.friendlyId}` : '/painel/projetos');
+                navigate(`/painel/mrca/${projectId}`);
             }, 1600);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Não foi possível criar o projeto. Revise os campos destacados e tente novamente.');
@@ -509,14 +649,102 @@ export default function AddProject() {
                 <h3 className="text-sm font-extrabold uppercase text-gray-900">Documentos</h3>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {['Matrícula/CAR', 'Inventário florestal', 'Arquivo geoespacial'].map((item) => (
-                    <div key={item} className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
-                        <Upload className="mb-3 h-5 w-5 text-gray-500" />
-                        <p className="text-sm font-bold text-gray-900">{item}</p>
-                        <p className="mt-2 text-xs font-semibold text-amber-700">Pendente de envio</p>
+            {!documentValidation.valid && (
+                <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    <div className="flex items-start gap-2 font-bold">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>Envie os documentos obrigatórios antes de criar o projeto.</span>
                     </div>
-                ))}
+                    <ul className="mt-3 space-y-1 text-xs font-semibold">
+                        {documentValidation.errors.map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
+                <div>
+                    <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor="documentType">Tipo</label>
+                    <select
+                        id="documentType"
+                        value={selectedDocumentType}
+                        onChange={(event) => setSelectedDocumentType(event.target.value as ProjectDocumentType)}
+                        className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                        {documentTypeOptions.map((item) => (
+                            <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor="documentFile">Arquivo</label>
+                    <input
+                        id="documentFile"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx"
+                        onChange={handleDocumentSelected}
+                        className="block min-h-11 w-full cursor-pointer rounded-lg border border-gray-200 bg-white text-sm text-gray-700 file:mr-4 file:min-h-11 file:border-0 file:bg-primary file:px-4 file:py-3 file:text-sm file:font-bold file:text-white"
+                    />
+                </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+                {documents.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-5 text-sm font-semibold text-gray-600">
+                        Envie os documentos obrigatórios antes de criar o projeto.
+                    </div>
+                ) : (
+                    documents.map((documentItem) => {
+                        const StatusIcon = documentItem.status === 'uploaded' ? FileCheck : documentItem.status === 'error' ? XCircle : Upload;
+                        return (
+                            <div key={documentItem.id} className="rounded-lg border border-gray-200 p-4">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <StatusIcon className={`h-4 w-4 ${documentItem.status === 'uploaded' ? 'text-green-700' : documentItem.status === 'error' ? 'text-red-600' : 'text-amber-700'}`} />
+                                            <p className="truncate text-sm font-bold text-gray-950">{documentItem.file.name}</p>
+                                        </div>
+                                        <p className="mt-1 text-xs font-semibold text-gray-500">
+                                            {documentTypeLabel(documentItem.documentType)} · {formatBytes(documentItem.file.size)} · {documentStatusLabel(documentItem.status)}
+                                        </p>
+                                        {documentItem.uploaded && (
+                                            <p className="mt-2 font-mono text-xs text-primary">
+                                                {truncateHash(documentItem.uploaded.sha256)}
+                                            </p>
+                                        )}
+                                        {documentItem.error && (
+                                            <p className="mt-2 text-xs font-semibold text-red-600">{documentItem.error}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        {documentItem.status === 'error' && createdProjectId && (
+                                            <button
+                                                type="button"
+                                                onClick={retryDocumentUploads}
+                                                disabled={submitting}
+                                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                            >
+                                                <RefreshCw className="h-4 w-4" />
+                                                Tentar novamente
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeDocument(documentItem.id)}
+                                            disabled={documentItem.status === 'uploading' || documentItem.status === 'uploaded'}
+                                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                            title="Remover documento"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            Remover
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
         </section>
     );
@@ -537,6 +765,19 @@ export default function AddProject() {
                 </div>
 
                 <ProjectGeofencePreview tags={tags} errors={tagValidation.errors} />
+            </div>
+
+            <div className="mt-5 rounded-lg border border-gray-200 p-4">
+                <p className="text-xs font-bold uppercase text-gray-500">Documentos</p>
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {documents.map((documentItem) => (
+                        <div key={documentItem.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                            <p className="text-sm font-bold text-gray-950">{documentTypeLabel(documentItem.documentType)}</p>
+                            <p className="mt-1 truncate text-xs text-gray-600">{documentItem.file.name}</p>
+                            <p className="mt-1 font-mono text-xs text-primary">{truncateHash(documentItem.uploaded?.sha256)}</p>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
