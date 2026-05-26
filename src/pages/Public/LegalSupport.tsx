@@ -1,4 +1,5 @@
 import { LegalPage } from '../../components/legal/LegalPage';
+import { PUBLIC_SUPPORT_EMAIL } from '../../constants/publicContact';
 
 export default function LegalSupport() {
   return (
@@ -79,6 +80,13 @@ export default function LegalSupport() {
           <li><strong>Dupla Contagem:</strong> Tokenização e registro único impedem reuso de créditos.</li>
           <li><strong>Transparência Total:</strong> Rastreabilidade detalhada para verificação por compradores e reguladores.</li>
         </ul>
+      </section>
+
+      <section className="space-y-6">
+        <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">6. Canal de Suporte</h2>
+        <p>
+          Dúvidas sobre escopo jurídico, responsabilidades de usuário e documentação legal podem ser encaminhadas para <a className="text-primary font-bold hover:underline" href={`mailto:${PUBLIC_SUPPORT_EMAIL}`}>{PUBLIC_SUPPORT_EMAIL}</a>.
+        </p>
       </section>
     </LegalPage>
   );

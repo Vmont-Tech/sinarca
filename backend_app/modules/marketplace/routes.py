@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -70,8 +70,31 @@ async def compensate_credit(
 @router.get("/transactions")
 async def list_transactions(
     authorization: str | None = Header(default=None),
+    project_id: str | None = Query(default=None),
+    hash: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    buyer: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=1000),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    transactions = await MarketplaceService(session).transactions(authorization)
+    transactions = await MarketplaceService(session).transactions(
+        authorization,
+        project_id=project_id,
+        hash_filter=hash,
+        type_filter=type,
+        buyer=buyer,
+        status_filter=status,
+        limit=limit,
+    )
     return {"success": True, "transactions": transactions}
 
+
+@router.get("/transactions/{hash_or_id}")
+async def get_transaction(
+    hash_or_id: str,
+    authorization: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    transaction = await MarketplaceService(session).transaction_detail(hash_or_id, authorization)
+    return {"success": True, "transaction": transaction}

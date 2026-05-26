@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     CheckCircle,
     Box,
     ArrowRight,
-    ShieldCheck,
     FileText,
     Clock,
     Database,
     Network,
     ArrowLeft,
-    Copy,
-    Share2
+    Copy
 } from 'lucide-react';
 import { database, type TransactionRecord } from '../../services/database';
 
@@ -24,10 +22,10 @@ export default function TransactionDetails() {
 
     useEffect(() => {
         let mounted = true;
-        database.getTransactions()
-            .then((transactions) => {
-                const found = transactions.find(item => item.hash === hash || item.id === hash);
-                if (mounted) setTransaction(found || null);
+        if (!hash) return;
+        database.getTransactionByHash(hash)
+            .then((found) => {
+                if (mounted) setTransaction(found);
             })
             .finally(() => {
                 if (mounted) setLoading(false);

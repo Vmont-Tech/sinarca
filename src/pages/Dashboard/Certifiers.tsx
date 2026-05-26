@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Verified, Search, ExternalLink, ShieldCheck, Globe, CheckCircle } from 'lucide-react';
+import { Verified, ExternalLink, ShieldCheck, Globe, CheckCircle } from 'lucide-react';
 import { database } from '../../services/database';
 
 export default function Certifiers() {
@@ -76,7 +76,7 @@ export default function Certifiers() {
                                     WebSite Oficial <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
                                 <Link
-                                    to={`/painel/certificadoras/${cert.id}`}
+                                    to={`/perfil/${cert.id}`}
                                     className="px-4 py-2.5 rounded-lg border border-sinarca-border text-text-muted hover:text-white hover:bg-sinarca-deep transition-colors text-xs font-bold uppercase flex items-center justify-center"
                                 >
                                     Ver Projetos

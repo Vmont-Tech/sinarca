@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import Logo from './assets/logo.png';
 import BrazilNetwork from './assets/brazil-network.png';
 import { SinarcaImpactCalculator } from './components/calculator/SinarcaImpactCalculator';
-import { useAuth } from './contexts/AuthContext';
 import { PublicMapExperience } from './components/PublicMapExperience';
 import NationalMap from './components/maps/NationalMap';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { database } from './services/database';
+import { type ProjectMRCA } from './data/mrca_db';
 import { 
   Search, 
   ArrowRight, 
@@ -16,22 +16,15 @@ import {
   TrendingUp, 
   ShieldCheck, 
   Activity, 
-  Globe, 
-  Link as LinkIcon, 
   Eye, 
-  Flag, 
-  History, 
   Share2, 
   Building2, 
   MapPin, 
-  BarChart3, 
-  Zap,
   BadgeCheck,
   Coins,
   ShoppingCart,
   Wallet,
   Flame,
-  CheckCircle2,
   ChevronRight,
   Landmark,
   Trees
@@ -41,12 +34,25 @@ import {
 const IMAGES = {
   hero_bg: "https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?q=80&w=2544&auto=format&fit=crop", // Misty Forest (Alive)
   security_chip: BrazilNetwork, // Tech Chip / Map
-  projects: {
-    amazonia: "https://images.unsplash.com/photo-1596395817818-b271d44093df?q=80&w=800&auto=format&fit=crop", // Amazonia
-    pantanal: "https://images.unsplash.com/photo-1587595431973-160d0d94add1?q=80&w=800&auto=format&fit=crop", // Pantanal
-    cerrado: "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=800&auto=format&fit=crop" // Cerrado
-  }
 };
+
+type LandingStats = {
+  registered: number;
+  compensated: number;
+  projects: number;
+};
+
+const formatTons = (value: number) => `${Math.round(value).toLocaleString('pt-BR')} tCO2e`;
+
+const projectStatusLabel = (status: string) => ({
+  ACTIVE: 'Ativo',
+  AVAILABLE: 'Disponível',
+  AUDITED: 'Auditado',
+  RETIRED: 'Compensado',
+  SUSPENDED: 'Suspenso',
+  BLOCKED_AUDIT_REQUIRED: 'Bloqueado',
+  AWAITING_CERTIFICATION: 'Em certificação',
+}[status] || status);
 
 // --- Helper Components ---
 const Typewriter = ({ words }: { words: string[] }) => {
@@ -91,40 +97,13 @@ const Typewriter = ({ words }: { words: string[] }) => {
   );
 };
 
-const CountUp = ({ end, suffix = '', duration = 2000 }: { end: number, suffix?: string, duration?: number }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTime: number | null = null;
-    const animate = (currentTime: number) => {
-      if (!startTime) startTime = currentTime;
-      const progress = currentTime - startTime;
-      if (progress < duration) {
-        setCount(Math.min(end, (progress / duration) * end));
-        requestAnimationFrame(animate);
-      } else {
-        setCount(end);
-      }
-    };
-    requestAnimationFrame(animate);
-  }, [end, duration]);
-
-  return (
-    <span>
-      {count % 1 === 0 ? count : count.toFixed(1)}{suffix}
-    </span>
-  );
-};
-
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const [scrolled, setScrolled] = useState(false);
+  const [stats, setStats] = useState<LandingStats | null>(null);
+  const [featuredProjects, setFeaturedProjects] = useState<ProjectMRCA[]>([]);
+  const [publicDataError, setPublicDataError] = useState('');
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-
     // Handle hash scroll on mount
     if (window.location.hash) {
       const id = window.location.hash.replace('#', '');
@@ -136,8 +115,50 @@ export default function LandingPage() {
       }
     }
 
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPublicData = async () => {
+      try {
+        const [projects, transactions] = await Promise.all([
+          database.getRawMarketProjects(),
+          database.getTransactions(),
+        ]);
+        if (!active) return;
+
+        const registered = projects.reduce((sum, project) => sum + Number(project.metrics?.carbonStock || 0), 0);
+        const compensated = transactions
+          .filter((transaction) => transaction.type === 'retired')
+          .reduce((sum, transaction) => sum + Math.abs(Number(String(transaction.amount).replace(',', '.')) || 0), 0);
+
+        setStats({ registered, compensated, projects: projects.length });
+        setFeaturedProjects(projects.slice(0, 3));
+        setPublicDataError('');
+      } catch (error) {
+        if (!active) return;
+        setStats(null);
+        setFeaturedProjects([]);
+        setPublicDataError(error instanceof Error ? error.message : 'API pública indisponível');
+      }
+    };
+
+    loadPublicData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const shareProject = async (project: ProjectMRCA) => {
+    const url = `${window.location.origin}/projeto/${encodeURIComponent(project.friendlyId)}`;
+    if (navigator.share) {
+      await navigator.share({ title: project.name, url });
+      return;
+    }
+    await navigator.clipboard?.writeText(url);
+  };
 
   return (
     <div className="bg-[#050a05] text-white font-sans selection:bg-primary selection:text-white overflow-x-hidden">
@@ -177,24 +198,24 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-32 border-t border-white/5 pt-16 max-w-5xl mx-auto">
             <div className="text-center group">
               <div className="text-6xl font-bold text-white mb-2 tracking-tighter">
-                <CountUp end={1.2} suffix="M" duration={2500} />
+                {stats ? formatTons(stats.registered) : 'Carregando'}
               </div>
               <div className="text-primary text-[10px] font-bold uppercase tracking-widest mb-1">tCO2e Registrados</div>
-              <div className="text-gray-500 text-[10px] uppercase font-bold opacity-60">Custódia Segura</div>
+              <div className="text-gray-500 text-[10px] uppercase font-bold opacity-60">Dados da API pública</div>
             </div>
             <div className="text-center group border-l-0 md:border-l border-r-0 md:border-r border-white/5">
               <div className="text-6xl font-bold text-white mb-2 tracking-tighter">
-                <CountUp end={450} suffix="k" duration={2500} />
+                {stats ? formatTons(stats.compensated) : 'Carregando'}
               </div>
               <div className="text-primary text-[10px] font-bold uppercase tracking-widest mb-1">tCO2e Compensados</div>
-              <div className="text-gray-500 text-[10px] uppercase font-bold opacity-60">Impacto Realizado</div>
+              <div className="text-gray-500 text-[10px] uppercase font-bold opacity-60">Ledger persistido</div>
             </div>
             <div className="text-center group">
               <div className="text-6xl font-bold text-white mb-2 tracking-tighter">
-                <CountUp end={100} suffix="%" duration={2000} />
+                {stats ? stats.projects.toLocaleString('pt-BR') : 'Carregando'}
               </div>
-              <div className="text-primary text-[10px] font-bold uppercase tracking-widest mb-1">Transparência</div>
-              <div className="text-gray-500 text-[10px] uppercase font-bold opacity-60">Auditável em Tempo Real</div>
+              <div className="text-primary text-[10px] font-bold uppercase tracking-widest mb-1">Projetos no Registro</div>
+              <div className="text-gray-500 text-[10px] uppercase font-bold opacity-60">Base persistida</div>
             </div>
           </div>
         </div>
@@ -301,51 +322,51 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {/* Project Card */}
-            {[
-              { id: 'PRC-2024-882', title: 'Preservação Rio Madeira', location: 'Manicoré, AM', volume: '1.2M tCO2e', status: 'Auditado', img: 'https://images.unsplash.com/photo-1572276596237-5db2c3e16c5d?q=80&w=800&auto=format&fit=crop' },
-              { id: 'PRC-2025-012', title: 'Corredor Ecológico Pantanal', location: 'Poconé, MT', volume: '450k tCO2e', status: 'Disponível', img: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=800&auto=format&fit=crop' },
-              { id: 'PRC-2023-104', title: 'Reflorestamento Serra do Mar', location: 'Ubatuba, SP', volume: '200k tCO2e', status: 'Compensado', img: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop' },
-            ].map((p, i) => (
-              <div key={i} className="group bg-white/5 rounded-[2.5rem] border border-white/5 hover:border-primary/20 transition-all duration-500 overflow-hidden flex flex-col shadow-2xl">
+            {featuredProjects.map((p) => (
+              <div key={p.friendlyId} className="group bg-white/5 rounded-[2.5rem] border border-white/5 hover:border-primary/20 transition-all duration-500 overflow-hidden flex flex-col shadow-2xl">
                 <div className="h-64 overflow-hidden relative">
-                  <img src={p.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                  <img src={p.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={p.name} />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#050a05] via-transparent to-transparent"></div>
                   <div className="absolute top-6 left-6">
                     <span className="bg-primary/20 backdrop-blur-xl border border-primary/30 text-primary text-[9px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">
-                      {p.status}
+                      {projectStatusLabel(p.status)}
                     </span>
                   </div>
                 </div>
 
                 <div className="p-8 flex-1 flex flex-col">
-                  <h4 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{p.title}</h4>
+                  <h4 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{p.name}</h4>
                   <div className="flex items-center gap-2 text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-8">
-                    <MapPin className="w-3 h-3 text-primary" /> {p.location}
+                    <MapPin className="w-3 h-3 text-primary" /> {p.location.city}, {p.location.state}
                   </div>
 
                   <div className="grid grid-cols-2 gap-8 mb-8 pt-8 border-t border-white/5">
                     <div>
                       <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">Volume</p>
-                      <p className="text-white font-bold">{p.volume}</p>
+                      <p className="text-white font-bold">{formatTons(p.metrics.carbonStock)}</p>
                     </div>
                     <div>
                       <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">Identificador</p>
-                      <p className="text-primary font-mono text-[10px] font-bold">{p.id}</p>
+                      <p className="text-primary font-mono text-[10px] font-bold">{p.friendlyId}</p>
                     </div>
                   </div>
 
                   <div className="mt-auto pt-6 border-t border-white/5 flex justify-between gap-4">
-                    <button className="flex-1 py-3 rounded-xl bg-white/5 text-[9px] font-bold uppercase text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2">
+                    <button onClick={() => navigate(`/projeto/${p.friendlyId}`)} className="flex-1 py-3 rounded-xl bg-white/5 text-[9px] font-bold uppercase text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2">
                       <Eye className="w-4 h-4" /> Detalhes
                     </button>
-                    <button className="flex-1 py-3 rounded-xl bg-white/5 text-[9px] font-bold uppercase text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2">
-                      <Share2 className="w-4 h-4" /> Share
+                    <button onClick={() => shareProject(p)} className="flex-1 py-3 rounded-xl bg-white/5 text-[9px] font-bold uppercase text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2">
+                      <Share2 className="w-4 h-4" /> Compartilhar
                     </button>
                   </div>
                 </div>
               </div>
             ))}
+            {featuredProjects.length === 0 && (
+              <div className="md:col-span-3 rounded-[2.5rem] border border-white/5 bg-white/5 p-10 text-center text-gray-400">
+                {publicDataError ? `API pública indisponível: ${publicDataError}` : 'Carregando projetos públicos da API.'}
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -70,7 +70,7 @@ O SINARCA reserva-se o direito de modificar estes Termos a qualquer momento. Qua
 
 ### 11. Contato
 
-Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato conosco através de `contato@sinarca.com.br`.
+Se você tiver alguma dúvida geral sobre estes Termos de Uso, entre em contato conosco através de `contato@sinarca.com.br`. Para suporte relacionado ao uso da plataforma, utilize `suporte@sinarca.com.br`.
 
 ---
 *Documento preparado por Manus AI para o projeto SINARCA.*

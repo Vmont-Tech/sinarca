@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 2 discussed and planned
+status: phase-2-implemented
+stopped_at: Phase 2 implemented locally; pending PR/merge because main is protected
 last_updated: "2026-05-26T00:00:00.000Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 10
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
-  completed_plans: 6
-  percent: 10
+  completed_plans: 11
+  percent: 20
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 ## Current Position
 
-Phase: 02 (public-transparency-and-profiles) — PLANNED
-Plan: 02-01 and 02-02 ready to start
-Status: Phase 2 discussed and split into five executable plans
+Phase: 02 (public-transparency-and-profiles) — IMPLEMENTED LOCALLY
+Plan: 02-01 through 02-05 executed
+Status: Phase 2 implemented on branch `feat/fase-2-transparencia-perfis`; pending PR/merge because `main` is protected
 Last activity: 2026-05-26
 
-Progress: [█---------] 10%
+Progress: [██--------] 20%
 
 ## Performance Metrics
 
@@ -82,6 +82,11 @@ Progress: [█---------] 10%
 - [Phase 02]: A fase foi dividida em cinco planos: navegação/legal, contrato público de API, dossiê/explorer UI, perfis públicos/rankings e auth/perfil.
 - [Phase 02]: Admin permanece sem cadastro público; provisionamento e gestão admin ficam na Phase 9.
 - [Phase 02]: Conteúdo legal/institucional entra agora, mas operações completas de DPO, LGPD, retenção, anonimização e AML/CFT ficam na Phase 10.
+- [Phase 02]: Canais provisórios distintos usam o domínio `@sinarca.com.br`: `contato@`, `suporte@`, `dpo@` e `compliance@` quando aplicável.
+- [Phase 02]: Dossiê público agregado fica em `/api/v1/projects/{id}/public-dossier` para evitar montagem frágil na UI.
+- [Phase 02]: Explorer público usa `/api/v1/transactions` com filtros por projeto, hash, tipo, comprador e status, além de `/api/v1/transactions/{hash_or_id}`.
+- [Phase 02]: Perfis públicos usam `/api/v1/profiles/{id}` com documento mascarado e dados minimizados.
+- [Phase 02]: Cadastro público aceita produtor, empresa, auditor e certificadora; admin segue bloqueado para provisionamento operacional futuro.
 
 ### Roadmap Evolution
 
@@ -97,8 +102,8 @@ Progress: [█---------] 10%
 
 ### Pending Todos
 
-- Executar Phase 2 começando por `02-01` e `02-02`, que podem iniciar em paralelo por não dependerem um do outro.
-- Planejar as Phases 3-10 conforme prioridade operacional após Phase 2, sempre incluindo seção "Cobertura do checklist" em cada `PLAN.md`.
+- Abrir PR para `docs/planejamento-fase-2` ou incluir os artefatos de planejamento no PR da branch `feat/fase-2-transparencia-perfis`, porque `main` está protegida contra push direto.
+- Planejar e executar Phase 3 (`project-origination-and-documents`), sempre incluindo seção "Cobertura do checklist" em cada `PLAN.md`.
 
 ### Blockers/Concerns
 
@@ -107,7 +112,8 @@ Progress: [█---------] 10%
 - Polygon testnet smoke bloqueado: POLYGON_RPC_URL, POLYGON_VAULT_ADDRESS e source lock tx hash ausentes.
 - Etherfuse sandbox smoke bloqueado: ETHERFUSE_API_URL e ETHERFUSE_API_KEY ausentes.
 - Staging Dokploy Phase 1 bloqueado: STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto ausentes; ver .planning/docs/deployment/PHASE1-STAGING-SMOKE.md.
-- Phase 2 execução deve usar `contato@sinarca.com.br` como contato/suporte/DPO provisório até existir canal definitivo.
+- Phase 2 execução deve usar canais provisórios distintos no domínio `@sinarca.com.br`: `contato@sinarca.com.br` para contato geral, `suporte@sinarca.com.br` para suporte e `dpo@sinarca.com.br` para DPO.
+- `npx tsc -b` segue bloqueado por dívida legada fora do escopo da Phase 2, principalmente imports não usados e tipos incompletos no impact-engine; `npm run build` passa.
 
 ## Deferred Items
 

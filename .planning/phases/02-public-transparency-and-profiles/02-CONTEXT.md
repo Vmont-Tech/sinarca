@@ -34,7 +34,7 @@ A fase foi discutida em modo orientado por documentos. Não houve pergunta bloqu
 - Completar cadastro por perfil para produtor, empresa, auditor e certificadora.
 - Completar edição de perfil persistida: nome, telefone, organização, documento e avatar.
 - Padronizar erros amigáveis de auth, sessão expirada e API indisponível.
-- Publicar Termos de Uso, Política de Privacidade, suporte jurídico, contato/DPO e conteúdo institucional usando `contato@sinarca.com.br` como canal provisório.
+- Publicar Termos de Uso, Política de Privacidade, suporte jurídico, contato/DPO e conteúdo institucional usando canais provisórios distintos no domínio `@sinarca.com.br`.
 - Garantir copy pública clara: o SINARCA é camada tecnológica complementar, não certificadora, auditor independente ou consultoria jurídica.
 - Garantir que todo dado demonstrativo de tela venha de `supabase/seed.sql` ou de `/api/v1`.
 
@@ -69,7 +69,7 @@ A fase foi discutida em modo orientado por documentos. Não houve pergunta bloqu
 4. Perfis públicos devem usar o catálogo de organizações/perfis do banco e incluir produtores.
 5. Cadastro público continua limitado a papéis não-admin. Admin permanece sem cadastro público e será tratado em Phase 9.
 6. Conteúdo legal/institucional da Bible pode ser publicado na Phase 2, mas operações completas de DPO, direitos do titular, retenção e anonimização ficam na Phase 10.
-7. Enquanto não houver canal definitivo, a implementação deve usar `contato@sinarca.com.br` para contato, suporte e DPO provisórios.
+7. Enquanto não houver canal definitivo, a implementação deve usar `contato@sinarca.com.br` para contato geral, `suporte@sinarca.com.br` para suporte e `dpo@sinarca.com.br` para DPO.
 
 ## Regras de aceite
 
@@ -85,5 +85,5 @@ A fase foi discutida em modo orientado por documentos. Não houve pergunta bloqu
 
 - O dossiê público depende de expor dados hoje espalhados em `project_tags`, `project_baselines`, `certifications`, `audits`, `documents`, `environmental_credits`, `chain_events` e `ledger_entries`.
 - Dados pessoais em perfis e transações precisam respeitar minimização e limites de privacidade; ajustes profundos de governança ficam na Phase 10, mas a Phase 2 não pode expor documento sensível sem decisão explícita.
-- Páginas legais atuais podem conter placeholders de cidade, e-mail e DPO; a execução deve substituir e-mail/DPO por `contato@sinarca.com.br` e evitar inventar foro/cidade.
+- Páginas legais atuais podem conter placeholders de cidade, e-mail e DPO; a execução deve substituir contato/suporte/DPO por canais provisórios no domínio `@sinarca.com.br` e evitar inventar foro/cidade.
 - Alguns componentes públicos ainda têm design de dashboard e cards muito arredondados; se houver mudança de UI, validar em desktop e mobile antes de concluir.

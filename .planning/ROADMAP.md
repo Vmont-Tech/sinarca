@@ -18,7 +18,7 @@ A auditoria de checklist de 2026-05-26 identificou lacunas de fluxo, tela e oper
 ## Phases
 
 - [x] **Phase 1: backend-rebuild** - Reconstruir o backend, cobrir os fluxos do frontend dependentes de dados e preparar validação local/staging.
-- [ ] **Phase 2: public-transparency-and-profiles** - Fechar experiência pública, dossiê público de projeto, explorer, perfis públicos, cadastro por perfil e edição de perfil.
+- [x] **Phase 2: public-transparency-and-profiles** - Fechar experiência pública, dossiê público de projeto, explorer, perfis públicos, cadastro por perfil e edição de perfil.
 - [ ] **Phase 3: project-origination-and-documents** - Completar originação do projeto com produtor, localização, metodologia, QTAGs/NFC, geofence, documentos e timeline canônica.
 - [ ] **Phase 4: certification-workbench** - Completar revisão da certificadora, decisão técnica, certificado/documento, histórico e orquestração para lastro/mint bloqueado.
 - [ ] **Phase 5: audit-monitoring-and-anomalies** - Completar auditoria de campo, evidências, assinatura verificável, monitoramento NDVI, anomalias, bloqueio e desbloqueio auditável.
@@ -66,11 +66,13 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 02-01: Fechar navegação pública, páginas legais e copy institucional.
-- [ ] 02-02: Criar contrato público de dossiê, transações e perfis.
-- [ ] 02-03: Completar dossiê público de projeto e explorer de transações.
-- [ ] 02-04: Completar perfis públicos, catálogos e rankings por papel.
-- [ ] 02-05: Completar cadastro por perfil, edição de perfil e erros amigáveis.
+- [x] 02-01: Fechar navegação pública, páginas legais e copy institucional.
+- [x] 02-02: Criar contrato público de dossiê, transações e perfis.
+- [x] 02-03: Completar dossiê público de projeto e explorer de transações.
+- [x] 02-04: Completar perfis públicos, catálogos e rankings por papel.
+- [x] 02-05: Completar cadastro por perfil, edição de perfil e erros amigáveis.
+
+**Execution evidence**: `.planning/phases/02-public-transparency-and-profiles/02-VERIFICATION.md`
 
 ### Phase 3: project-origination-and-documents
 **Goal**: Completar o fluxo do produtor/certificadora para cadastrar projeto com dados técnicos, cliente de campo web/PWA/mobile para QTAGs/NFC, geofence, documentos reais e timeline operacional.

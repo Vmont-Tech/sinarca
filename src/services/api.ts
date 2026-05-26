@@ -6,6 +6,22 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
     body?: unknown;
 };
 
+const clearAuthSession = () => {
+    localStorage.removeItem('sinarca_user');
+    localStorage.removeItem('sinarca_token');
+    localStorage.removeItem('sinarca_token_expires_at');
+    localStorage.removeItem('sinarca.localAuthUser');
+};
+
+const friendlyError = (status: number, fallback: string) => {
+    if (status === 401) return 'Credenciais inválidas ou sessão expirada. Faça login novamente.';
+    if (status === 403) return 'Seu perfil não possui permissão para esta ação.';
+    if (status === 409) return 'Este e-mail já está cadastrado.';
+    if (status === 422) return 'Dados inválidos. Revise os campos e tente novamente.';
+    if (status >= 500) return 'API indisponível no momento. Tente novamente em instantes.';
+    return fallback || `Erro HTTP ${status}`;
+};
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T | null> {
     const token = localStorage.getItem('sinarca_token');
     const headers = new Headers(options.headers || {});
@@ -20,11 +36,16 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         body = JSON.stringify(options.body);
     }
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        headers,
-        body,
-    });
+    let response: Response;
+    try {
+        response = await fetch(`${API_BASE_URL}${path}`, {
+            ...options,
+            headers,
+            body,
+        });
+    } catch {
+        throw new Error('API indisponível. Verifique sua conexão ou se o serviço local está ativo.');
+    }
 
     if (!response.ok) {
         let message = '';
@@ -34,7 +55,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         } catch {
             message = await response.text().catch(() => `HTTP ${response.status}`);
         }
-        throw new Error(message);
+        if (response.status === 401) clearAuthSession();
+        throw new Error(friendlyError(response.status, message));
     }
 
     return response.json() as Promise<T>;

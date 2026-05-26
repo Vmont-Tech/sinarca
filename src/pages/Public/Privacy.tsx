@@ -1,4 +1,5 @@
 import { LegalPage } from '../../components/legal/LegalPage';
+import { PUBLIC_DPO_EMAIL } from '../../constants/publicContact';
 
 export default function Privacy() {
   return (
@@ -78,12 +79,22 @@ export default function Privacy() {
           <li className="p-4 rounded-xl bg-white/5 border border-white/10 font-bold text-white">Direito de Oposição</li>
           <li className="p-4 rounded-xl bg-white/5 border border-white/10 font-bold text-white">Direito de Revogar Consentimento</li>
         </ul>
+        <p className="text-sm bg-primary/5 p-4 rounded-xl border border-primary/10 text-gray-400">
+          Solicitações de acesso, retificação, portabilidade, oposição, exclusão ou revogação de consentimento devem ser encaminhadas para <a className="text-primary font-bold hover:underline" href={`mailto:${PUBLIC_DPO_EMAIL}`}>{PUBLIC_DPO_EMAIL}</a>.
+        </p>
       </section>
 
       <section className="space-y-6">
         <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">8. Segurança dos Dados</h2>
         <p>
           Empregamos medidas rigorosas: criptografia de ponta a ponta, controles de acesso por privilégio mínimo, monitoramento contínuo e <strong>criptografia pós-quântica (NIST PQC-2024)</strong>.
+        </p>
+      </section>
+
+      <section className="space-y-6">
+        <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">9. Contato do DPO</h2>
+        <p>
+          O canal provisório do Encarregado de Dados do SINARCA é <a className="text-primary font-bold hover:underline" href={`mailto:${PUBLIC_DPO_EMAIL}`}>{PUBLIC_DPO_EMAIL}</a>.
         </p>
       </section>
     </LegalPage>

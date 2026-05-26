@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Globe, ExternalLink, Leaf, TrendingUp } from 'lucide-react';
+import { Building2, ExternalLink, Leaf, TrendingUp } from 'lucide-react';
 import { database } from '../../services/database';
 
 export default function Companies() {
@@ -9,8 +9,13 @@ export default function Companies() {
 
     useEffect(() => {
         const load = async () => {
-            const data = await database.getCompanies();
-            setCompanies(data);
+            const [producerData, companyData] = await Promise.all([
+                database.getProducers(),
+                database.getCompanies(),
+            ]);
+            const unique = new Map<string, any>();
+            [...producerData, ...companyData].forEach((item: any) => unique.set(String(item.id), item));
+            setCompanies(Array.from(unique.values()));
             setLoading(false);
         };
         load();
@@ -45,8 +50,8 @@ export default function Companies() {
                                 <div className="w-12 h-12 rounded-lg bg-sinarca-forest flex items-center justify-center text-sinarca-neon border border-sinarca-border">
                                     <Building2 className="w-6 h-6" />
                                 </div>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${company.role === 'Developer' ? 'bg-green-900/40 text-green-400 border border-green-800' : 'bg-blue-900/40 text-blue-400 border border-blue-800'}`}>
-                                    {company.role === 'Developer' ? 'Desenvolvedor' : 'Compensador'}
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${String(company.role).toLowerCase().includes('developer') || String(company.role).toLowerCase().includes('producer') ? 'bg-green-900/40 text-green-400 border border-green-800' : 'bg-blue-900/40 text-blue-400 border border-blue-800'}`}>
+                                    {String(company.role).toLowerCase().includes('producer') ? 'Produtor' : String(company.role).toLowerCase().includes('developer') ? 'Desenvolvedor' : 'Compensador'}
                                 </span>
                             </div>
 
@@ -65,14 +70,14 @@ export default function Companies() {
                                         <div className="flex items-center gap-2 text-text-muted text-xs uppercase font-bold tracking-wide">
                                             <TrendingUp className="w-3.5 h-3.5" /> Impacto (tCO₂e)
                                         </div>
-                                        <span className="text-white font-mono font-bold">{company.total_impact.toLocaleString()}</span>
+                                        <span className="text-white font-mono font-bold">{Number(company.total_impact || 0).toLocaleString('pt-BR')}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="mt-8 pt-4 border-t border-sinarca-border">
                                 <Link
-                                    to={`/painel/empresas/${company.id}`}
+                                    to={`/perfil/${company.id}`}
                                     className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-sinarca-forest text-text-muted hover:text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-sinarca-border"
                                 >
                                     Ver Perfil Completo <ExternalLink className="w-3.5 h-3.5" />

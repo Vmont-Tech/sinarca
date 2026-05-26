@@ -10,7 +10,20 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend_app.db.models import Organization, Profile, Project, ProjectBaseline, ProjectTag
+from backend_app.db.models import (
+    Audit,
+    Certification,
+    ChainEvent,
+    Document,
+    EnvironmentalCredit,
+    LedgerAccount,
+    LedgerEntry,
+    Organization,
+    Profile,
+    Project,
+    ProjectBaseline,
+    ProjectTag,
+)
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
@@ -22,6 +35,7 @@ from backend_app.modules.projects.schemas import (
     ProjectLocation,
     ProjectMetrics,
     ProjectMRCA,
+    ProjectPublicDossierResponse,
 )
 
 ROLE_LABELS = {
@@ -57,6 +71,70 @@ class ProjectsService:
 
     async def get_project(self, project_id: str) -> ProjectMRCA:
         return await self.project_to_mrca(await self._get_project_model(project_id))
+
+    async def get_public_dossier(self, project_id: str) -> ProjectPublicDossierResponse:
+        project = await self._get_project_model(project_id)
+        project_dto = await self.project_to_mrca(project)
+
+        tags = (
+            await self.session.execute(
+                select(ProjectTag).where(ProjectTag.project_id == project.id).order_by(ProjectTag.vertex_label)
+            )
+        ).scalars().all()
+        baseline = (
+            await self.session.execute(
+                select(ProjectBaseline)
+                .where(ProjectBaseline.project_id == project.id)
+                .order_by(ProjectBaseline.captured_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        certifications = (
+            await self.session.execute(
+                select(Certification).where(Certification.project_id == project.id).order_by(Certification.created_at.desc())
+            )
+        ).scalars().all()
+        audits = (
+            await self.session.execute(
+                select(Audit).where(Audit.project_id == project.id).order_by(Audit.created_at.desc())
+            )
+        ).scalars().all()
+        documents = (
+            await self.session.execute(
+                select(Document).where(Document.project_id == project.id).order_by(Document.uploaded_at.desc())
+            )
+        ).scalars().all()
+        credits = (
+            await self.session.execute(
+                select(EnvironmentalCredit).where(EnvironmentalCredit.project_id == project.id).order_by(EnvironmentalCredit.vintage.desc())
+            )
+        ).scalars().all()
+        chain_events = (
+            await self.session.execute(
+                select(ChainEvent).where(ChainEvent.project_id == project.id).order_by(ChainEvent.created_at.desc())
+            )
+        ).scalars().all()
+        transaction_rows = (
+            await self.session.execute(
+                select(LedgerEntry, LedgerAccount, ChainEvent)
+                .join(LedgerAccount, LedgerAccount.id == LedgerEntry.account_id)
+                .outerjoin(ChainEvent, ChainEvent.id == LedgerEntry.chain_event_id)
+                .where(LedgerEntry.project_id == project.id)
+                .order_by(LedgerEntry.created_at.desc())
+            )
+        ).all()
+
+        return ProjectPublicDossierResponse(
+            project=project_dto,
+            tags=[tag_item(tag) for tag in tags],
+            baseline=baseline_item(baseline),
+            certifications=[certification_item(item) for item in certifications],
+            audits=[audit_item(item) for item in audits],
+            documents=[document_item(item) for item in documents],
+            credits=[credit_item(item) for item in credits],
+            chainEvents=[chain_event_item(item) for item in chain_events],
+            transactions=[ledger_transaction_item(entry, account, project, event) for entry, account, event in transaction_rows],
+        )
 
     async def create_project(self, payload: ProjectCreate, *, actor_id: str | None, actor_role: str | None) -> ProjectMRCA:
         if payload.tags is not None and len(payload.tags) != 4:
@@ -161,6 +239,7 @@ class ProjectsService:
             "certifiers": ("Certifier", "certifiers"),
             "auditors": ("Auditor", "auditors"),
             "companies": ("Developer", "companies"),
+            "producers": ("Producer", "producers"),
         }
         role_value, response_key = role_map[role]
         rows = list(
@@ -188,7 +267,79 @@ class ProjectsService:
                 .all()
             )
             items.extend(catalog_item(row) for row in compensators)
+        if role == "producers":
+            developers = list(
+                (
+                    await self.session.execute(
+                        select(Organization)
+                        .where(func.lower(Organization.role) == "developer")
+                        .order_by(Organization.name)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            existing_ids = {item["id"] for item in items}
+            items.extend(catalog_item(row) for row in developers if row.external_id not in existing_ids)
         return CatalogResponse(**{response_key: items})
+
+    async def public_profile(self, profile_id: str) -> dict[str, Any]:
+        organization = await self._public_profile_organization(profile_id)
+        profile = await self._public_profile_user(profile_id)
+        organization_id = organization.id if organization is not None else profile.organization_id if profile is not None else None
+
+        if organization is None and profile is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Perfil público não encontrado")
+
+        public_id = organization.external_id if organization is not None else profile.external_id
+        name = organization.name if organization is not None else profile.name
+        role = organization.role if organization is not None else profile.role
+        document = organization.document if organization is not None else profile.document
+
+        projects = []
+        if organization_id is not None:
+            statement = select(Project).where(
+                or_(
+                    Project.producer_organization_id == organization_id,
+                    Project.developer_organization_id == organization_id,
+                    Project.auditor_organization_id == organization_id,
+                    Project.certifier_organization_id == organization_id,
+                    Project.registry_organization_id == organization_id,
+                )
+            ).order_by(Project.created_at.desc())
+            projects = list((await self.session.execute(statement)).scalars().all())
+
+        project_dtos = [await self.project_to_mrca(project) for project in projects[:10]]
+        total_impact = sum(float(project.carbon_stock) for project in projects)
+        activity = await self._public_profile_activity(organization_id)
+
+        return {
+            "id": public_id,
+            "name": name,
+            "role": role,
+            "document": mask_document(document),
+            "website": organization.website if organization is not None else None,
+            "logo": organization.logo_url if organization is not None else profile.avatar_url,
+            "authorized": organization.authorized if organization is not None else profile.is_active,
+            "verified": organization.authorized if organization is not None else profile.is_active,
+            "organization": {
+                "id": organization.external_id if organization is not None else None,
+                "name": organization.name if organization is not None else None,
+                "document": mask_document(organization.document) if organization is not None else None,
+                "website": organization.website if organization is not None else None,
+                "logo": organization.logo_url if organization is not None else None,
+                "authorized": organization.authorized if organization is not None else None,
+                "verified": organization.authorized if organization is not None else None,
+            },
+            "metrics": {
+                **((organization.metadata_ or {}) if organization is not None else {}),
+                "projects": len(projects),
+                "totalImpact": total_impact,
+                "transactions": len(activity),
+            },
+            "projects": [project.model_dump() for project in project_dtos],
+            "activity": activity,
+        }
 
     async def project_to_mrca(self, project: Project) -> ProjectMRCA:
         orgs = await self._organization_map(
@@ -310,6 +461,38 @@ class ProjectsService:
         )
         return result.scalar_one_or_none()
 
+    async def _public_profile_organization(self, profile_id: str) -> Organization | None:
+        filters = [Organization.external_id == profile_id, Organization.name == profile_id]
+        try:
+            filters.append(Organization.id == uuid.UUID(profile_id))
+        except ValueError:
+            pass
+        return (await self.session.execute(select(Organization).where(or_(*filters)))).scalar_one_or_none()
+
+    async def _public_profile_user(self, profile_id: str) -> Profile | None:
+        filters = [Profile.external_id == profile_id, Profile.name == profile_id]
+        try:
+            filters.append(Profile.id == uuid.UUID(profile_id))
+        except ValueError:
+            pass
+        return (await self.session.execute(select(Profile).where(or_(*filters)))).scalar_one_or_none()
+
+    async def _public_profile_activity(self, organization_id: Any | None) -> list[dict[str, Any]]:
+        if organization_id is None:
+            return []
+        rows = (
+            await self.session.execute(
+                select(LedgerEntry, LedgerAccount, Project, ChainEvent)
+                .join(LedgerAccount, LedgerAccount.id == LedgerEntry.account_id)
+                .outerjoin(Project, Project.id == LedgerEntry.project_id)
+                .outerjoin(ChainEvent, ChainEvent.id == LedgerEntry.chain_event_id)
+                .where(LedgerAccount.owner_organization_id == organization_id)
+                .order_by(LedgerEntry.created_at.desc())
+                .limit(20)
+            )
+        ).all()
+        return [ledger_transaction_item(entry, account, project, event) for entry, account, project, event in rows]
+
     async def _organization_map(self, ids: list[Any | None]) -> dict[Any, Organization]:
         clean_ids = [item for item in ids if item is not None]
         if not clean_ids:
@@ -352,11 +535,164 @@ def catalog_item(organization: Organization) -> dict[str, Any]:
         "logo": organization.logo_url or "",
         "authorized": organization.authorized,
         "verified": organization.authorized,
+        "document": mask_document(organization.document),
         **(organization.metadata_ or {}),
     }
     item.setdefault("projects", 0)
     item.setdefault("total_impact", 0)
     return item
+
+
+def mask_document(document: str | None) -> str | None:
+    if not document:
+        return None
+    clean = "".join(ch for ch in document if ch.isdigit())
+    if len(clean) <= 4:
+        return "***"
+    return f"***{clean[-4:]}"
+
+
+def tag_item(tag: ProjectTag) -> dict[str, Any]:
+    return {
+        "id": str(tag.id),
+        "tagUid": tag.tag_uid,
+        "cmac": mask_token(tag.cmac),
+        "latitude": float(tag.latitude),
+        "longitude": float(tag.longitude),
+        "vertex": tag.vertex_label,
+        "status": tag.status,
+        "firstSeenAt": tag.first_seen_at.isoformat(),
+        "lastSeenAt": tag.last_seen_at.isoformat() if tag.last_seen_at else None,
+        "metadata": tag.metadata_ or {},
+    }
+
+
+def baseline_item(baseline: ProjectBaseline | None) -> dict[str, Any] | None:
+    if baseline is None:
+        return None
+    return {
+        "id": str(baseline.id),
+        "sentinelSceneId": baseline.sentinel_scene_id,
+        "baselineHash": baseline.baseline_hash,
+        "pointsAnalyzed": baseline.points_analyzed,
+        "vegetationCoverPct": float(baseline.vegetation_cover_pct),
+        "ndviMean": float(baseline.ndvi_mean),
+        "capturedAt": baseline.captured_at.isoformat(),
+        "evidenceUri": baseline.evidence_uri,
+    }
+
+
+def certification_item(certification: Certification) -> dict[str, Any]:
+    return {
+        "id": str(certification.id),
+        "methodology": certification.methodology,
+        "creditPotential": float(certification.credit_potential),
+        "decision": certification.decision,
+        "notes": certification.notes,
+        "signedDocumentHash": certification.signed_document_hash,
+        "signedAt": certification.signed_at.isoformat() if certification.signed_at else None,
+        "createdAt": certification.created_at.isoformat(),
+    }
+
+
+def audit_item(audit: Audit) -> dict[str, Any]:
+    return {
+        "id": str(audit.id),
+        "status": audit.status,
+        "reportText": audit.report_text,
+        "latitude": float(audit.latitude) if audit.latitude is not None else None,
+        "longitude": float(audit.longitude) if audit.longitude is not None else None,
+        "evidenceUrls": list(audit.evidence_urls or []),
+        "digitalSignature": audit.digital_signature,
+        "auditedAt": audit.audited_at.isoformat() if audit.audited_at else None,
+        "createdAt": audit.created_at.isoformat(),
+    }
+
+
+def document_item(document: Document) -> dict[str, Any]:
+    return {
+        "id": str(document.id),
+        "type": document.document_type,
+        "storagePath": document.storage_path,
+        "sha256Hash": document.sha256_hash,
+        "mimeType": document.mime_type,
+        "sizeBytes": document.size_bytes,
+        "uploadedAt": document.uploaded_at.isoformat(),
+        "metadata": document.metadata_ or {},
+    }
+
+
+def credit_item(credit: EnvironmentalCredit) -> dict[str, Any]:
+    return {
+        "id": str(credit.id),
+        "vintage": credit.vintage,
+        "quantityTotal": float(credit.quantity_total),
+        "quantityAvailable": float(credit.quantity_available),
+        "quantityRetired": float(credit.quantity_retired),
+        "status": credit.status,
+        "unit": credit.unit,
+        "serialStart": credit.serial_start,
+        "serialEnd": credit.serial_end,
+        "tokenMetadata": credit.token_metadata or {},
+    }
+
+
+def chain_event_item(event: ChainEvent) -> dict[str, Any]:
+    return {
+        "id": str(event.id),
+        "eventType": event.event_type,
+        "chain": event.chain,
+        "transactionHash": event.transaction_hash,
+        "sourceTxHash": event.source_tx_hash,
+        "amount": float(event.amount) if event.amount is not None else None,
+        "status": event.status,
+        "payload": event.payload or {},
+        "createdAt": event.created_at.isoformat(),
+    }
+
+
+def ledger_transaction_item(
+    entry: LedgerEntry,
+    account: LedgerAccount,
+    project: Project | None,
+    event: ChainEvent | None,
+) -> dict[str, Any]:
+    metadata = entry.metadata_ or {}
+    tx_type = {
+        "PURCHASE": "received",
+        "RECEIVED": "received",
+        "CREDIT_ISSUED": "received",
+        "TRANSFER_SENT": "sent",
+        "RETIREMENT": "retired",
+        "BURN": "retired",
+        "MINT": "minted",
+    }.get(entry.entry_type, "received")
+    return {
+        "id": metadata.get("frontend_id") or str(entry.id),
+        "type": tx_type,
+        "asset": metadata.get("asset") or (project.name if project is not None else "Crédito SINARCA"),
+        "amount": f"{abs(float(entry.amount)):g}",
+        "unit": entry.unit,
+        "date": metadata.get("date_label") or entry.created_at.isoformat(),
+        "createdAt": entry.created_at.isoformat(),
+        "status": metadata.get("status") or ("pending" if event is not None and event.status == "PENDING" else "completed"),
+        "hash": metadata.get("hash") or (event.transaction_hash if event is not None else entry.idempotency_key),
+        "projectId": project.friendly_id if project is not None else None,
+        "buyer": account.external_id,
+        "entities": {
+            "from": entry.counterparty or "Protocolo",
+            "to": "Minha Conta" if float(entry.amount) >= 0 else "Aposentadoria",
+        },
+        "ledgerAccount": account.external_id,
+    }
+
+
+def mask_token(value: str | None) -> str | None:
+    if not value:
+        return None
+    if len(value) <= 8:
+        return value
+    return f"{value[:4]}...{value[-4:]}"
 
 
 def entity_from_org(organization: Organization | None, *, default_role: str) -> ParticipatingEntity:

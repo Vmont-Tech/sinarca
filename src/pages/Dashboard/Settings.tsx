@@ -1,18 +1,23 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-    User, 
-    Mail, 
-    Building2, 
-    ShieldCheck, 
-    Bell, 
-    Lock, 
-    Save, 
-    Upload,
+import {
+    User,
+    ShieldCheck,
+    Bell,
+    Lock,
+    Save,
     FileText,
     LogOut
 } from 'lucide-react';
+
+const ROLE_LABELS: Record<string, string> = {
+    producer: 'Produtor Rural',
+    company: 'Empresa Compradora',
+    auditor: 'Auditor Ambiental',
+    certifier: 'Certificadora',
+    admin: 'Administrador',
+};
 
 export default function Settings() {
     const navigate = useNavigate();
@@ -21,15 +26,31 @@ export default function Settings() {
     const [email, setEmail] = useState(user?.email || '');
     const [company, setCompany] = useState(user?.organization || '');
     const [phone, setPhone] = useState(user?.phone || '');
+    const [document, setDocument] = useState(user?.document || '');
+    const [avatar, setAvatar] = useState(user?.avatar || '');
     
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const avatarSrc = useMemo(() => {
+        const trimmed = avatar.trim();
+        if (trimmed) return trimmed;
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'SINARCA')}&background=16a34a&color=fff&size=200`;
+    }, [avatar, name]);
+
+    useEffect(() => {
+        setName(user?.name || '');
+        setEmail(user?.email || '');
+        setCompany(user?.organization || '');
+        setPhone(user?.phone || '');
+        setDocument(user?.document || '');
+        setAvatar(user?.avatar || '');
+    }, [user?.id]);
 
     const handleSave = async () => {
         setSaving(true);
         setMessage('');
         try {
-            await updateProfile({ name, email, organization: company, phone } as any);
+            await updateProfile({ name, email, organization: company, phone, document, avatar } as any);
             setMessage('Perfil atualizado com sucesso!');
         } catch (e: any) {
             setMessage(e.message || 'Erro ao salvar perfil.');
@@ -57,24 +78,21 @@ export default function Settings() {
                         <div className="relative mb-6">
                             <div className="w-32 h-32 rounded-full bg-gray-50 border-2 border-white shadow-xl overflow-hidden">
                                 <img 
-                                    src={`https://ui-avatars.com/api/?name=${name}&background=16a34a&color=fff&size=200`} 
+                                    src={avatarSrc}
                                     alt="Avatar" 
                                     className="w-full h-full object-cover"
                                 />
                             </div>
-                            <button className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
-                                <Upload className="w-5 h-5" />
-                            </button>
                         </div>
                         <h3 className="text-xl font-bold text-black uppercase tracking-tight">{name}</h3>
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">
-                            {user?.role === 'producer' ? 'Produtor Rural' : user?.role === 'company' ? 'Empresa Compradora' : 'Auditor Ambiental'}
+                            {ROLE_LABELS[user?.role || 'company'] || 'Usuário SINARCA'}
                         </p>
                         
                         <div className="w-full mt-8 pt-8 border-t border-gray-50 space-y-4">
                             <div className="flex items-center justify-between text-xs">
                                 <span className="text-gray-500 font-bold uppercase tracking-widest">ID Usuário</span>
-                                <span className="text-black font-mono font-bold">#USR-2024-9981</span>
+                                <span className="text-black font-mono font-bold truncate max-w-[160px]">{user?.id || 'N/A'}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
                                 <span className="text-gray-500 font-bold uppercase tracking-widest">Status</span>
@@ -144,6 +162,29 @@ export default function Settings() {
                                         type="text" 
                                         value={phone}
                                         onChange={(e) => setPhone(e.target.value)}
+                                        className="w-full pl-4 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Documento</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={document}
+                                        onChange={(e) => setDocument(e.target.value)}
+                                        className="w-full pl-4 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Avatar / Logo URL</label>
+                                <div className="relative">
+                                    <input
+                                        type="url"
+                                        value={avatar}
+                                        onChange={(e) => setAvatar(e.target.value)}
+                                        placeholder="https://..."
                                         className="w-full pl-4 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                     />
                                 </div>

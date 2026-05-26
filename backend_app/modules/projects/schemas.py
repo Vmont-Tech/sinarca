@@ -86,6 +86,25 @@ class CatalogResponse(BaseModel):
     certifiers: list[dict[str, Any]] | None = None
     auditors: list[dict[str, Any]] | None = None
     companies: list[dict[str, Any]] | None = None
+    producers: list[dict[str, Any]] | None = None
+
+
+class ProjectPublicDossierResponse(BaseModel):
+    success: bool = True
+    project: ProjectMRCA
+    tags: list[dict[str, Any]]
+    baseline: dict[str, Any] | None = None
+    certifications: list[dict[str, Any]]
+    audits: list[dict[str, Any]]
+    documents: list[dict[str, Any]]
+    credits: list[dict[str, Any]]
+    transactions: list[dict[str, Any]]
+    chainEvents: list[dict[str, Any]]
+
+
+class PublicProfileResponse(BaseModel):
+    success: bool = True
+    profile: dict[str, Any]
 
 
 class QueueResponse(BaseModel):

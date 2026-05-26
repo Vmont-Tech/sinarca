@@ -39,7 +39,7 @@
 3. **Perfis públicos incompletos:** produtor não tem catálogo público e atividade pública fica vazia.
 4. **Cadastro por perfil incompleto:** certificadora está ausente na UI.
 5. **Perfil editável incompleto:** documento/avatar não têm UX real.
-6. **Conteúdo legal com placeholders:** Bible continha cidade, contato e DPO a definir; contato, suporte e DPO usam `contato@sinarca.com.br` provisoriamente.
+6. **Conteúdo legal com placeholders:** Bible continha cidade, contato e DPO a definir; contato, suporte e DPO usam canais provisórios distintos no domínio `@sinarca.com.br` (`contato@`, `suporte@`, `dpo@`).
 7. **Dados fixos em telas públicas:** `MrcaDetails.tsx` contém documentos e auditoria estáticos.
 
 ## Estratégia técnica recomendada

@@ -30,11 +30,11 @@ A fase foi planejada sem interromper por perguntas porque o escopo estava sufici
 - `supabase/seed.sql` deve ser expandido quando faltar dado demonstrativo necessário para telas públicas.
 - Componentes existentes podem ser evoluídos em vez de substituídos se isso preservar a experiência e reduzir risco.
 - O dossiê público deve proteger dados pessoais e exibir documentos/identificadores apenas quando forem públicos por regra de negócio.
-- Placeholders legais de DPO e contato devem usar `contato@sinarca.com.br` provisoriamente; cidade/foro não deve ser inventado.
+- Placeholders legais de DPO e contato devem usar canais provisórios distintos no domínio `@sinarca.com.br`; cidade/foro não deve ser inventado.
 
 ## Decisões não bloqueantes para execução
 
-- Contato, suporte jurídico e DPO provisórios: `contato@sinarca.com.br`.
+- Contato geral provisório: `contato@sinarca.com.br`; suporte provisório: `suporte@sinarca.com.br`; DPO provisório: `dpo@sinarca.com.br`.
 - A nomenclatura pública de "produtor" deve aparecer como "produtor", "desenvolvedor de projeto" ou ambos?
 - Perfis públicos devem exibir documento completo, documento mascarado ou apenas status verificado?
 

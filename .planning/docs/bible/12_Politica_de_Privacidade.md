@@ -61,7 +61,7 @@ Você, como titular dos dados, possui os seguintes direitos, que podem ser exerc
 *   **Direito de Revogar o Consentimento:** Retirar seu consentimento a qualquer momento, sem afetar a legalidade do tratamento realizado antes da revogação.
 *   **Direito de Informação:** Ser informado sobre as entidades públicas e privadas com as quais o SINARCA realizou uso compartilhado de dados.
 
-Para exercer qualquer um desses direitos, entre em contato com nosso Encarregado de Dados (DPO) provisório através do e-mail: `contato@sinarca.com.br`.
+Para exercer qualquer um desses direitos, entre em contato com nosso Encarregado de Dados (DPO) provisório através do e-mail: `dpo@sinarca.com.br`.
 
 ### 8. Segurança dos Dados
 
@@ -85,7 +85,7 @@ Podemos atualizar esta Política de Privacidade periodicamente para refletir mud
 Para quaisquer dúvidas ou solicitações relacionadas a esta Política de Privacidade ou ao tratamento de seus dados pessoais, entre em contato com nosso Encarregado de Dados (DPO):
 
 **Contato provisório:** SINARCA
-**E-mail:** `contato@sinarca.com.br`
+**E-mail:** `dpo@sinarca.com.br`
 
 ---
 *Documento preparado por Manus AI para o projeto SINARCA.*

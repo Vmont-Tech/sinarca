@@ -1,4 +1,5 @@
 import { LegalPage } from '../../components/legal/LegalPage';
+import { PUBLIC_DPO_EMAIL } from '../../constants/publicContact';
 
 export default function DataGovernance() {
   return (
@@ -82,6 +83,9 @@ export default function DataGovernance() {
         <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">6. Retenção e Direitos</h2>
         <p>
           Retemos dados pelo tempo necessário para obrigações legais. Titulares possuem direitos de acesso, retificação, exclusão (salvo registros blockchain imutáveis), portabilidade e oposição, conforme garantido pela LGPD e GDPR.
+        </p>
+        <p className="text-sm bg-primary/5 p-4 rounded-xl border border-primary/10 text-gray-400">
+          O canal provisório para solicitações de dados e DPO é <a className="text-primary font-bold hover:underline" href={`mailto:${PUBLIC_DPO_EMAIL}`}>{PUBLIC_DPO_EMAIL}</a>.
         </p>
       </section>
     </LegalPage>

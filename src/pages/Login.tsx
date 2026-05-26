@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../assets/logo.png';
 import HeroBg from '../assets/login_hero.png';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, type UserRole } from '../contexts/AuthContext';
+import { database } from '../services/database';
 
 // Componente para seleção de Role
 const RoleBtn = ({ active, onClick, label, icon }: { active: boolean, onClick: () => void, label: string, icon: string }) => (
@@ -23,6 +24,7 @@ const Login = () => {
     const from = location.state?.from || '/painel';
 
     const [scrolled, setScrolled] = useState(false);
+    const [publicStats, setPublicStats] = useState<{ registered: number; projects: number } | null>(null);
     const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -38,12 +40,32 @@ const Login = () => {
     // UI State
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [role, setRole] = useState<'producer' | 'auditor' | 'company' | 'admin'>('producer');
+    const [role, setRole] = useState<Exclude<UserRole, 'admin'>>('producer');
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        const loadPublicStats = async () => {
+            try {
+                const projects = await database.getRawMarketProjects();
+                if (!active) return;
+                setPublicStats({
+                    registered: projects.reduce((sum, project) => sum + Number(project.metrics?.carbonStock || 0), 0),
+                    projects: projects.length,
+                });
+            } catch {
+                if (active) setPublicStats(null);
+            }
+        };
+        loadPublicStats();
+        return () => {
+            active = false;
+        };
     }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -90,9 +112,9 @@ const Login = () => {
         }
     };
 
-    const openStaticNotice = (msg: string) => (e: React.MouseEvent) => {
+    const goToPublicPage = (path: string) => (e: React.MouseEvent) => {
         e.preventDefault();
-        alert(msg);
+        navigate(path);
     };
 
     return (
@@ -139,11 +161,11 @@ const Login = () => {
 
                         <div className="grid grid-cols-2 gap-8 py-12 border-y border-white/5">
                             <div>
-                                <span className="block text-4xl font-bold text-white font-display">1.2M</span>
+                                <span className="block text-4xl font-bold text-white font-display">{publicStats ? Math.round(publicStats.registered).toLocaleString('pt-BR') : '...'}</span>
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">tCO2e Registrados</span>
                             </div>
                             <div>
-                                <span className="block text-4xl font-bold text-white font-display">12.5k</span>
+                                <span className="block text-4xl font-bold text-white font-display">{publicStats ? publicStats.projects.toLocaleString('pt-BR') : '...'}</span>
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Projetos Ativos</span>
                             </div>
                         </div>
@@ -157,7 +179,7 @@ const Login = () => {
                         {/* Role Selector Card */}
                         <div className="space-y-4">
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Selecione seu Perfil de Acesso</p>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <RoleBtn 
                                     active={role === 'producer'} 
                                     onClick={() => setRole('producer')} 
@@ -175,6 +197,12 @@ const Login = () => {
                                     onClick={() => setRole('company')} 
                                     label="Empresa" 
                                     icon="business"
+                                />
+                                <RoleBtn
+                                    active={role === 'certifier'}
+                                    onClick={() => setRole('certifier')}
+                                    label="Certificadora"
+                                    icon="verified"
                                 />
                             </div>
                         </div>
@@ -215,6 +243,7 @@ const Login = () => {
                                             type="text" 
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
+                                            autoComplete="username"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white text-sm focus:outline-none focus:border-emerald-500/30 transition-all" 
                                             placeholder="E-mail ou Documento" 
                                             disabled={loading}
@@ -228,6 +257,7 @@ const Login = () => {
                                             type="password" 
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
+                                            autoComplete="current-password"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white text-sm focus:outline-none focus:border-emerald-500/30 transition-all" 
                                             placeholder="••••••••" 
                                             disabled={loading}
@@ -252,21 +282,23 @@ const Login = () => {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nome</label>
                                             <input 
-                                                type="text" 
-                                                value={regName}
-                                                onChange={(e) => setRegName(e.target.value)}
-                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                                placeholder="Seu nome"
+                                            type="text" 
+                                            value={regName}
+                                            onChange={(e) => setRegName(e.target.value)}
+                                            autoComplete="name"
+                                            className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
+                                            placeholder="Seu nome"
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">CPF/CNPJ</label>
                                             <input 
-                                                type="text" 
-                                                value={regDoc}
-                                                onChange={(e) => setRegDoc(e.target.value)}
-                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                                placeholder="Documento"
+                                            type="text" 
+                                            value={regDoc}
+                                            onChange={(e) => setRegDoc(e.target.value)}
+                                            autoComplete="off"
+                                            className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
+                                            placeholder="Documento"
                                             />
                                         </div>
                                     </div>
@@ -276,6 +308,7 @@ const Login = () => {
                                             type="email" 
                                             value={regCorpEmail}
                                             onChange={(e) => setRegCorpEmail(e.target.value)}
+                                            autoComplete="email"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
                                             placeholder="nome@empresa.com"
                                         />
@@ -287,6 +320,7 @@ const Login = () => {
                                                 type="password" 
                                                 value={regPass}
                                                 onChange={(e) => setRegPass(e.target.value)}
+                                                autoComplete="new-password"
                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
                                                 placeholder="Mín 8 chars"
                                             />
@@ -297,6 +331,7 @@ const Login = () => {
                                                 type="password" 
                                                 value={regConfirmPass}
                                                 onChange={(e) => setRegConfirmPass(e.target.value)}
+                                                autoComplete="new-password"
                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
                                                 placeholder="Mín 8 chars"
                                             />
@@ -311,7 +346,7 @@ const Login = () => {
                                             className="mt-1 bg-white/5 border-white/5"
                                         />
                                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
-                                            Li e concordo com os <button type="button" onClick={openStaticNotice('Exibindo Termos de Uso...')} className="text-emerald-500 hover:underline">Termos</button> e <button type="button" onClick={openStaticNotice('Exibindo Política de Privacidade...')} className="text-emerald-500 hover:underline">Políticas</button> do SINARCA.
+                                            Li e concordo com os <button type="button" onClick={goToPublicPage('/termos')} className="text-emerald-500 hover:underline">Termos</button> e <button type="button" onClick={goToPublicPage('/privacidade')} className="text-emerald-500 hover:underline">Políticas</button> do SINARCA.
                                         </p>
                                     </div>
 
@@ -328,9 +363,9 @@ const Login = () => {
                         {/* Natural Footer */}
                         <div className="text-[#9cba9c]/60 text-[10px] text-center uppercase tracking-widest">
                              <div className="flex items-center justify-center gap-6 mb-4">
-                                <button onClick={openStaticNotice('Termos de Uso')} className="hover:text-white transition-colors">Termos de Uso</button>
+                                <button onClick={() => navigate('/termos')} className="hover:text-white transition-colors">Termos de Uso</button>
                                 <span className="size-1 rounded-full bg-[#3b543b]"></span>
-                                <button onClick={openStaticNotice('Política de Privacidade')} className="hover:text-white transition-colors">Política de Privacidade</button>
+                                <button onClick={() => navigate('/privacidade')} className="hover:text-white transition-colors">Política de Privacidade</button>
                             </div>
                              <p>© {new Date().getFullYear()} SINARCA. Todos os direitos reservados.</p>
                         </div>
