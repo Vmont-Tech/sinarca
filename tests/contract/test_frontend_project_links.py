@@ -106,3 +106,21 @@ def test_audit_report_evidence_uses_mock_file_picker_instead_of_url_textarea() -
     assert "mock://auditoria/${projectKey}/${encodeURIComponent(file.name)}" in auditor_review
     assert "draft.evidenceFiles.map((file) => file.mockUrl)" in auditor_review
     assert "URLs de fotos/documentos" not in auditor_review
+
+
+def test_phase3_project_origination_uses_real_tags_documents_and_dossier_data() -> None:
+    add_project = read("src/pages/Dashboard/AddProject.tsx")
+    mrca_details = read("src/pages/Dashboard/MrcaDetails.tsx")
+
+    assert "apiPost<any>('/projects'" in add_project
+    assert "tags: normalizeProjectTags(tags)" in add_project
+    assert "uploadProjectDocument" in add_project
+    assert "type=\"file\"" in add_project
+    assert "FormData" in read("src/services/projectDocuments.ts")
+    assert "Arraste os arquivos aqui" not in add_project
+    assert "dropzone" not in add_project.lower()
+
+    assert "dossier.tags" in mrca_details
+    assert "dossier.documents" in mrca_details
+    assert "ProjectGeofencePreview" in mrca_details
+    assert "Nenhuma QTAG pública registrada" in mrca_details

@@ -17,7 +17,9 @@ import {
     Trees,
     Users,
 } from 'lucide-react';
+import ProjectGeofencePreview from '../../components/ProjectGeofencePreview';
 import { database, type ProjectPublicDossier } from '../../services/database';
+import type { ProjectTagDraft, VertexLabel } from '../../services/projectOrigination';
 import LogoLight from '../../assets/sinarca-logo-recortado.svg';
 
 const formatDate = (value?: string | null) => {
@@ -38,6 +40,32 @@ const statusLabel = (status: string) => ({
     BLOCKED_AUDIT_REQUIRED: 'Bloqueado para auditoria',
     AWAITING_CERTIFICATION: 'Aguardando certificação',
 }[status] || status);
+
+const timelineCodeLabel = (code?: string) => ({
+    CREATED: 'Projeto criado',
+    QTAGS_RECORDED: 'QTAGs registradas',
+    BASELINE_CREATED: 'Baseline criado',
+    DOCUMENTS_PENDING: 'Documentos pendentes',
+    AWAITING_CERTIFICATION: 'Aguardando certificação',
+    AWAITING_AUDIT: 'Aguardando auditoria',
+    ACTIVE: 'Ativo',
+    AVAILABLE: 'Disponível',
+}[code || ''] || undefined);
+
+const documentTypeLabel = (type?: string) => ({
+    LEGAL_OWNERSHIP: 'Documento legal',
+    CAR: 'CAR',
+    FOREST_INVENTORY: 'Inventário florestal',
+    KML_OR_SHP: 'KML/SHP',
+    OTHER: 'Outro documento',
+}[type || ''] || type || 'Documento');
+
+const technicalStatusLabel = (value?: string) => ({
+    deterministic_baseline: 'Baseline determinístico local',
+    BLOCKED_MISSING_PROVIDER_CREDENTIALS: 'Sentinel bloqueado por credenciais ausentes',
+    BLOCKED_MISSING_CREDENTIALS: 'Bloqueado por credenciais ausentes',
+    RECORDED_DECLARED_VALUE: 'Valor declarado registrado',
+}[value || ''] || value || 'Não informado');
 
 const EmptyState = ({ text }: { text: string }) => (
     <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6 text-sm font-medium text-gray-500">
@@ -111,6 +139,17 @@ export default function MrcaDetails() {
         project.entities.auditor,
         project.entities.registry,
     ];
+    const metadata = (project as any).metadata || {};
+    const qtagDrafts: ProjectTagDraft[] = dossier.tags
+        .filter((tag) => ['A', 'B', 'C', 'D'].includes(String(tag.vertex)))
+        .map((tag) => ({
+            vertex_label: String(tag.vertex) as VertexLabel,
+            tag_uid: String(tag.tagUid || ''),
+            cmac: String(tag.cmac || ''),
+            latitude: String(tag.latitude ?? ''),
+            longitude: String(tag.longitude ?? ''),
+            captureMode: 'manual',
+        }));
 
     return (
         <div className="min-h-screen bg-[#fcfcfc] text-black pb-24">
@@ -202,14 +241,14 @@ export default function MrcaDetails() {
                                     <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Linha do tempo pública</h3>
                                     {project.timeline.length > 0 ? (
                                         <div className="space-y-6">
-                                            {project.timeline.map((event, index) => (
-                                                <div key={`${event.title}-${index}`} className="flex gap-5">
+                                            {project.timeline.map((event: any, index) => (
+                                                <div key={`${event.code || event.title}-${index}`} className="flex gap-5">
                                                     <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                                                         <CheckCircle2 className="w-5 h-5" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{event.date}</p>
-                                                        <h4 className="text-base font-bold text-black mt-1">{event.title}</h4>
+                                                        <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{event.code || 'EVENT'} · {event.date}</p>
+                                                        <h4 className="text-base font-bold text-black mt-1">{timelineCodeLabel(event.code) || event.title}</h4>
                                                         <p className="text-sm text-gray-500 mt-1">{event.desc}</p>
                                                     </div>
                                                 </div>
@@ -227,18 +266,21 @@ export default function MrcaDetails() {
                                 <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
                                     <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">QTAGs / Georreferenciamento</h3>
                                     {dossier.tags.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {dossier.tags.map((tag) => (
-                                                <div key={tag.id} className="p-5 rounded-xl border border-gray-100 bg-gray-50">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <span className="text-xs font-black uppercase text-primary">Vértice {tag.vertex}</span>
-                                                        <span className="text-[10px] font-bold uppercase text-gray-400">{tag.status}</span>
+                                        <div className="space-y-5">
+                                            <ProjectGeofencePreview tags={qtagDrafts} />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {dossier.tags.map((tag) => (
+                                                    <div key={tag.id} className="p-5 rounded-xl border border-gray-100 bg-gray-50">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <span className="text-xs font-black uppercase text-primary">Vértice {tag.vertex}</span>
+                                                            <span className="text-[10px] font-bold uppercase text-gray-400">{tag.status}</span>
+                                                        </div>
+                                                        <p className="text-xs font-mono text-gray-700 break-all">{tag.tagUid}</p>
+                                                        <p className="text-[10px] text-gray-400 mt-3">CMAC: {tag.cmac || 'Não registrado'}</p>
+                                                        <p className="text-[10px] text-gray-400">Lat/Lng: {tag.latitude}, {tag.longitude}</p>
                                                     </div>
-                                                    <p className="text-xs font-mono text-gray-700 break-all">{tag.tagUid}</p>
-                                                    <p className="text-[10px] text-gray-400 mt-3">CMAC: {tag.cmac || 'Não registrado'}</p>
-                                                    <p className="text-[10px] text-gray-400">Lat/Lng: {tag.latitude}, {tag.longitude}</p>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
                                     ) : (
                                         <EmptyState text="Nenhuma QTAG pública registrada para este projeto." />
@@ -246,11 +288,11 @@ export default function MrcaDetails() {
                                 </div>
 
                                 <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Baseline Sentinel-2</h3>
+                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Baseline técnico</h3>
                                     {dossier.baseline ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                             <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
-                                                <p className="text-[10px] uppercase font-bold text-gray-400">Cena Sentinel</p>
+                                                <p className="text-[10px] uppercase font-bold text-gray-400">Referência Sentinel</p>
                                                 <p className="font-mono break-all mt-1">{dossier.baseline.sentinelSceneId}</p>
                                             </div>
                                             <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
@@ -264,6 +306,14 @@ export default function MrcaDetails() {
                                             <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                                                 <p className="text-[10px] uppercase font-bold text-gray-400">Pontos analisados</p>
                                                 <p className="font-black text-xl mt-1">{dossier.baseline.pointsAnalyzed?.toLocaleString('pt-BR')}</p>
+                                            </div>
+                                            <div className="p-5 rounded-xl bg-amber-50 border border-amber-100">
+                                                <p className="text-[10px] uppercase font-bold text-amber-700">Fonte do baseline</p>
+                                                <p className="font-bold text-amber-900 mt-1">{technicalStatusLabel(metadata.baseline_source || metadata.baseline_adapter)}</p>
+                                            </div>
+                                            <div className="p-5 rounded-xl bg-amber-50 border border-amber-100">
+                                                <p className="text-[10px] uppercase font-bold text-amber-700">Status Sentinel</p>
+                                                <p className="font-bold text-amber-900 mt-1">{technicalStatusLabel(metadata.sentinel_status)}</p>
                                             </div>
                                         </div>
                                     ) : (
@@ -324,7 +374,7 @@ export default function MrcaDetails() {
                                             {dossier.documents.map((doc) => (
                                                 <div key={doc.id} className="p-5 rounded-xl border border-gray-100 bg-gray-50">
                                                     <FileText className="w-5 h-5 text-primary mb-4" />
-                                                    <p className="text-sm font-black uppercase">{doc.type}</p>
+                                                    <p className="text-sm font-black uppercase">{documentTypeLabel(doc.type)}</p>
                                                     <p className="text-xs text-gray-500 mt-1">{doc.mimeType} - {Number(doc.sizeBytes || 0).toLocaleString('pt-BR')} bytes</p>
                                                     <p className="text-[10px] font-mono text-primary mt-4 break-all">{doc.sha256Hash}</p>
                                                 </div>
