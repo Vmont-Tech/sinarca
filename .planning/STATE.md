@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 03 plan 03-04 completed; next plan 03-05
+status: phase-3-implemented
+stopped_at: Phase 03 implemented locally; pending review/ship
 last_updated: "2026-05-26T21:58:03.056Z"
 last_activity: 2026-05-26 -- Phase 03 execution started
 progress:
   total_phases: 10
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
-  completed_plans: 15
-  percent: 20
+  completed_plans: 16
+  percent: 30
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 03 — project-origination-and-documents
+**Current focus:** Phase 04 — certification-workbench
 
 ## Current Position
 
-Phase: 03 (project-origination-and-documents) — EXECUTING
-Plan: 03-05 of 03-05
-Status: Phase 03 plan 03-04 complete; executing Phase 03
-Last activity: 2026-05-26 -- Phase 03 plan 03-04 completed
+Phase: 03 (project-origination-and-documents) — IMPLEMENTED LOCALLY
+Plan: 03-01 through 03-05 executed
+Status: Phase 3 implemented on branch `feat/fase-2-transparencia-perfis`; pending review/ship
+Last activity: 2026-05-26 -- Phase 03 completed
 
-Progress: [██--------] 20%
+Progress: [███-------] 30%
 
 ## Performance Metrics
 
@@ -91,6 +91,7 @@ Progress: [██--------] 20%
 - [Phase 03]: `AddProject` agora é wizard operacional; município/UF são campos livres, produtores/certificadoras vêm da API e `ProjectCreate.tags` é montado por `projectOrigination.ts`.
 - [Phase 03]: Captura de campo web/PWA falha fechado para NFC/SUN sem credenciais, permite geolocalização com fallback manual e renderiza geofence SVG a partir das mesmas QTAGs enviadas no submit.
 - [Phase 03]: Documentos obrigatórios são selecionados no wizard, enviados via `FormData` após criação do projeto e só liberam sucesso final quando os uploads obrigatórios terminam.
+- [Phase 03]: Dossiê de projeto renderiza geofence a partir de `dossier.tags`, documentos reais de `dossier.documents`, timeline canônica da API e baseline rotulado como determinístico/Sentinel bloqueado quando aplicável.
 
 ### Roadmap Evolution
 
@@ -107,7 +108,7 @@ Progress: [██--------] 20%
 ### Pending Todos
 
 - Abrir PR para `docs/planejamento-fase-2` ou incluir os artefatos de planejamento no PR da branch `feat/fase-2-transparencia-perfis`, porque `main` está protegida contra push direto.
-- Executar Phase 3 (`project-origination-and-documents`) a partir dos cinco planos criados em `.planning/phases/03-project-origination-and-documents/`, sempre preservando seção "Cobertura do checklist" em cada `PLAN.md`.
+- Revisar/ship da Phase 3 (`project-origination-and-documents`) com os artefatos executados em `.planning/phases/03-project-origination-and-documents/`.
 
 ### Blockers/Concerns
 
@@ -118,6 +119,7 @@ Progress: [██--------] 20%
 - Staging Dokploy Phase 1 bloqueado: STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto ausentes; ver .planning/docs/deployment/PHASE1-STAGING-SMOKE.md.
 - Phase 2 execução deve usar canais provisórios distintos no domínio `@sinarca.com.br`: `contato@sinarca.com.br` para contato geral, `suporte@sinarca.com.br` para suporte e `dpo@sinarca.com.br` para DPO.
 - `npx tsc -b` segue bloqueado por dívida legada fora do escopo da Phase 2, principalmente imports não usados e tipos incompletos no impact-engine; `npm run build` passa.
+- Phase 3 Web NFC/SUN/Sentinel live permanecem bloqueados por hardware, chaves e credenciais externas; fluxo registra fallback manual e baseline determinístico.
 
 ## Deferred Items
 
