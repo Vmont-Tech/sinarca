@@ -82,10 +82,11 @@ Este documento deve ser seguido como fonte única de verdade.
 ### 4.1 Usuário Público
 **Rotas principais:**
 *   `/` Home pública
-*   `/public/consulta`
-*   `/public/mapa`
-*   `/public/rankings`
-*   `/public/projetos`
+*   `/consulta`
+*   `/mapa-brasil`
+*   `/mapa-nacional`
+*   `/rankings`
+*   `/projetos`
 *   `/perfil/:id`
 *   `/login`
 

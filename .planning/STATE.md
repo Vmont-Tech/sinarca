@@ -2,35 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-backend-rebuild-01-06-PLAN.md
-last_updated: "2026-05-22T22:54:11.209Z"
-last_activity: 2026-05-22
+status: planning
+stopped_at: Phase 2 discussed and planned
+last_updated: "2026-05-26T00:00:00.000Z"
+last_activity: 2026-05-26
 progress:
-  total_phases: 1
+  total_phases: 10
   completed_phases: 1
-  total_plans: 6
+  total_plans: 11
   completed_plans: 6
-  percent: 100
+  percent: 10
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-05-22)
+See: `.planning/PROJECT.md` (updated 2026-05-26)
 
-**Core value:** Reconstruir o backend do SINARCA com base persistente, segura e implantável.
-**Current focus:** Phase 01 — backend-rebuild
+**Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
+**Current focus:** Phase 02 — public-transparency-and-profiles
 
 ## Current Position
 
-Phase: 01 (backend-rebuild) — COMPLETE
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-05-22
+Phase: 02 (public-transparency-and-profiles) — PLANNED
+Plan: 02-01 and 02-02 ready to start
+Status: Phase 2 discussed and split into five executable plans
+Last activity: 2026-05-26
 
-Progress: [██████████] 100%
+Progress: [█---------] 10%
 
 ## Performance Metrics
 
@@ -75,10 +75,30 @@ Progress: [██████████] 100%
 - [Phase 01-backend-rebuild]: Soroban SDK 26 constrói WASM local com wasm32v1-none; wasm32-unknown-unknown é incompatível com o Rust atual.
 - [Phase 01-backend-rebuild]: Deploy Dokploy usa backend_app.main:app como runtime único da API, com web estática Nginx e Supabase Postgres externo.
 - [Phase 01-backend-rebuild]: Staging Phase 1 permanece bloqueado externamente até existirem STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto.
+- [Roadmap]: A auditoria de checklist de fluxo/tela de 2026-05-26 não reabre a Phase 1; ela distribui as lacunas identificadas em fases próprias de produto/UX e operação.
+- [Roadmap]: A conferência contra `.planning/docs/bible/` adiciona cobertura explícita para campo mobile/PWA, pagamentos/settlement e requisitos transversais de segurança, privacidade, compliance, qualidade e governança de dados.
+- [Roadmap]: O checklist operacional em `.planning/docs/FLOW_SCREEN_CHECKLIST_AUDIT.md` é baseline obrigatório das Phases 2-10; cada plano futuro deve declarar cobertura do checklist, fora de escopo e gate de dados seed/API.
+- [Phase 02]: A discussão foi fechada por documentos, sem pergunta bloqueante, porque checklist, Bible e roadmap já definem o recorte.
+- [Phase 02]: A fase foi dividida em cinco planos: navegação/legal, contrato público de API, dossiê/explorer UI, perfis públicos/rankings e auth/perfil.
+- [Phase 02]: Admin permanece sem cadastro público; provisionamento e gestão admin ficam na Phase 9.
+- [Phase 02]: Conteúdo legal/institucional entra agora, mas operações completas de DPO, LGPD, retenção, anonimização e AML/CFT ficam na Phase 10.
+
+### Roadmap Evolution
+
+- Phase 2 added: public-transparency-and-profiles.
+- Phase 3 added: project-origination-and-documents.
+- Phase 4 added: certification-workbench.
+- Phase 5 added: audit-monitoring-and-anomalies.
+- Phase 6 added: marketplace-wallet-and-retirement.
+- Phase 7 added: emissions-inventory-and-compensation.
+- Phase 8 added: treasury-blockchain-and-interoperability.
+- Phase 9 added: admin-operations-and-observability.
+- Phase 10 added: security-compliance-and-data-governance.
 
 ### Pending Todos
 
-None yet.
+- Executar Phase 2 começando por `02-01` e `02-02`, que podem iniciar em paralelo por não dependerem um do outro.
+- Planejar as Phases 3-10 conforme prioridade operacional após Phase 2, sempre incluindo seção "Cobertura do checklist" em cada `PLAN.md`.
 
 ### Blockers/Concerns
 
@@ -87,12 +107,13 @@ None yet.
 - Polygon testnet smoke bloqueado: POLYGON_RPC_URL, POLYGON_VAULT_ADDRESS e source lock tx hash ausentes.
 - Etherfuse sandbox smoke bloqueado: ETHERFUSE_API_URL e ETHERFUSE_API_KEY ausentes.
 - Staging Dokploy Phase 1 bloqueado: STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto ausentes; ver .planning/docs/deployment/PHASE1-STAGING-SMOKE.md.
+- Phase 2 execução deve usar `contato@sinarca.com.br` como contato/suporte/DPO provisório até existir canal definitivo.
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Mobile | App móvel nativo NFC/auditor | Future phase | Phase 1 discussion |
+| Mobile | App nativo avançado além do cliente de campo web/PWA/mobile previsto nas Phases 3 e 5 | Future enhancement | Phase 1 discussion |
 | Production | Mainnet e operação financeira produtiva | Future phase | Phase 1 discussion |
 
 ## Session Continuity

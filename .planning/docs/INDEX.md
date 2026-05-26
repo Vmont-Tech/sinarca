@@ -1,6 +1,6 @@
 # Índice da Documentação SINARCA
 
-**Data da organização:** 2026-05-22
+**Data da organização:** 2026-05-26
 
 Esta pasta concentra a documentação do projeto dentro de `.planning`, mantendo `README.md` na raiz do repositório como exceção operacional.
 
@@ -8,9 +8,22 @@ Esta pasta concentra a documentação do projeto dentro de `.planning`, mantendo
 
 - [Especificação de Integração Backend](./BACKEND_INTEGRATION_SPEC.md)
 - [Blueprint v1](./BLUEPRINT_V1.md)
+- [Auditoria de Checklist de Fluxo e Tela](./FLOW_SCREEN_CHECKLIST_AUDIT.md)
+- [Auditoria de Cobertura da Bible por Fases](./BIBLE_PHASE_COVERAGE_AUDIT.md)
 - [Fluxo Operacional Completo](./Fluxo_Operacional_Completo.pdf)
 - [Lifecycle e Onboarding de Projetos](./PROJECT_LIFECYCLE_ONBOARDING.md)
 - [Manifesto SINARCA](./SINARCA_MANIFESTO.md)
+
+## Planejamento de Fases
+
+- [Phase 2 Contexto](../phases/02-public-transparency-and-profiles/02-CONTEXT.md)
+- [Phase 2 Discussão](../phases/02-public-transparency-and-profiles/02-DISCUSSION-LOG.md)
+- [Phase 2 Pesquisa](../phases/02-public-transparency-and-profiles/02-RESEARCH.md)
+- [Phase 2 Plano 02-01](../phases/02-public-transparency-and-profiles/02-01-PLAN.md)
+- [Phase 2 Plano 02-02](../phases/02-public-transparency-and-profiles/02-02-PLAN.md)
+- [Phase 2 Plano 02-03](../phases/02-public-transparency-and-profiles/02-03-PLAN.md)
+- [Phase 2 Plano 02-04](../phases/02-public-transparency-and-profiles/02-04-PLAN.md)
+- [Phase 2 Plano 02-05](../phases/02-public-transparency-and-profiles/02-05-PLAN.md)
 
 ## Bible Técnica
 

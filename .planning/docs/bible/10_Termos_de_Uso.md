@@ -62,7 +62,7 @@ Você concorda em defender, indenizar e isentar o SINARCA, seus afiliados, licen
 
 ### 9. Resolução de Disputas e Lei Aplicável
 
-Quaisquer disputas decorrentes ou relacionadas a estes Termos ou ao uso da Plataforma serão regidas pelas leis da República Federativa do Brasil, sem considerar seus princípios de conflito de leis. Você concorda com a jurisdição exclusiva dos tribunais localizados na cidade de [Inserir Cidade, Estado] para a resolução de quaisquer disputas.
+Quaisquer disputas decorrentes ou relacionadas a estes Termos ou ao uso da Plataforma serão regidas pelas leis da República Federativa do Brasil, sem considerar seus princípios de conflito de leis. A resolução de disputas observará o foro competente definido pela legislação aplicável e pelos instrumentos contratuais vigentes.
 
 ### 10. Alterações aos Termos
 
@@ -70,7 +70,7 @@ O SINARCA reserva-se o direito de modificar estes Termos a qualquer momento. Qua
 
 ### 11. Contato
 
-Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato conosco através de [endereço de e-mail de contato ou formulário na Plataforma].
+Se você tiver alguma dúvida sobre estes Termos de Uso, entre em contato conosco através de `contato@sinarca.com.br`.
 
 ---
 *Documento preparado por Manus AI para o projeto SINARCA.*
