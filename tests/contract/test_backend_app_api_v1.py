@@ -4,7 +4,9 @@ import uuid
 import asyncio
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
+from backend_app.db.models import AuditEvent, Document
 from backend_app.db.session import get_sessionmaker
 from backend_app.main import app
 from backend_app.modules.monitoring.service import MonitoringService
@@ -308,3 +310,79 @@ def test_inventory_declare_and_secure_upload_persist_documents() -> None:
     assert upload["success"] is True
     assert upload["sha256"]
     assert upload["size_bytes"] == len(pdf_content)
+
+
+def test_project_document_upload_requires_auth_and_validates_file_contract() -> None:
+    project = create_project_for_workflow()
+    endpoint = f"/api/v1/projects/{project['friendlyId']}/documents"
+
+    unauthenticated_upload = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", b"%PDF-1.4\nsem auth", "application/pdf")},
+    )
+    assert unauthenticated_upload.status_code == 401
+
+    unsupported_upload = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("malware.exe", b"MZ fake executable", "application/octet-stream")},
+        headers=auth_headers(),
+    )
+    assert unsupported_upload.status_code == 415
+
+    spoofed_upload = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", b"not a pdf", "application/pdf")},
+        headers=auth_headers(),
+    )
+    assert spoofed_upload.status_code == 400
+
+
+def test_project_document_upload_persists_project_link_and_audit_event() -> None:
+    project = create_project_for_workflow()
+    endpoint = f"/api/v1/projects/{project['friendlyId']}/documents"
+    pdf_content = b"%PDF-1.4\nproject document evidence " + uuid.uuid4().hex.encode()
+
+    upload_response = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=auth_headers(),
+    )
+
+    assert upload_response.status_code == 201
+    upload = upload_response.json()
+    assert upload["success"] is True
+    assert upload["project_id"] == project["friendlyId"]
+    assert upload["document_type"] == "LEGAL_OWNERSHIP"
+    assert upload["sha256"]
+    assert upload["storage_path"].startswith(f"projects/{project['friendlyId']}/documents/")
+    assert upload["size_bytes"] == len(pdf_content)
+    assert upload["mime_type"] == "application/pdf"
+    assert upload["status"] == "UPLOADED"
+
+    async def persisted_document_and_audit() -> tuple[Document | None, AuditEvent | None]:
+        async with get_sessionmaker()() as session:
+            document = (
+                await session.execute(select(Document).where(Document.sha256_hash == upload["sha256"]))
+            ).scalar_one_or_none()
+            audit_event = (
+                await session.execute(
+                    select(AuditEvent).where(
+                        AuditEvent.action == "PROJECT_DOCUMENT_UPLOADED",
+                        AuditEvent.entity_id == document.id if document is not None else None,
+                    )
+                )
+            ).scalar_one_or_none()
+            return document, audit_event
+
+    document, audit_event = asyncio.run(persisted_document_and_audit())
+    assert document is not None
+    assert str(document.project_id)
+    assert document.storage_path == upload["storage_path"]
+    assert audit_event is not None
+    assert audit_event.metadata_["friendly_id"] == project["friendlyId"]
+    assert audit_event.metadata_["document_type"] == "LEGAL_OWNERSHIP"
+    assert audit_event.metadata_["sha256"] == upload["sha256"]
