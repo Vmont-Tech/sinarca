@@ -87,7 +87,21 @@ Plans:
   4. Documentos legais e inventário florestal são enviados, listados e vinculados ao projeto.
   5. Validação de SUN/CMAC, hash inicial de área e pontos de referência Sentinel-2 ficam explicitados no contrato ou como bloqueio técnico documentado.
   6. A timeline do projeto cobre o ciclo canônico de `CREATED` até `AVAILABLE`.
-**Plans**: Not planned yet
+**Plans**: 0/5 plans executed
+
+Plans:
+**Wave 1**
+- [ ] 03-01: Fechar contrato backend de originação, documentos e timeline.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02: Transformar AddProject em wizard de originação com quatro QTAGs.
+- [ ] 03-03: Adicionar captura de campo fail-closed e preview de geofence.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-04: Implementar upload e listagem de documentos reais no fluxo de projeto.
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 03-05: Fechar dossiê, timeline, cobertura e UAT da originação.
 
 ### Phase 4: certification-workbench
 **Goal**: Completar a bancada da certificadora com dossiê técnico, decisão auditável, certificado/documento e preparação de lastro/mint bloqueado.
@@ -212,7 +226,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. backend-rebuild | 6/6 | Complete | 2026-05-22 |
 | 2. public-transparency-and-profiles | 0/5 | Planned | - |
-| 3. project-origination-and-documents | 0/0 | Not planned | - |
+| 3. project-origination-and-documents | 0/5 | Planned | - |
 | 4. certification-workbench | 0/0 | Not planned | - |
 | 5. audit-monitoring-and-anomalies | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |

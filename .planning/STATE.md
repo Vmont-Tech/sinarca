@@ -103,7 +103,7 @@ Progress: [██--------] 20%
 ### Pending Todos
 
 - Abrir PR para `docs/planejamento-fase-2` ou incluir os artefatos de planejamento no PR da branch `feat/fase-2-transparencia-perfis`, porque `main` está protegida contra push direto.
-- Planejar e executar Phase 3 (`project-origination-and-documents`), sempre incluindo seção "Cobertura do checklist" em cada `PLAN.md`.
+- Executar Phase 3 (`project-origination-and-documents`) a partir dos cinco planos criados em `.planning/phases/03-project-origination-and-documents/`, sempre preservando seção "Cobertura do checklist" em cada `PLAN.md`.
 
 ### Blockers/Concerns
 
