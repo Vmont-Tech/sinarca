@@ -72,6 +72,9 @@ class ProjectsService:
     async def get_project(self, project_id: str) -> ProjectMRCA:
         return await self.project_to_mrca(await self._get_project_model(project_id))
 
+    async def get_project_model(self, project_id: str) -> Project:
+        return await self._get_project_model(project_id)
+
     async def get_public_dossier(self, project_id: str) -> ProjectPublicDossierResponse:
         project = await self._get_project_model(project_id)
         project_dto = await self.project_to_mrca(project)
@@ -137,8 +140,7 @@ class ProjectsService:
         )
 
     async def create_project(self, payload: ProjectCreate, *, actor_id: str | None, actor_role: str | None) -> ProjectMRCA:
-        if payload.tags is not None and len(payload.tags) != 4:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar exatamente 4 tags NFC")
+        validate_project_tags(payload.tags)
 
         producer = await self._resolve_producer(payload.producer_id, actor_id)
         certifier = await self._get_organization(payload.certifier_id)
@@ -182,15 +184,15 @@ class ProjectsService:
             contract_address="pending",
             merkle_root=baseline.baseline_hash,
             blockchain_timestamp=baseline.captured_at,
-            timeline=[
-                {
-                    "title": "Registro do Projeto",
-                    "date": now.date().isoformat(),
-                    "status": "active",
-                    "desc": "Projeto registrado na API persistente e aguardando certificação.",
-                }
-            ],
-            metadata_={"project_type": payload.project_type, "baseline_adapter": "deterministic_baseline"},
+            timeline=initial_project_timeline(now, has_tags=bool(payload.tags)),
+            metadata_={
+                "project_type": payload.project_type,
+                "baseline_adapter": "deterministic_baseline",
+                "sun_validation_status": "BLOCKED_MISSING_CREDENTIALS",
+                "cmac_validation_status": "RECORDED_DECLARED_VALUE",
+                "baseline_source": "deterministic_baseline",
+                "sentinel_status": "BLOCKED_MISSING_PROVIDER_CREDENTIALS",
+            },
         )
         self.session.add(project)
         await self.session.flush()
@@ -216,7 +218,7 @@ class ProjectsService:
                     cmac=tag.cmac,
                     latitude=Decimal(str(tag.latitude)),
                     longitude=Decimal(str(tag.longitude)),
-                    vertex_label=tag.vertex_label,
+                    vertex_label=tag.vertex_label.strip().upper(),
                     first_seen_at=now,
                     last_seen_at=now,
                     metadata_={"source": "api-v1-project-create"},
@@ -394,6 +396,7 @@ class ProjectsService:
                 serialRange={"start": project.serial_start, "end": project.serial_end},
             ),
             timeline=list(project.timeline or []),
+            metadata=project.metadata_ or {},
         )
 
     async def _get_project_model(self, project_id: str) -> Project:
@@ -524,6 +527,62 @@ def deterministic_baseline(payload: ProjectCreate) -> BaselineDTO:
         ndvi_mean=round(ndvi, 3),
         captured_at=datetime.now(timezone.utc),
     )
+
+
+def validate_project_tags(tags: list[Any] | None) -> None:
+    if tags is None:
+        return
+    if len(tags) != 4:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar exatamente 4 tags NFC")
+    labels = [tag.vertex_label.strip().upper() for tag in tags]
+    if sorted(labels) != ["A", "B", "C", "D"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar os vértices A, B, C e D")
+
+
+def initial_project_timeline(now: datetime, *, has_tags: bool) -> list[dict[str, str]]:
+    today = now.date().isoformat()
+    events = [
+        {
+            "code": "CREATED",
+            "title": "Projeto criado",
+            "date": today,
+            "status": "complete",
+            "desc": "Projeto registrado na API persistente.",
+        },
+        {
+            "code": "BASELINE_CREATED",
+            "title": "Baseline determinístico criado",
+            "date": today,
+            "status": "complete",
+            "desc": "Baseline inicial registrado sem consulta Sentinel live.",
+        },
+        {
+            "code": "DOCUMENTS_PENDING",
+            "title": "Documentos pendentes",
+            "date": today,
+            "status": "pending",
+            "desc": "Documentos legais e técnicos ainda aguardam upload.",
+        },
+        {
+            "code": "AWAITING_CERTIFICATION",
+            "title": "Aguardando certificação",
+            "date": today,
+            "status": "active",
+            "desc": "Projeto enviado para a fila da certificadora.",
+        },
+    ]
+    if has_tags:
+        events.insert(
+            1,
+            {
+                "code": "QTAGS_RECORDED",
+                "title": "QTAGs registradas",
+                "date": today,
+                "status": "complete",
+                "desc": "Quatro QTAGs/vértices A, B, C e D foram registrados.",
+            },
+        )
+    return events
 
 
 def catalog_item(organization: Organization) -> dict[str, Any]:

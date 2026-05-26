@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Coordinates(BaseModel):
@@ -68,6 +68,7 @@ class ProjectMRCA(BaseModel):
     entities: ProjectEntities
     blockchain: BlockchainData
     timeline: list[dict[str, Any]]
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ProjectsResponse(BaseModel):
