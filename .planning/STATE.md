@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 03 plan 03-03 completed; next plan 03-04
+stopped_at: Phase 03 plan 03-04 completed; next plan 03-05
 last_updated: "2026-05-26T21:58:03.056Z"
 last_activity: 2026-05-26 -- Phase 03 execution started
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 20
 ---
 
@@ -26,9 +26,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 03 (project-origination-and-documents) — EXECUTING
-Plan: 03-04 of 03-05
-Status: Phase 03 plan 03-03 complete; executing Phase 03
-Last activity: 2026-05-26 -- Phase 03 plan 03-03 completed
+Plan: 03-05 of 03-05
+Status: Phase 03 plan 03-04 complete; executing Phase 03
+Last activity: 2026-05-26 -- Phase 03 plan 03-04 completed
 
 Progress: [██--------] 20%
 
@@ -90,6 +90,7 @@ Progress: [██--------] 20%
 - [Phase 03]: Originação backend registra quatro QTAGs A/B/C/D, bloqueia SUN/Sentinel como credenciais ausentes, persiste documentos por projeto e usa timeline inicial com códigos canônicos.
 - [Phase 03]: `AddProject` agora é wizard operacional; município/UF são campos livres, produtores/certificadoras vêm da API e `ProjectCreate.tags` é montado por `projectOrigination.ts`.
 - [Phase 03]: Captura de campo web/PWA falha fechado para NFC/SUN sem credenciais, permite geolocalização com fallback manual e renderiza geofence SVG a partir das mesmas QTAGs enviadas no submit.
+- [Phase 03]: Documentos obrigatórios são selecionados no wizard, enviados via `FormData` após criação do projeto e só liberam sucesso final quando os uploads obrigatórios terminam.
 
 ### Roadmap Evolution
 
