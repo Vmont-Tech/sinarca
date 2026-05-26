@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ChevronLeft, FileText, Leaf, Loader2, ScanLine, ShieldCheck, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, FileText, Leaf, Loader2, MapPin, Radio, ScanLine, ShieldCheck, Upload, WifiOff } from 'lucide-react';
+import ProjectGeofencePreview from '../../components/ProjectGeofencePreview';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiPost } from '../../services/api';
 import { database } from '../../services/database';
+import { detectFieldCapabilities, getNfcCaptureStatus, requestCurrentPosition } from '../../services/fieldCapture';
 import {
     REQUIRED_VERTICES,
     averageCoordinates,
@@ -87,6 +89,10 @@ export default function AddProject() {
     const currentStepIndex = steps.findIndex((item) => item.id === step);
     const needsProducerSelection = user?.role !== 'producer';
     const tagValidation = useMemo(() => validateTagDrafts(tags), [tags]);
+    const fieldCapabilities = useMemo(() => detectFieldCapabilities(), []);
+    const nfcCaptureStatus = useMemo(() => getNfcCaptureStatus(), []);
+    const [locationLoadingVertex, setLocationLoadingVertex] = useState<VertexLabel | null>(null);
+    const [locationErrors, setLocationErrors] = useState<Partial<Record<VertexLabel, string>>>({});
 
     useEffect(() => {
         let active = true;
@@ -132,13 +138,36 @@ export default function AddProject() {
         });
     };
 
+    const patchTag = (vertex: VertexLabel, patch: Partial<ProjectTagDraft>) => {
+        setTags((current) => current.map((tag) => (
+            tag.vertex_label === vertex ? { ...tag, ...patch } : tag
+        )));
+    };
+
     const updateTag = (vertex: VertexLabel, field: 'tag_uid' | 'cmac' | 'latitude' | 'longitude') => (
         event: React.ChangeEvent<HTMLInputElement>,
     ) => {
-        const value = event.target.value;
-        setTags((current) => current.map((tag) => (
-            tag.vertex_label === vertex ? { ...tag, [field]: value } : tag
-        )));
+        patchTag(vertex, { [field]: event.target.value } as Partial<ProjectTagDraft>);
+    };
+
+    const handleUseCurrentLocation = async (vertex: VertexLabel) => {
+        setLocationLoadingVertex(vertex);
+        setLocationErrors((current) => ({ ...current, [vertex]: undefined }));
+        try {
+            const position = await requestCurrentPosition();
+            patchTag(vertex, {
+                latitude: position.latitude.toFixed(6),
+                longitude: position.longitude.toFixed(6),
+                captureMode: 'manual',
+            });
+        } catch (err) {
+            setLocationErrors((current) => ({
+                ...current,
+                [vertex]: err instanceof Error ? err.message : 'Não foi possível obter a localização atual.',
+            }));
+        } finally {
+            setLocationLoadingVertex(null);
+        }
     };
 
     const validateProjectStep = () => {
@@ -377,50 +406,98 @@ export default function AddProject() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                {REQUIRED_VERTICES.map((vertex) => {
-                    const tag = tags.find((item) => item.vertex_label === vertex) || createEmptyProjectTagDrafts().find((item) => item.vertex_label === vertex)!;
-                    const vertexErrors = tagValidation.vertexErrors[vertex] || [];
-                    const hasAnyValue = Boolean(tag.tag_uid || tag.cmac || tag.latitude || tag.longitude);
-                    const statusLabel = vertexErrors.length === 0 && hasAnyValue ? 'pronto' : hasAnyValue ? 'manual' : 'pendente';
+            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
+                        <Radio className="h-4 w-4" />
+                        Contexto seguro
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-gray-900">{fieldCapabilities.secureContext ? 'disponível' : 'indisponível'}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
+                        <MapPin className="h-4 w-4" />
+                        Geolocalização
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-gray-900">{fieldCapabilities.geolocation === 'available' ? 'disponível' : 'indisponível'}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
+                        <WifiOff className="h-4 w-4" />
+                        NFC
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-gray-900">{fieldCapabilities.nfc === 'available' ? 'bloqueado' : 'indisponível'}</p>
+                </div>
+            </div>
 
-                    return (
-                        <div key={vertex} className="rounded-lg border border-gray-200 p-4">
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-xs font-bold uppercase text-gray-500">Vértice {vertex}</p>
-                                    <p className="text-sm font-bold text-gray-900">QTAG {vertex}</p>
+            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                {nfcCaptureStatus === 'unsupported'
+                    ? 'Este navegador não permite leitura NFC aqui. Use captura manual ou um dispositivo compatível.'
+                    : 'Validação SUN/CMAC real bloqueada por credenciais ou hardware. O CMAC informado será registrado como evidência declarada.'}
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    {REQUIRED_VERTICES.map((vertex) => {
+                        const tag = tags.find((item) => item.vertex_label === vertex) || createEmptyProjectTagDrafts().find((item) => item.vertex_label === vertex)!;
+                        const vertexErrors = tagValidation.vertexErrors[vertex] || [];
+                        const hasAnyValue = Boolean(tag.tag_uid || tag.cmac || tag.latitude || tag.longitude);
+                        const statusLabel = vertexErrors.length === 0 && hasAnyValue ? 'pronto' : hasAnyValue ? 'manual' : 'pendente';
+
+                        return (
+                            <div key={vertex} className="rounded-lg border border-gray-200 p-4">
+                                <div className="mb-4 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase text-gray-500">Vértice {vertex}</p>
+                                        <p className="text-sm font-bold text-gray-900">QTAG {vertex}</p>
+                                    </div>
+                                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700">{statusLabel}</span>
                                 </div>
-                                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700">{statusLabel}</span>
+
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-uid`}>UID</label>
+                                        <input id={`tag-${vertex}-uid`} type="text" value={tag.tag_uid} onChange={updateTag(vertex, 'tag_uid')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={`ntag-${vertex}`} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-cmac`}>CMAC</label>
+                                        <input id={`tag-${vertex}-cmac`} type="text" value={tag.cmac} onChange={updateTag(vertex, 'cmac')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="cmac declarado" />
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-lat`}>Latitude</label>
+                                        <input id={`tag-${vertex}-lat`} inputMode="decimal" value={tag.latitude} onChange={updateTag(vertex, 'latitude')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="-10.700000" />
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-lng`}>Longitude</label>
+                                        <input id={`tag-${vertex}-lng`} inputMode="decimal" value={tag.longitude} onChange={updateTag(vertex, 'longitude')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="-48.410000" />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleUseCurrentLocation(vertex)}
+                                    disabled={fieldCapabilities.geolocation === 'unsupported' || locationLoadingVertex === vertex}
+                                    className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-800 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {locationLoadingVertex === vertex ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                                    Usar localização atual
+                                </button>
+
+                                {locationErrors[vertex] && (
+                                    <p className="mt-3 text-xs font-semibold text-red-600">{locationErrors[vertex]}</p>
+                                )}
+
+                                {vertexErrors.length > 0 && (
+                                    <ul className="mt-3 space-y-1 text-xs font-semibold text-red-600">
+                                        {vertexErrors.map((item) => <li key={item}>{item}</li>)}
+                                    </ul>
+                                )}
                             </div>
+                        );
+                    })}
+                </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-uid`}>UID</label>
-                                    <input id={`tag-${vertex}-uid`} type="text" value={tag.tag_uid} onChange={updateTag(vertex, 'tag_uid')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder={`ntag-${vertex}`} />
-                                </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-cmac`}>CMAC</label>
-                                    <input id={`tag-${vertex}-cmac`} type="text" value={tag.cmac} onChange={updateTag(vertex, 'cmac')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="cmac declarado" />
-                                </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-lat`}>Latitude</label>
-                                    <input id={`tag-${vertex}-lat`} inputMode="decimal" value={tag.latitude} onChange={updateTag(vertex, 'latitude')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="-10.700000" />
-                                </div>
-                                <div>
-                                    <label className="mb-2 block text-xs font-bold uppercase text-gray-700" htmlFor={`tag-${vertex}-lng`}>Longitude</label>
-                                    <input id={`tag-${vertex}-lng`} inputMode="decimal" value={tag.longitude} onChange={updateTag(vertex, 'longitude')} className="min-h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" placeholder="-48.410000" />
-                                </div>
-                            </div>
-
-                            {vertexErrors.length > 0 && (
-                                <ul className="mt-3 space-y-1 text-xs font-semibold text-red-600">
-                                    {vertexErrors.map((item) => <li key={item}>{item}</li>)}
-                                </ul>
-                            )}
-                        </div>
-                    );
-                })}
+                <ProjectGeofencePreview tags={tags} errors={tagValidation.errors} />
             </div>
         </section>
     );
@@ -444,42 +521,32 @@ export default function AddProject() {
         </section>
     );
 
-    const renderReviewStep = () => {
-        const coordinates = tagValidation.valid ? averageCoordinates(tags) : null;
+    const renderReviewStep = () => (
+        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-6 flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-extrabold uppercase text-gray-900">Revisão e envio</h3>
+            </div>
 
-        return (
-            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <h3 className="text-sm font-extrabold uppercase text-gray-900">Revisão e envio</h3>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+                <div className="rounded-lg border border-gray-200 p-4">
+                    <p className="text-xs font-bold uppercase text-gray-500">Projeto</p>
+                    <p className="mt-2 text-lg font-bold text-gray-950">{form.name || 'Nome pendente'}</p>
+                    <p className="mt-1 text-sm text-gray-600">{form.city || 'Município'}, {form.state || 'UF'} · {form.bioma}</p>
+                    <p className="mt-1 text-sm text-gray-600">{form.methodology} · {form.areaHectares || '0'} ha · {form.carbonStock || '0'} tCO2e</p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <div className="rounded-lg border border-gray-200 p-4">
-                        <p className="text-xs font-bold uppercase text-gray-500">Projeto</p>
-                        <p className="mt-2 text-lg font-bold text-gray-950">{form.name || 'Nome pendente'}</p>
-                        <p className="mt-1 text-sm text-gray-600">{form.city || 'Município'}, {form.state || 'UF'} · {form.bioma}</p>
-                        <p className="mt-1 text-sm text-gray-600">{form.methodology} · {form.areaHectares || '0'} ha · {form.carbonStock || '0'} tCO2e</p>
-                    </div>
+                <ProjectGeofencePreview tags={tags} errors={tagValidation.errors} />
+            </div>
 
-                    <div className="rounded-lg border border-gray-200 p-4">
-                        <p className="text-xs font-bold uppercase text-gray-500">Geofence</p>
-                        <p className="mt-2 text-sm font-bold text-gray-950">{tagValidation.valid ? 'Quatro QTAGs prontas' : 'QTAGs pendentes'}</p>
-                        <p className="mt-1 font-mono text-xs text-gray-600">
-                            {coordinates ? `${coordinates.lat}, ${coordinates.lng}` : 'Coordenadas médias indisponíveis'}
-                        </p>
-                    </div>
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <div className="flex items-start gap-2 font-bold">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Validação SUN/CMAC real bloqueada por credenciais ou hardware. O CMAC informado será registrado como evidência declarada.</span>
                 </div>
-
-                <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                    <div className="flex items-start gap-2 font-bold">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                        <span>Validação SUN/CMAC real bloqueada por credenciais ou hardware. O CMAC informado será registrado como evidência declarada.</span>
-                    </div>
-                </div>
-            </section>
-        );
-    };
+            </div>
+        </section>
+    );
 
     if (success) {
         return (
