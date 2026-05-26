@@ -24,7 +24,16 @@ export type QueueResponse<T = ProjectMRCA> = {
     projects: T[];
 };
 
-export type CatalogResponse<T = any> = {
+export type CatalogEntity = {
+    id: string;
+    name: string;
+    role?: string;
+    verified?: boolean;
+    authorized?: boolean;
+    [key: string]: any;
+};
+
+export type CatalogResponse<T = CatalogEntity> = {
     success: boolean;
     certifiers?: T[];
     auditors?: T[];
