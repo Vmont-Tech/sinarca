@@ -101,6 +101,16 @@ def test_projects_collection_detail_catalogs_and_creation_use_persistent_api() -
     assert invalid_response.status_code == 400
     assert "4 tags" in invalid_response.json()["detail"]
 
+    duplicated_vertices = tag_payload(f"{unique_prefix}-duplicated")
+    duplicated_vertices[1]["vertex_label"] = "A"
+    duplicated_response = client.post(
+        "/api/v1/projects",
+        json=project_payload(f"{unique_prefix}-duplicated", tags=duplicated_vertices),
+        headers=auth_headers(),
+    )
+    assert duplicated_response.status_code == 400
+    assert "vértices A, B, C e D" in duplicated_response.json()["detail"]
+
     create_response = client.post(
         "/api/v1/projects",
         json=project_payload(unique_prefix, tags=tag_payload(unique_prefix)),
@@ -112,6 +122,19 @@ def test_projects_collection_detail_catalogs_and_creation_use_persistent_api() -
     assert created["status"] == "AWAITING_CERTIFICATION"
     assert created["metrics"]["carbonStock"] > 0
     assert created["blockchain"]["initialHash"].startswith("baseline-")
+    assert created["metadata"]["sun_validation_status"] == "BLOCKED_MISSING_CREDENTIALS"
+    assert created["metadata"]["cmac_validation_status"] == "RECORDED_DECLARED_VALUE"
+    assert created["metadata"]["baseline_source"] == "deterministic_baseline"
+    assert created["metadata"]["sentinel_status"] == "BLOCKED_MISSING_PROVIDER_CREDENTIALS"
+
+    timeline_codes = [event.get("code") for event in created["timeline"]]
+    assert timeline_codes == [
+        "CREATED",
+        "QTAGS_RECORDED",
+        "BASELINE_CREATED",
+        "DOCUMENTS_PENDING",
+        "AWAITING_CERTIFICATION",
+    ]
 
 
 def test_certifier_queue_and_decision_apply_role_guard_and_status_transition() -> None:
