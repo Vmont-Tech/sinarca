@@ -1,14 +1,44 @@
 import { AlertTriangle, CheckCircle2, MapPin } from 'lucide-react';
-import { REQUIRED_VERTICES, normalizeProjectTags, validateTagDrafts, type ProjectTagDraft } from '../services/projectOrigination';
+import { REQUIRED_VERTICES, validateTagDrafts, type ProjectTagDraft, type VertexLabel } from '../services/projectOrigination';
 
 type ProjectGeofencePreviewProps = {
     tags: ProjectTagDraft[];
     errors?: string[];
 };
 
+const parseCoordinate = (value: string) => Number(String(value).replace(',', '.'));
+
+const coordinateIsValid = (value: string, min: number, max: number) => {
+    const parsed = parseCoordinate(value);
+    return Number.isFinite(parsed) && parsed >= min && parsed <= max;
+};
+
+const orderedCoordinateTags = (tags: ProjectTagDraft[]) => {
+    const errors: string[] = [];
+    const orderedTags = REQUIRED_VERTICES.map((vertex) => {
+        const tag = tags.find((item) => item.vertex_label === vertex);
+        if (!tag || !coordinateIsValid(tag.latitude, -90, 90) || !coordinateIsValid(tag.longitude, -180, 180)) {
+            errors.push(`Vértice ${vertex}: coordenada pendente ou inválida.`);
+            return null;
+        }
+        return {
+            vertex_label: vertex as VertexLabel,
+            latitude: parseCoordinate(tag.latitude),
+            longitude: parseCoordinate(tag.longitude),
+            displayLatitude: tag.latitude,
+            displayLongitude: tag.longitude,
+        };
+    });
+
+    return {
+        valid: errors.length === 0,
+        errors,
+        tags: orderedTags.filter((tag) => tag !== null),
+    };
+};
+
 const buildPolygonPoints = (tags: ProjectTagDraft[]) => {
-    const normalizedTags = normalizeProjectTags(tags);
-    const orderedTags = REQUIRED_VERTICES.map((vertex) => normalizedTags.find((tag) => tag.vertex_label === vertex)!);
+    const orderedTags = orderedCoordinateTags(tags).tags;
     const latitudes = orderedTags.map((tag) => tag.latitude);
     const longitudes = orderedTags.map((tag) => tag.longitude);
     const minLat = Math.min(...latitudes);
@@ -27,9 +57,10 @@ const buildPolygonPoints = (tags: ProjectTagDraft[]) => {
 
 export default function ProjectGeofencePreview({ tags, errors = [] }: ProjectGeofencePreviewProps) {
     const validation = validateTagDrafts(tags);
-    const isValid = validation.valid;
-    const compactErrors = errors.length > 0 ? errors : validation.errors;
-    const polygonPoints = isValid ? buildPolygonPoints(tags) : [];
+    const coordinateValidation = orderedCoordinateTags(tags);
+    const isValid = coordinateValidation.valid;
+    const compactErrors = errors.length > 0 ? errors : coordinateValidation.errors.length > 0 ? coordinateValidation.errors : validation.errors;
+    const polygonPoints = coordinateValidation.valid ? buildPolygonPoints(tags) : [];
     const points = polygonPoints.map((tag) => `${tag.x},${tag.y}`).join(' ');
 
     return (
