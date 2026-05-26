@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 03 plan 03-02 completed; next plan 03-03
+stopped_at: Phase 03 plan 03-03 completed; next plan 03-04
 last_updated: "2026-05-26T21:58:03.056Z"
 last_activity: 2026-05-26 -- Phase 03 execution started
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 20
 ---
 
@@ -26,9 +26,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 03 (project-origination-and-documents) — EXECUTING
-Plan: 03-03 of 03-05
-Status: Phase 03 plan 03-02 complete; executing Phase 03
-Last activity: 2026-05-26 -- Phase 03 plan 03-02 completed
+Plan: 03-04 of 03-05
+Status: Phase 03 plan 03-03 complete; executing Phase 03
+Last activity: 2026-05-26 -- Phase 03 plan 03-03 completed
 
 Progress: [██--------] 20%
 
@@ -89,6 +89,7 @@ Progress: [██--------] 20%
 - [Phase 02]: Cadastro público aceita produtor, empresa, auditor e certificadora; admin segue bloqueado para provisionamento operacional futuro.
 - [Phase 03]: Originação backend registra quatro QTAGs A/B/C/D, bloqueia SUN/Sentinel como credenciais ausentes, persiste documentos por projeto e usa timeline inicial com códigos canônicos.
 - [Phase 03]: `AddProject` agora é wizard operacional; município/UF são campos livres, produtores/certificadoras vêm da API e `ProjectCreate.tags` é montado por `projectOrigination.ts`.
+- [Phase 03]: Captura de campo web/PWA falha fechado para NFC/SUN sem credenciais, permite geolocalização com fallback manual e renderiza geofence SVG a partir das mesmas QTAGs enviadas no submit.
 
 ### Roadmap Evolution
 
