@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-2-implemented
-stopped_at: Phase 2 implemented locally; pending PR/merge because main is protected
-last_updated: "2026-05-26T00:00:00.000Z"
-last_activity: 2026-05-26
+status: executing
+stopped_at: Phase 03 plan 03-01 completed; next plan 03-02
+last_updated: "2026-05-26T21:58:03.056Z"
+last_activity: 2026-05-26 -- Phase 03 execution started
 progress:
   total_phases: 10
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 16
+  completed_plans: 12
   percent: 20
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 02 — public-transparency-and-profiles
+**Current focus:** Phase 03 — project-origination-and-documents
 
 ## Current Position
 
-Phase: 02 (public-transparency-and-profiles) — IMPLEMENTED LOCALLY
-Plan: 02-01 through 02-05 executed
-Status: Phase 2 implemented on branch `feat/fase-2-transparencia-perfis`; pending PR/merge because `main` is protected
-Last activity: 2026-05-26
+Phase: 03 (project-origination-and-documents) — EXECUTING
+Plan: 03-02 of 03-05
+Status: Phase 03 plan 03-01 complete; executing Phase 03
+Last activity: 2026-05-26 -- Phase 03 plan 03-01 completed
 
 Progress: [██--------] 20%
 
@@ -87,6 +87,7 @@ Progress: [██--------] 20%
 - [Phase 02]: Explorer público usa `/api/v1/transactions` com filtros por projeto, hash, tipo, comprador e status, além de `/api/v1/transactions/{hash_or_id}`.
 - [Phase 02]: Perfis públicos usam `/api/v1/profiles/{id}` com documento mascarado e dados minimizados.
 - [Phase 02]: Cadastro público aceita produtor, empresa, auditor e certificadora; admin segue bloqueado para provisionamento operacional futuro.
+- [Phase 03]: Originação backend registra quatro QTAGs A/B/C/D, bloqueia SUN/Sentinel como credenciais ausentes, persiste documentos por projeto e usa timeline inicial com códigos canônicos.
 
 ### Roadmap Evolution
 
