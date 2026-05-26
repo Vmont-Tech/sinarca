@@ -87,14 +87,14 @@ Plans:
   4. Documentos legais e inventário florestal são enviados, listados e vinculados ao projeto.
   5. Validação de SUN/CMAC, hash inicial de área e pontos de referência Sentinel-2 ficam explicitados no contrato ou como bloqueio técnico documentado.
   6. A timeline do projeto cobre o ciclo canônico de `CREATED` até `AVAILABLE`.
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 Plans:
 **Wave 1**
 - [x] 03-01: Fechar contrato backend de originação, documentos e timeline.
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03-02: Transformar AddProject em wizard de originação com quatro QTAGs.
+- [x] 03-02: Transformar AddProject em wizard de originação com quatro QTAGs.
 - [ ] 03-03: Adicionar captura de campo fail-closed e preview de geofence.
 
 **Wave 3** *(blocked on Wave 2 completion)*
