@@ -436,7 +436,8 @@ class ProjectDraftDocument(Base):
     __tablename__ = "project_draft_documents"
     __table_args__ = (
         Index("project_draft_documents_draft_idx", "draft_id", "document_type"),
-        Index("project_draft_documents_sha256_hash_idx", "sha256_hash", unique=True),
+        Index("project_draft_documents_sha256_hash_idx", "sha256_hash"),
+        UniqueConstraint("draft_id", "sha256_hash", name="project_draft_documents_draft_sha256_key"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -455,6 +456,10 @@ class ProjectDraftDocument(Base):
 
 class Document(Base):
     __tablename__ = "documents"
+    __table_args__ = (
+        Index("documents_sha256_hash_idx", "sha256_hash"),
+        UniqueConstraint("project_id", "sha256_hash", name="documents_project_sha256_key"),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     owner_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
@@ -464,7 +469,7 @@ class Document(Base):
     storage_bucket: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'projects'"))
     storage_object_path: Mapped[str | None] = mapped_column(String)
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
-    sha256_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    sha256_hash: Mapped[str] = mapped_column(String, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     uploaded_at: Mapped[datetime] = created_at_column()

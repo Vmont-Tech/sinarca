@@ -37,8 +37,11 @@ create table project_draft_documents (
   metadata jsonb not null default '{}'::jsonb
 );
 
-create unique index project_draft_documents_sha256_hash_idx
+create index project_draft_documents_sha256_hash_idx
   on project_draft_documents (sha256_hash);
+
+alter table project_draft_documents
+  add constraint project_draft_documents_draft_sha256_key unique (draft_id, sha256_hash);
 
 create index project_draft_documents_draft_idx
   on project_draft_documents (draft_id, document_type);

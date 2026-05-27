@@ -4,6 +4,7 @@ import hashlib
 from pathlib import PurePath
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
@@ -231,6 +232,29 @@ async def upload_project_document(
     upload = await _validated_upload_payload(document_type, file)
     service = ProjectsService(session)
     project = await service.get_editable_project_model(project_id, actor_id=current_user.id, actor_role=current_user.role)
+    existing_document = (
+        await session.execute(
+            select(Document).where(
+                Document.project_id == project.id,
+                Document.sha256_hash == str(upload["sha256"]),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_document is not None:
+        return {
+            "success": True,
+            "id": str(existing_document.id),
+            "project_id": project.friendly_id,
+            "document_type": existing_document.document_type,
+            "sha256": existing_document.sha256_hash,
+            "storage_bucket": existing_document.storage_bucket,
+            "storage_object_path": existing_document.storage_object_path,
+            "storage_path": existing_document.storage_path,
+            "size_bytes": existing_document.size_bytes,
+            "mime_type": existing_document.mime_type,
+            "status": "UPLOADED",
+        }
+
     location = project_document_location(
         project.friendly_id,
         str(upload["document_type"]),

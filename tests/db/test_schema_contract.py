@@ -12,6 +12,7 @@ PROJECT_DRAFTS_MIGRATION_SQL = ROOT / "supabase/migrations/202605260003_project_
 PROJECT_PUBLIC_MARKETPLACE_MIGRATION_SQL = ROOT / "supabase/migrations/202605260004_project_public_marketplace.sql"
 PROJECT_OPTIONAL_QTAGS_MIGRATION_SQL = ROOT / "supabase/migrations/202605260005_project_vertices_optional_qtags.sql"
 SUPABASE_STORAGE_MIGRATION_SQL = ROOT / "supabase/migrations/202605260006_supabase_storage_buckets.sql"
+DOCUMENT_HASH_MIGRATION_SQL = ROOT / "supabase/migrations/202605270001_relax_document_hash_uniqueness.sql"
 
 BRAZIL_UFS = {
     "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO",
@@ -292,11 +293,14 @@ def test_project_drafts_schema_keeps_incomplete_origination_out_of_projects() ->
     for marker in [
         "references project_drafts(id) on delete cascade",
         "project_draft_documents_sha256_hash_idx",
+        "project_draft_documents_draft_sha256_key",
         "project_draft_documents_draft_idx",
         "alter table project_drafts enable row level security",
         "alter table project_draft_documents enable row level security",
     ]:
         assert marker in sql
+
+    assert "create unique index project_draft_documents_sha256_hash_idx" not in sql
 
 
 def test_supabase_storage_buckets_and_document_paths_are_standardized() -> None:
@@ -306,6 +310,8 @@ def test_supabase_storage_buckets_and_document_paths_are_standardized() -> None:
     documents_block = table_block(schema_sql, "documents")
     assert "storage_bucket text not null default 'projects'" in documents_block
     assert "storage_object_path text" in documents_block
+    assert "documents_project_sha256_key" in schema_sql
+    assert "create unique index documents_sha256_hash_idx" not in schema_sql
 
     for bucket, public_value in [
         ("projects", "false"),
@@ -325,5 +331,26 @@ def test_supabase_storage_buckets_and_document_paths_are_standardized() -> None:
         "projects/drafts/{draft_id}/documents/{document_type}/{sha256}.{ext}",
         "profiles/{profile_id}/avatar/{sha256}.{ext}",
         "user-documents/{profile_id}/documents/{document_type}/{sha256}.{ext}",
+    ]:
+        assert marker in migration_sql
+
+
+def test_document_hash_uniqueness_is_scoped_to_project_or_draft() -> None:
+    schema_sql = read(SCHEMA_SQL).lower()
+    project_drafts_sql = read(PROJECT_DRAFTS_MIGRATION_SQL).lower()
+    migration_sql = read(DOCUMENT_HASH_MIGRATION_SQL).lower()
+
+    assert "create unique index documents_sha256_hash_idx" not in schema_sql
+    assert "documents_project_sha256_key unique (project_id, sha256_hash)" in schema_sql
+    assert "create unique index project_draft_documents_sha256_hash_idx" not in project_drafts_sql
+    assert "project_draft_documents_draft_sha256_key unique (draft_id, sha256_hash)" in project_drafts_sql
+
+    for marker in [
+        "drop index if exists documents_sha256_hash_idx",
+        "create index if not exists documents_sha256_hash_idx",
+        "documents_project_sha256_key",
+        "drop index if exists project_draft_documents_sha256_hash_idx",
+        "create index if not exists project_draft_documents_sha256_hash_idx",
+        "project_draft_documents_draft_sha256_key",
     ]:
         assert marker in migration_sql

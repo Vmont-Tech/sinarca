@@ -608,6 +608,63 @@ def test_project_document_upload_persists_project_link_and_audit_event() -> None
     )
 
 
+def test_project_document_upload_is_idempotent_for_same_project_file() -> None:
+    project = create_project_for_workflow()
+    endpoint = f"/api/v1/projects/{project['friendlyId']}/documents"
+    pdf_content = b"%PDF-1.4\nproject repeated evidence " + uuid.uuid4().hex.encode()
+    headers = auth_headers()
+
+    first_upload = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    second_upload = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert first_upload.status_code == 201
+    assert second_upload.status_code == 201
+    first = first_upload.json()
+    second = second_upload.json()
+    assert second["id"] == first["id"]
+    assert second["sha256"] == first["sha256"]
+    assert second["storage_path"] == first["storage_path"]
+
+
+def test_project_document_upload_allows_same_file_in_different_projects() -> None:
+    first_project = create_project_for_workflow()
+    second_project = create_project_for_workflow()
+    pdf_content = b"%PDF-1.4\nshared project document evidence " + uuid.uuid4().hex.encode()
+    headers = auth_headers()
+
+    first_upload = client.post(
+        f"/api/v1/projects/{first_project['friendlyId']}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    second_upload = client.post(
+        f"/api/v1/projects/{second_project['friendlyId']}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert first_upload.status_code == 201
+    assert second_upload.status_code == 201
+    first = first_upload.json()
+    second = second_upload.json()
+    assert second["id"] != first["id"]
+    assert second["sha256"] == first["sha256"]
+    assert second["storage_path"] != first["storage_path"]
+    assert second["storage_object_path"].startswith(f"projects/{second_project['friendlyId']}/documents/legal_ownership/")
+
+
 def test_project_update_allows_pre_certification_fields_and_replaces_vertices() -> None:
     project = create_project_for_workflow()
     update_prefix = f"edit-{uuid.uuid4().hex[:10]}"
@@ -899,6 +956,84 @@ def test_project_drafts_save_upload_submit_and_link_documents() -> None:
     dossier_documents = dossier_response.json()["documents"]
     assert any(item["type"] == "LEGAL_OWNERSHIP" and item["storageObjectPath"].startswith(f"projects/{project['friendlyId']}/documents/legal_ownership/") for item in dossier_documents)
     assert any(item["type"] == "FOREST_INVENTORY" and item["storageObjectPath"].startswith(f"projects/{project['friendlyId']}/documents/forest_inventory/") for item in dossier_documents)
+
+
+def test_project_draft_document_upload_is_idempotent_for_same_draft_file() -> None:
+    headers = auth_headers()
+    unique_prefix = f"draft-repeat-{uuid.uuid4().hex[:10]}"
+    payload = project_payload(unique_prefix, tags=five_tag_payload(unique_prefix))
+    create_response = client.post(
+        "/api/v1/project-drafts",
+        json={"current_step": "documents", "payload": payload},
+        headers=headers,
+    )
+    assert create_response.status_code == 201
+    draft_id = create_response.json()["draft"]["id"]
+    pdf_content = b"%PDF-1.4\nrascunho documento repetido " + uuid.uuid4().hex.encode()
+
+    first_upload = client.post(
+        f"/api/v1/project-drafts/{draft_id}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    second_upload = client.post(
+        f"/api/v1/project-drafts/{draft_id}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert first_upload.status_code == 201
+    assert second_upload.status_code == 201
+    first = first_upload.json()
+    second = second_upload.json()
+    assert second["id"] == first["id"]
+    assert second["sha256"] == first["sha256"]
+    assert second["storage_path"] == first["storage_path"]
+
+    get_response = client.get(f"/api/v1/project-drafts/{draft_id}", headers=headers)
+    assert get_response.status_code == 200
+    assert len(get_response.json()["draft"]["documents"]) == 1
+
+
+def test_project_draft_document_upload_allows_same_file_in_different_drafts() -> None:
+    headers = auth_headers()
+    pdf_content = b"%PDF-1.4\nshared draft document evidence " + uuid.uuid4().hex.encode()
+    draft_ids: list[str] = []
+
+    for index in range(2):
+        unique_prefix = f"draft-shared-{index}-{uuid.uuid4().hex[:10]}"
+        payload = project_payload(unique_prefix, tags=five_tag_payload(unique_prefix))
+        create_response = client.post(
+            "/api/v1/project-drafts",
+            json={"current_step": "documents", "payload": payload},
+            headers=headers,
+        )
+        assert create_response.status_code == 201
+        draft_ids.append(create_response.json()["draft"]["id"])
+
+    first_upload = client.post(
+        f"/api/v1/project-drafts/{draft_ids[0]}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    second_upload = client.post(
+        f"/api/v1/project-drafts/{draft_ids[1]}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("registro.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert first_upload.status_code == 201
+    assert second_upload.status_code == 201
+    first = first_upload.json()
+    second = second_upload.json()
+    assert second["id"] != first["id"]
+    assert second["sha256"] == first["sha256"]
+    assert second["storage_path"] != first["storage_path"]
+    assert second["storage_object_path"].startswith(f"projects/drafts/{draft_ids[1]}/documents/legal_ownership/")
 
 
 def test_project_edit_draft_submits_into_existing_project_without_creating_new_record() -> None:

@@ -337,6 +337,17 @@ class ProjectsService:
         if draft.status != "DRAFT":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Apenas rascunhos abertos aceitam documentos")
 
+        existing_document = (
+            await self.session.execute(
+                select(ProjectDraftDocument).where(
+                    ProjectDraftDocument.draft_id == draft.id,
+                    ProjectDraftDocument.sha256_hash == sha256,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_document is not None:
+            return draft_document_item(existing_document)
+
         location = project_draft_document_location(str(draft.id), document_type, sha256, extension)
         await upload_storage_object(location.bucket, location.object_path, content, mime_type)
         document = ProjectDraftDocument(
@@ -401,6 +412,17 @@ class ProjectsService:
             project = await self._get_project_model(project_dto.friendlyId)
 
         for draft_document in draft_documents:
+            existing_project_document = (
+                await self.session.execute(
+                    select(Document).where(
+                        Document.project_id == project.id,
+                        Document.sha256_hash == draft_document.sha256_hash,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing_project_document is not None:
+                continue
+
             extension = _document_extension(draft_document)
             location = project_document_location(
                 project.friendly_id,

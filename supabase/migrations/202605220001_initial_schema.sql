@@ -393,7 +393,9 @@ create table documents (
   metadata jsonb not null default '{}'::jsonb
 );
 
-create unique index documents_sha256_hash_idx on documents (sha256_hash);
+create index documents_sha256_hash_idx on documents (sha256_hash);
+alter table documents
+  add constraint documents_project_sha256_key unique (project_id, sha256_hash);
 create index documents_storage_bucket_object_path_idx on documents (storage_bucket, storage_object_path);
 
 create table audit_events (
