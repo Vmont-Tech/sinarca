@@ -32,6 +32,7 @@ def test_producer_overview_has_working_actions_and_readable_static_map() -> None
     project_dot_map = read("src/components/maps/ProjectDotMap.tsx")
     dashboard_layout = read("src/layouts/DashboardLayout.tsx")
     app = read("src/App.tsx")
+    producer_overview = overview.split("if (isProducer) {", 1)[1].split("const isAuditor", 1)[0]
 
     assert "navigate('/painel/projetos')" in overview
     assert "onClick={() => openProject(p)}" in overview
@@ -46,6 +47,18 @@ def test_producer_overview_has_working_actions_and_readable_static_map() -> None
     assert "value={projectTotal.toLocaleString('pt-BR')}" in overview
     assert "value=\"5\"" not in overview
     assert "item.project?.lifecycleStatus !== 'DRAFT'" in overview
+    assert "const producerDashboardMetrics = buildProducerDashboardMetrics(dashboardProjects);" in overview
+    assert "const AUDIT_PENDING_STATUSES = new Set" in overview
+    assert "value={producerDashboardMetrics.activeCredits}" in producer_overview
+    assert "value={producerDashboardMetrics.pendingAudits}" in producer_overview
+    assert "value={producerDashboardMetrics.totalArea}" in producer_overview
+    assert "value={producerDashboardMetrics.co2Sequestered}" in producer_overview
+    assert "value={producerDashboardMetrics.generatedRevenue}" in producer_overview
+    assert 'value="250"' not in producer_overview
+    assert 'value="1"' not in producer_overview
+    assert 'value="12.450"' not in producer_overview
+    assert 'value="45.680"' not in producer_overview
+    assert 'value="R$ 2.560.000"' not in producer_overview
 
     assert "animate-ping" not in project_dot_map
     assert "Mapa estático de localização dos projetos" in project_dot_map

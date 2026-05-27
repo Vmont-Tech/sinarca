@@ -28,6 +28,77 @@ import { useAuth } from '../../contexts/AuthContext';
 import ProjectDotMap from '../../components/maps/ProjectDotMap';
 
 const PROJECTS_PER_PAGE = 5;
+const AUDIT_PENDING_STATUSES = new Set([
+    'AWAITING_AUDIT',
+    'BLOCKED_AUDIT_REQUIRED',
+    'RECALCULATION_REQUIRED',
+]);
+
+const asFiniteNumber = (...values: unknown[]) => {
+    for (const value of values) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+};
+
+const projectLifecycleStatus = (project: any) => String(
+    project?.raw?.status ||
+    project?.project?.lifecycleStatus ||
+    project?.currentLifecycleStage?.projectStatus ||
+    project?.currentLifecycleStage?.code ||
+    ''
+).toUpperCase();
+
+const projectCredits = (project: any) => asFiniteNumber(
+    project?.quantity,
+    project?.raw?.metrics?.carbonStock,
+    project?.raw?.carbonStock
+);
+
+const projectArea = (project: any) => asFiniteNumber(
+    project?.raw?.metrics?.totalAreaHa,
+    project?.raw?.area_hectares,
+    project?.metrics?.totalAreaHa
+);
+
+const projectCarbonStock = (project: any) => asFiniteNumber(
+    project?.raw?.metrics?.carbonStock,
+    project?.quantity,
+    project?.raw?.carbonStock
+);
+
+const projectFinancialValue = (project: any) => asFiniteNumber(
+    project?.raw?.metrics?.investmentValue,
+    project?.raw?.investment_value_brl,
+    project?.metrics?.investmentValue
+);
+
+const formatDashboardNumber = (value: number) =>
+    value.toLocaleString('pt-BR', { maximumFractionDigits: value % 1 === 0 ? 0 : 2 });
+
+const formatDashboardCurrency = (value: number) =>
+    value.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        maximumFractionDigits: 0,
+    });
+
+const buildProducerDashboardMetrics = (projects: any[]) => {
+    const activeCredits = projects.reduce((sum, project) => sum + projectCredits(project), 0);
+    const pendingAudits = projects.filter((project) => AUDIT_PENDING_STATUSES.has(projectLifecycleStatus(project))).length;
+    const totalArea = projects.reduce((sum, project) => sum + projectArea(project), 0);
+    const co2Sequestered = projects.reduce((sum, project) => sum + projectCarbonStock(project), 0);
+    const generatedRevenue = projects.reduce((sum, project) => sum + projectFinancialValue(project), 0);
+
+    return {
+        activeCredits: formatDashboardNumber(activeCredits),
+        pendingAudits: pendingAudits.toLocaleString('pt-BR'),
+        totalArea: formatDashboardNumber(totalArea),
+        co2Sequestered: formatDashboardNumber(co2Sequestered),
+        generatedRevenue: formatDashboardCurrency(generatedRevenue),
+    };
+};
 
 export default function Overview() {
     const navigate = useNavigate();
@@ -61,6 +132,7 @@ export default function Overview() {
     const isProducer = user?.role === 'producer' || user?.role === 'admin';
     const isCompany = user?.role === 'company';
     const projectTotal = dashboardProjects.length;
+    const producerDashboardMetrics = buildProducerDashboardMetrics(dashboardProjects);
     const totalProjectPages = Math.max(1, Math.ceil(projectTotal / PROJECTS_PER_PAGE));
     const firstProjectIndex = projectTotal === 0 ? 0 : (projectPage - 1) * PROJECTS_PER_PAGE + 1;
     const lastProjectIndex = Math.min(projectPage * PROJECTS_PER_PAGE, projectTotal);
@@ -90,15 +162,15 @@ export default function Overview() {
                     <SummaryCard 
                         icon={Leaf} 
                         label="Créditos Ativos" 
-                        value="250" 
-                        sub="Créditos de carbono ativos" 
+                        value={producerDashboardMetrics.activeCredits}
+                        sub="Créditos vinculados aos projetos"
                         color="text-emerald-700"
                     />
                     <SummaryCard 
                         icon={ClipboardCheck} 
                         label="Auditorias Pendentes" 
-                        value="1" 
-                        sub="Aguardando auditoria" 
+                        value={producerDashboardMetrics.pendingAudits}
+                        sub="Projetos aguardando auditoria"
                         color="text-orange-500"
                     />
                 </div>
@@ -233,20 +305,20 @@ export default function Overview() {
                         <MetricCard 
                             icon={Globe} 
                             label="Área Total" 
-                            value="12.450" 
+                            value={producerDashboardMetrics.totalArea}
                             unit="hectares" 
                         />
                         <MetricCard 
                             icon={Zap} 
                             label="CO2 Sequestrado" 
-                            value="45.680" 
+                            value={producerDashboardMetrics.co2Sequestered}
                             unit="toneladas" 
                         />
                         <MetricCard 
                             icon={DollarSign} 
                             label="Receita Gerada" 
-                            value="R$ 2.560.000" 
-                            unit="em créditos de carbono" 
+                            value={producerDashboardMetrics.generatedRevenue}
+                            unit="valor registrado nos projetos"
                         />
                     </div>
                 </div>

@@ -19,7 +19,9 @@ def test_frontend_profile_contract_keeps_editable_fields() -> None:
     assert "phone: raw?.phone" in auth_context
     assert "useState(user?.organization || '')" in settings
     assert "useState(user?.phone || '')" in settings
-    assert "await updateProfile({ name, email, organization: company, phone }" in settings
+    assert "useState(user?.document || '')" in settings
+    assert "useState(user?.avatar || '')" in settings
+    assert "await updateProfile({ name, email, organization: company, phone, document, avatar }" in settings
 
 
 def test_frontend_auth_does_not_keep_local_user_database_fallback() -> None:
