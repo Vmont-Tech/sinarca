@@ -199,6 +199,34 @@
   animation: blink 1s step-end infinite;
 }
 
+.sinarca-leaflet-marker {
+  display: flex;
+  height: 32px;
+  width: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #047857;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(4, 120, 87, 0.28);
+}
+
+.sinarca-leaflet-marker-active {
+  border-color: #00ff94;
+  background: #052e1b;
+  color: #ffffff;
+}
+
+.sinarca-leaflet-marker-warning {
+  border-color: #d97706;
+  color: #92400e;
+  box-shadow: 0 8px 18px rgba(217, 119, 6, 0.24);
+}
+
 @keyframes blink {
   50% {
     opacity: 0;

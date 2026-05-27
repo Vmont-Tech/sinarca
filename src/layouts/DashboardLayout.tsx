@@ -25,6 +25,10 @@ import {
 } from 'lucide-react';
 
 const SidebarItem = ({ to, icon: Icon, label, active, theme }: { to: string, icon: any, label: string, active?: boolean, theme: 'dark' | 'light' }) => {
+    const labelTone = active
+        ? theme === 'dark' ? 'text-white' : 'text-black'
+        : '';
+
     return (
         <Link
             to={to}
@@ -41,7 +45,7 @@ const SidebarItem = ({ to, icon: Icon, label, active, theme }: { to: string, ico
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-full"></div>
             )}
             <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${active ? 'text-primary' : ''}`} />
-            <span className={`text-sm font-bold uppercase tracking-wider ${active ? 'text-black' : ''}`}>{label}</span>
+            <span className={`text-sm font-bold uppercase tracking-wider ${labelTone}`}>{label}</span>
         </Link>
     );
 };
@@ -86,6 +90,9 @@ export default function DashboardLayout() {
 
     const sidebarTheme = isProducer ? 'dark' : 'light';
     const sidebarBg = isProducer ? 'bg-[#051f14]' : 'bg-white';
+    const pageRailBg = isProducer
+        ? 'lg:bg-[linear-gradient(to_right,#051f14_0,#051f14_18rem,#f8faf8_18rem,#f8faf8_100%)]'
+        : 'lg:bg-[linear-gradient(to_right,#ffffff_0,#ffffff_18rem,#f8faf8_18rem,#f8faf8_100%)]';
     
     // Breadcrumb logic
     const getBreadcrumb = () => {
@@ -100,10 +107,10 @@ export default function DashboardLayout() {
     };
 
     return (
-        <div className="flex min-h-screen w-full bg-[#f8faf8] font-sans overflow-hidden">
+        <div className={`flex min-h-dvh w-full bg-[#f8faf8] font-sans ${pageRailBg}`}>
             
             {/* Sidebar Desktop */}
-            <aside className={`sticky top-0 h-screen w-72 flex flex-col border-r border-gray-200 ${sidebarBg} hidden lg:flex z-50 transition-colors duration-500`}>
+            <aside className={`fixed inset-y-0 left-0 h-dvh w-72 flex-col overflow-y-auto border-r border-gray-200 ${sidebarBg} hidden lg:flex z-50 transition-colors duration-500`}>
                 <div className="flex flex-col h-full p-8">
                     {/* Header Logo */}
                     <div className="flex items-center gap-4 mb-12">
@@ -128,7 +135,7 @@ export default function DashboardLayout() {
 
                         {isProducer && (
                             <>
-                                <SidebarItem to="/painel/certificadora" icon={TreePine} label="Meus Projetos" active={location.pathname === '/painel/certificadora'} theme={sidebarTheme} />
+                                <SidebarItem to="/painel/projetos" icon={TreePine} label="Meus Projetos" active={location.pathname === '/painel/projetos'} theme={sidebarTheme} />
                                 <SidebarItem to="/painel/monitoramento" icon={ShieldCheck} label="Certificações" active={location.pathname === '/painel/monitoramento'} theme={sidebarTheme} />
                                 <SidebarItem to="/painel/relatorios" icon={BarChart3} label="Relatórios" active={location.pathname === '/painel/relatorios'} theme={sidebarTheme} />
                             </>
@@ -174,7 +181,7 @@ export default function DashboardLayout() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <main className="flex min-h-dvh flex-1 flex-col min-w-0 lg:ml-72">
                 {/* Desktop TopBar */}
                 <header className="h-24 bg-white border-b border-gray-200 px-10 flex items-center justify-between shrink-0">
                     <div>
@@ -245,7 +252,7 @@ export default function DashboardLayout() {
                 </header>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto p-10">
+                <div className="flex-1 p-10">
                     <div className="max-w-7xl mx-auto">
                         <Outlet />
                     </div>

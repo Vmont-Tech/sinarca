@@ -10,6 +10,8 @@ export type UploadedProjectDocument = {
     mimeType: string;
     sizeBytes: number;
     sha256: string;
+    storageBucket: string;
+    storageObjectPath?: string | null;
     storagePath: string;
     status: string;
 };
@@ -22,6 +24,8 @@ type ProjectDocumentUploadResponse = {
     mime_type: string;
     size_bytes: number;
     sha256: string;
+    storage_bucket: string;
+    storage_object_path?: string | null;
     storage_path: string;
     status: string;
 };
@@ -48,6 +52,8 @@ export const uploadProjectDocument = async (
         mimeType: response.mime_type,
         sizeBytes: response.size_bytes,
         sha256: response.sha256,
+        storageBucket: response.storage_bucket,
+        storageObjectPath: response.storage_object_path,
         storagePath: response.storage_path,
         status: response.status,
     };

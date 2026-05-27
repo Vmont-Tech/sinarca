@@ -1,5 +1,5 @@
 import { type ProjectMRCA, type InventoryItem } from '../data/mrca_db';
-import { apiGet } from './api';
+import { apiGet, apiPatch } from './api';
 
 export type ProjectsResponse = {
     success: boolean;
@@ -10,6 +10,29 @@ export type ProjectsResponse = {
 export type ProjectResponse = {
     success: boolean;
     project: ProjectMRCA;
+};
+
+type ProjectApiOptions = {
+    publicMarketplaceOnly?: boolean;
+    ownedOnly?: boolean;
+    portfolioOnly?: boolean;
+};
+
+const PROJECT_STATUS_PRESENTATION: Record<string, { label: string; type: string }> = {
+    ACTIVE: { label: 'Ativo', type: 'novo' },
+    AVAILABLE: { label: 'Disponível', type: 'novo' },
+    AWAITING_AUDIT: { label: 'Em auditoria', type: 'auditado' },
+    AUDITED: { label: 'Auditado', type: 'auditado' },
+    BLOCKED_AUDIT_REQUIRED: { label: 'Auditoria pendente', type: 'auditado' },
+    RETIRED: { label: 'Aposentado', type: 'compensado' },
+    SUSPENDED: { label: 'Suspenso', type: 'bloqueado' },
+    CREATED: { label: 'Em cadastro', type: 'cadastro' },
+    REGISTERED: { label: 'Registrado', type: 'cadastro' },
+    BASELINE_PENDING: { label: 'Baseline pendente', type: 'cadastro' },
+    AWAITING_CERTIFICATION: { label: 'Em certificação', type: 'certificacao' },
+    CERTIFIED_AWAITING_TREASURY: { label: 'Tesouraria pendente', type: 'certificacao' },
+    TOKENIZED_LOCKED: { label: 'Tokenizado bloqueado', type: 'bloqueado' },
+    RECALCULATION_REQUIRED: { label: 'Recálculo pendente', type: 'bloqueado' },
 };
 
 export type MarketplaceResponse = {
@@ -94,6 +117,8 @@ export type ProjectPublicDossier = {
 export type ProjectDossierDocument = {
     id: string;
     type: string;
+    storageBucket: string;
+    storageObjectPath?: string | null;
     storagePath: string;
     sha256Hash: string;
     mimeType: string;
@@ -138,6 +163,11 @@ export type MonitoringProjectResponse = {
     }>;
 };
 
+export type InventoryResponse = {
+    success: boolean;
+    inventory: InventoryItem[];
+};
+
 const asArray = <T,>(value: any, key: string, defaultValue: T[]): T[] => {
     if (Array.isArray(value)) return value;
     if (Array.isArray(value?.[key])) return value[key];
@@ -145,8 +175,13 @@ const asArray = <T,>(value: any, key: string, defaultValue: T[]): T[] => {
     return defaultValue;
 };
 
-const getProjectsFromApi = async (): Promise<ProjectMRCA[]> => {
-    const response = await apiGet<ProjectsResponse>('/projects?limit=1000');
+const getProjectsFromApi = async (options: ProjectApiOptions = {}): Promise<ProjectMRCA[]> => {
+    const params = new URLSearchParams();
+    params.set('limit', '1000');
+    if (options.publicMarketplaceOnly) params.set('public_marketplace', 'true');
+    if (options.ownedOnly) params.set('scope', 'mine');
+    if (options.portfolioOnly) params.set('portfolio_only', 'true');
+    const response = await apiGet<ProjectsResponse>(`/projects?${params.toString()}`);
     // Se a API retornar no shape esperado, usamos; se não, a UI precisa tratar.
     if (!response) return [];
     const projects = response?.projects;
@@ -157,20 +192,14 @@ const getProjectsFromApi = async (): Promise<ProjectMRCA[]> => {
 };
 
 const mapProjectToFeedItem = (proj: ProjectMRCA) => {
-    let statusIcon = 'Ativo';
-    let typeKey = 'novo';
-
-    if (proj.status === 'AVAILABLE') { statusIcon = 'Disponível'; typeKey = 'novo'; }
-    if (proj.status === 'AUDITED') { statusIcon = 'Auditado'; typeKey = 'auditado'; }
-    if (proj.status === 'RETIRED') { statusIcon = 'Aposentado'; typeKey = 'compensado'; }
-    if (proj.status === 'SUSPENDED') { statusIcon = 'Suspenso'; typeKey = 'bloqueado'; }
+    const presentation = PROJECT_STATUS_PRESENTATION[proj.status] || { label: 'Em análise', type: 'analise' };
 
     return {
         id: proj.id,
         projectId: proj.friendlyId,
         friendlyId: proj.friendlyId,
-        type: typeKey,
-        status: statusIcon,
+        type: presentation.type,
+        status: presentation.label,
         institution: proj.entities.developer,
         quantity: proj.metrics.carbonStock,
         unit: 'tCO₂e',
@@ -218,8 +247,8 @@ export const database = {
     },
 
     // === CONTA DE MERCADO VOLUNTÁRIO ===
-    getMarketProjects: async ({ type = 'all', state = 'all', limit = 20 }: any) => {
-        const projects = await getProjectsFromApi();
+    getMarketProjects: async ({ type = 'all', state = 'all', limit = 20, publicMarketplaceOnly = false, ownedOnly = false, portfolioOnly = false }: any) => {
+        const projects = await getProjectsFromApi({ publicMarketplaceOnly, ownedOnly, portfolioOnly });
         let data = projects.map(mapProjectToFeedItem);
 
         if (state !== 'all') {
@@ -239,13 +268,21 @@ export const database = {
     },
 
     // Retorna dados brutos para mapas e detalhes.
-    getRawMarketProjects: async () => {
-        return getProjectsFromApi();
+    getRawMarketProjects: async (options: ProjectApiOptions = {}) => {
+        return getProjectsFromApi(options);
     },
 
     getRawProjectById: async (id: string): Promise<ProjectMRCA | undefined> => {
         const response = await apiGet<ProjectResponse>(`/projects/${encodeURIComponent(id)}`);
         return response?.project;
+    },
+
+    updateProject: async (projectId: string, payload: Record<string, any>): Promise<ProjectMRCA> => {
+        const response = await apiPatch<ProjectResponse>(`/projects/${encodeURIComponent(projectId)}`, payload);
+        if (!response?.project) {
+            throw new Error('Projeto não atualizado pela API');
+        }
+        return response.project;
     },
 
     getProjectPublicDossier: async (id: string): Promise<ProjectPublicDossier> => {
@@ -280,7 +317,7 @@ export const database = {
 
     // === INVENTÁRIO GOVERNAMENTAL ===
     getInventoryData: async (): Promise<InventoryItem[]> => {
-        const response = await apiGet<any>('/inventory');
+        const response = await apiGet<InventoryResponse>('/inventory');
         return asArray<InventoryItem>(response, 'inventory', []);
     },
 

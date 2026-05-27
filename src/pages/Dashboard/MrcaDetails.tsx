@@ -43,7 +43,7 @@ const statusLabel = (status: string) => ({
 
 const timelineCodeLabel = (code?: string) => ({
     CREATED: 'Projeto criado',
-    QTAGS_RECORDED: 'QTAGs registradas',
+    QTAGS_RECORDED: 'Vértices registrados',
     BASELINE_CREATED: 'Baseline criado',
     DOCUMENTS_PENDING: 'Documentos pendentes',
     AWAITING_CERTIFICATION: 'Aguardando certificação',
@@ -141,9 +141,9 @@ export default function MrcaDetails() {
     ];
     const metadata = (project as any).metadata || {};
     const qtagDrafts: ProjectTagDraft[] = dossier.tags
-        .filter((tag) => ['A', 'B', 'C', 'D'].includes(String(tag.vertex)))
         .map((tag) => ({
             vertex_label: String(tag.vertex) as VertexLabel,
+            has_qtag: Boolean(tag.hasQtag ?? (tag.tagUid || tag.cmac)),
             tag_uid: String(tag.tagUid || ''),
             cmac: String(tag.cmac || ''),
             latitude: String(tag.latitude ?? ''),
@@ -264,7 +264,7 @@ export default function MrcaDetails() {
                         {activeTab === 'integrity' && (
                             <section className="space-y-8">
                                 <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">QTAGs / Georreferenciamento</h3>
+                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Vértices / Georreferenciamento</h3>
                                     {dossier.tags.length > 0 ? (
                                         <div className="space-y-5">
                                             <ProjectGeofencePreview tags={qtagDrafts} />
@@ -275,15 +275,21 @@ export default function MrcaDetails() {
                                                             <span className="text-xs font-black uppercase text-primary">Vértice {tag.vertex}</span>
                                                             <span className="text-[10px] font-bold uppercase text-gray-400">{tag.status}</span>
                                                         </div>
-                                                        <p className="text-xs font-mono text-gray-700 break-all">{tag.tagUid}</p>
-                                                        <p className="text-[10px] text-gray-400 mt-3">CMAC: {tag.cmac || 'Não registrado'}</p>
+                                                        {tag.hasQtag ? (
+                                                            <>
+                                                                <p className="text-xs font-mono text-gray-700 break-all">{tag.tagUid || 'UID não registrado'}</p>
+                                                                <p className="text-[10px] text-gray-400 mt-3">CMAC: {tag.cmac || 'Não registrado'}</p>
+                                                            </>
+                                                        ) : (
+                                                            <p className="text-xs font-bold text-gray-500">Sem QTAG física</p>
+                                                        )}
                                                         <p className="text-[10px] text-gray-400">Lat/Lng: {tag.latitude}, {tag.longitude}</p>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     ) : (
-                                        <EmptyState text="Nenhuma QTAG pública registrada para este projeto." />
+                                        <EmptyState text="Nenhum vértice público registrado para este projeto." />
                                     )}
                                 </div>
 

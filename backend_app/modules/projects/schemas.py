@@ -59,6 +59,7 @@ class ProjectMRCA(BaseModel):
     name: str
     location: ProjectLocation
     status: str
+    publicMarketplace: bool = False
     metrics: ProjectMetrics
     description: str
     baseline: str
@@ -108,6 +109,66 @@ class PublicProfileResponse(BaseModel):
     profile: dict[str, Any]
 
 
+class ProjectDraftCreate(BaseModel):
+    draft_kind: Literal["CREATE", "EDIT"] = "CREATE"
+    target_project_id: str | None = None
+    current_step: str = "project"
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProjectDraftUpdate(BaseModel):
+    draft_kind: Literal["CREATE", "EDIT"] | None = None
+    target_project_id: str | None = None
+    current_step: str | None = None
+    payload: dict[str, Any] | None = None
+    status: Literal["DRAFT", "DISCARDED"] | None = None
+
+
+class ProjectDraftDocumentItem(BaseModel):
+    id: str
+    documentType: str
+    filename: str | None = None
+    mimeType: str
+    sizeBytes: int
+    sha256: str
+    storageBucket: str
+    storageObjectPath: str | None = None
+    storagePath: str
+    uploadedAt: str
+    status: str = "UPLOADED"
+
+
+class ProjectDraftItem(BaseModel):
+    id: str
+    status: str
+    draftKind: str
+    targetProjectId: str | None = None
+    currentStep: str
+    payload: dict[str, Any]
+    documents: list[ProjectDraftDocumentItem] = Field(default_factory=list)
+    submittedProjectId: str | None = None
+    submittedAt: str | None = None
+    createdAt: str
+    updatedAt: str
+
+
+class ProjectDraftResponse(BaseModel):
+    success: bool = True
+    draft: ProjectDraftItem
+
+
+class ProjectDraftsResponse(BaseModel):
+    success: bool = True
+    total: int
+    drafts: list[ProjectDraftItem]
+
+
+class ProjectDraftSubmitResponse(BaseModel):
+    success: bool = True
+    draft: ProjectDraftItem
+    project: ProjectMRCA
+
+
 class QueueResponse(BaseModel):
     success: bool = True
     total: int
@@ -115,8 +176,9 @@ class QueueResponse(BaseModel):
 
 
 class ProjectTagInput(BaseModel):
-    tag_uid: str
-    cmac: str
+    has_qtag: bool | None = None
+    tag_uid: str | None = None
+    cmac: str | None = None
     latitude: float
     longitude: float
     vertex_label: str
@@ -131,7 +193,13 @@ class ProjectCreate(BaseModel):
     certifier_id: str
     area_hectares: float | None = None
     carbon_stock: float | None = None
+    public_marketplace: bool = False
+    image_url: str | None = None
     tags: list[ProjectTagInput] | None = None
+
+
+class ProjectUpdate(ProjectCreate):
+    pass
 
 
 class BaselineDTO(BaseModel):

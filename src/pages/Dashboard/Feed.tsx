@@ -1,10 +1,11 @@
 // src/pages/Dashboard/Feed.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Map as MapIcon, Search, Filter } from 'lucide-react';
 import { ProjectCardMRCA } from '../../components/ProjectCardMRCA';
 import { StatsCards } from '../../components/StatsCards';
 import { database } from '../../services/database';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const Feed: React.FC = () => {
     const [mrcas, setMrcas] = useState<any[]>([]);
@@ -12,16 +13,29 @@ export const Feed: React.FC = () => {
     const [filter, setFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const isProducerAccount = user?.role === 'producer';
 
     useEffect(() => {
         const loadStats = async () => {
             try {
-                const allProjects = await database.getMarketProjects({ limit: 1000, type: 'all' });
+                const allProjects = await database.getMarketProjects({
+                    limit: 1000,
+                    type: 'all',
+                    publicMarketplaceOnly: !isProducerAccount,
+                    ownedOnly: isProducerAccount,
+                    portfolioOnly: isProducerAccount,
+                });
+                const lifecycleStatus = (project: any) => project.project.lifecycleStatus || project.raw?.status || '';
                 const comp = allProjects.reduce((acc: number, curr: any) =>
-                    curr.type === 'compensado' ? acc + (curr.quantity || 0) : acc, 0);
-                const active = allProjects.filter((p: any) => p.status.includes('Disponível') || p.status.includes('Ativo')).length;
-                const audited = allProjects.filter((p: any) => p.type === 'auditado').length;
-                const anomalies = allProjects.filter((p: any) => p.status.includes('Suspenso')).length;
+                    lifecycleStatus(curr) === 'RETIRED' ? acc + (curr.quantity || 0) : acc, 0);
+                const active = allProjects.filter((p: any) => ['ACTIVE', 'AVAILABLE'].includes(lifecycleStatus(p))).length;
+                const audited = allProjects.filter((p: any) =>
+                    ['AWAITING_AUDIT', 'AUDITED', 'BLOCKED_AUDIT_REQUIRED'].includes(lifecycleStatus(p))
+                ).length;
+                const anomalies = allProjects.filter((p: any) =>
+                    ['SUSPENDED', 'BLOCKED_AUDIT_REQUIRED', 'RECALCULATION_REQUIRED'].includes(lifecycleStatus(p))
+                ).length;
 
                 setStats({ compensated: comp, active: active, audited: audited, anomalies: anomalies });
             } catch (err) {
@@ -29,29 +43,36 @@ export const Feed: React.FC = () => {
             }
         };
         loadStats();
-    }, []);
+    }, [isProducerAccount]);
 
-    useEffect(() => {
-        loadMRCAs();
-    }, [filter]);
-
-    const loadMRCAs = async () => {
+    const loadMRCAs = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await database.getMRCAs({ type: filter });
+            const data = await database.getMRCAs({
+                type: filter,
+                publicMarketplaceOnly: !isProducerAccount,
+                ownedOnly: isProducerAccount,
+                portfolioOnly: isProducerAccount,
+            });
             setMrcas(data);
         } finally {
             setLoading(false);
         }
-    };
+    }, [filter, isProducerAccount]);
+
+    useEffect(() => {
+        loadMRCAs();
+    }, [loadMRCAs]);
 
     return (
-        <div className="flex flex-col gap-10">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-black tracking-tight">Marketplace de Ativos</h1>
-                    <p className="text-sm text-gray-400">Explore e adquira créditos de carbono verificados via blockchain.</p>
+                    <h1 className="text-3xl font-bold text-black tracking-tight">{isProducerAccount ? 'Meus Projetos' : 'Marketplace de Ativos'}</h1>
+                    <p className="text-sm text-gray-500">
+                        {isProducerAccount ? 'Projetos salvos e publicados da sua organização produtora.' : 'Projetos públicos prontos para marketplace, com créditos verificados via blockchain.'}
+                    </p>
                 </div>
                 <button
                     onClick={() => navigate('/painel/mapa-projetos')}

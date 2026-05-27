@@ -142,6 +142,14 @@ class Profile(Base):
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = (
+        Index(
+            "projects_public_marketplace_ready_idx",
+            "public_marketplace",
+            "status",
+            postgresql_where=text("public_marketplace is true"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     friendly_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
@@ -153,6 +161,7 @@ class Project(Base):
     methodology: Mapped[str] = mapped_column(String, nullable=False)
     methodology_link: Mapped[str | None] = mapped_column(String)
     status: Mapped[str] = mapped_column(ProjectStatusEnum, nullable=False, server_default=text("'REGISTERED'"))
+    public_marketplace: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     producer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     developer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     auditor_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
@@ -188,8 +197,9 @@ class ProjectTag(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
-    tag_uid: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    cmac: Mapped[str] = mapped_column(String, nullable=False)
+    has_qtag: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    tag_uid: Mapped[str | None] = mapped_column(String)
+    cmac: Mapped[str | None] = mapped_column(String)
     latitude: Mapped[Decimal] = mapped_column(Numeric(10, 6), nullable=False)
     longitude: Mapped[Decimal] = mapped_column(Numeric(10, 6), nullable=False)
     vertex_label: Mapped[str] = mapped_column(String, nullable=False)
@@ -400,6 +410,49 @@ class ExternalChainProject(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
+class ProjectDraft(Base):
+    __tablename__ = "project_drafts"
+    __table_args__ = (
+        Index("project_drafts_owner_status_idx", "owner_profile_id", "status", "updated_at"),
+        Index("project_drafts_producer_status_idx", "producer_organization_id", "status", "updated_at"),
+        Index("project_drafts_target_project_idx", "target_project_id", "status", "updated_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    owner_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    producer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    draft_kind: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'CREATE'"))
+    target_project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    current_step: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'project'"))
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DRAFT'"))
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    submitted_project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class ProjectDraftDocument(Base):
+    __tablename__ = "project_draft_documents"
+    __table_args__ = (
+        Index("project_draft_documents_draft_idx", "draft_id", "document_type"),
+        Index("project_draft_documents_sha256_hash_idx", "sha256_hash", unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    draft_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("project_drafts.id"), nullable=False)
+    owner_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    document_type: Mapped[str] = mapped_column(String, nullable=False)
+    storage_bucket: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'projects'"))
+    storage_object_path: Mapped[str | None] = mapped_column(String)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    sha256_hash: Mapped[str] = mapped_column(String, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uploaded_at: Mapped[datetime] = created_at_column()
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -408,6 +461,8 @@ class Document(Base):
     owner_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
     document_type: Mapped[str] = mapped_column(String, nullable=False)
+    storage_bucket: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'projects'"))
+    storage_object_path: Mapped[str | None] = mapped_column(String)
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
     sha256_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)

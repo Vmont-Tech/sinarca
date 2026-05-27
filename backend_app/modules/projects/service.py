@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import base64
+import binascii
+import math
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import PurePath
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from pydantic import ValidationError
+from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.db.models import (
@@ -16,12 +21,15 @@ from backend_app.db.models import (
     ChainEvent,
     Document,
     EnvironmentalCredit,
+    InventoryRegion,
     LedgerAccount,
     LedgerEntry,
     Organization,
     Profile,
     Project,
     ProjectBaseline,
+    ProjectDraft,
+    ProjectDraftDocument,
     ProjectTag,
 )
 from backend_app.db.repositories import create_audit_event
@@ -31,12 +39,20 @@ from backend_app.modules.projects.schemas import (
     CatalogResponse,
     ParticipatingEntity,
     ProjectCreate,
+    ProjectDraftCreate,
+    ProjectDraftDocumentItem,
+    ProjectDraftItem,
+    ProjectDraftsResponse,
+    ProjectDraftUpdate,
     ProjectEntities,
     ProjectLocation,
     ProjectMetrics,
     ProjectMRCA,
     ProjectPublicDossierResponse,
+    ProjectUpdate,
 )
+from backend_app.modules.supabase_storage import copy_storage_object, storage_public_object_url, upload_storage_object
+from backend_app.modules.storage_paths import project_document_location, project_draft_document_location, project_image_location
 
 ROLE_LABELS = {
     "certifier": "Certifier",
@@ -48,15 +64,54 @@ ROLE_LABELS = {
     "company": "Compensator",
 }
 
+MARKETPLACE_READY_PROJECT_STATUSES = ("ACTIVE", "AVAILABLE")
+PRODUCER_PORTFOLIO_PROJECT_STATUSES = (
+    "ACTIVE",
+    "AVAILABLE",
+    "AWAITING_AUDIT",
+    "AUDITED",
+    "BLOCKED_AUDIT_REQUIRED",
+    "SUSPENDED",
+    "RETIRED",
+)
+EDITABLE_PROJECT_STATUSES = ("DRAFT", "CREATED", "REGISTERED", "BASELINE_PENDING", "AWAITING_CERTIFICATION")
+
 
 class ProjectsService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def list_projects(self, *, status_filter: str | None, state: str | None, limit: int) -> list[ProjectMRCA]:
+    async def list_projects(
+        self,
+        *,
+        status_filter: str | None,
+        state: str | None,
+        public_marketplace: bool = False,
+        portfolio_only: bool = False,
+        scope: str | None = None,
+        limit: int,
+        actor_id: str | None = None,
+        actor_role: str | None = None,
+    ) -> list[ProjectMRCA]:
         statement = select(Project)
+        normalized_scope = (scope or "").strip().lower()
+        if not normalized_scope:
+            normalized_scope = "mine" if actor_role == "producer" and not public_marketplace else "all"
+        if normalized_scope not in {"all", "mine"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escopo de projetos inválido")
+        if actor_role == "producer" and not public_marketplace:
+            normalized_scope = "mine"
+        if normalized_scope == "mine":
+            statement = await self._scope_projects_statement(statement, actor_id=actor_id, actor_role=actor_role)
         if status_filter and status_filter.lower() != "all":
             statement = statement.where(Project.status.ilike(status_filter.strip()))
+        if public_marketplace:
+            statement = statement.where(
+                Project.public_marketplace.is_(True),
+                Project.status.in_(MARKETPLACE_READY_PROJECT_STATUSES),
+            )
+        if portfolio_only:
+            statement = statement.where(Project.status.in_(PRODUCER_PORTFOLIO_PROJECT_STATUSES))
         if state and state.lower() != "all":
             normalized_state = state.strip().lower()
             statement = statement.where(
@@ -74,6 +129,16 @@ class ProjectsService:
 
     async def get_project_model(self, project_id: str) -> Project:
         return await self._get_project_model(project_id)
+
+    async def get_editable_project_model(self, project_id: str, *, actor_id: str | None, actor_role: str | None) -> Project:
+        project = await self._get_project_model(project_id)
+        if project.status not in EDITABLE_PROJECT_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Projeto em status {project.status} não pode ser editado diretamente",
+            )
+        await self._assert_project_edit_permission(project, actor_id=actor_id, actor_role=actor_role)
+        return project
 
     async def get_public_dossier(self, project_id: str) -> ProjectPublicDossierResponse:
         project = await self._get_project_model(project_id)
@@ -139,9 +204,263 @@ class ProjectsService:
             transactions=[ledger_transaction_item(entry, account, project, event) for entry, account, event in transaction_rows],
         )
 
-    async def create_project(self, payload: ProjectCreate, *, actor_id: str | None, actor_role: str | None) -> ProjectMRCA:
+    async def list_project_drafts(
+        self,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+        status_filter: str | None = "DRAFT",
+    ) -> ProjectDraftsResponse:
+        profile = await self._actor_profile(actor_id)
+        statement = select(ProjectDraft)
+        if actor_role != "admin":
+            statement = statement.where(ProjectDraft.owner_profile_id == profile.id)
+        if status_filter and status_filter.lower() != "all":
+            statement = statement.where(ProjectDraft.status == status_filter.strip().upper())
+        statement = statement.order_by(ProjectDraft.updated_at.desc(), ProjectDraft.created_at.desc())
+        drafts = list((await self.session.execute(statement)).scalars().all())
+        items = [await self._draft_to_item(draft) for draft in drafts]
+        return ProjectDraftsResponse(total=len(items), drafts=items)
+
+    async def get_project_draft(self, draft_id: str, *, actor_id: str | None, actor_role: str | None) -> ProjectDraftItem:
+        draft = await self._get_project_draft_model(draft_id, actor_id=actor_id, actor_role=actor_role)
+        return await self._draft_to_item(draft)
+
+    async def create_project_draft(
+        self,
+        payload: ProjectDraftCreate,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+    ) -> ProjectDraftItem:
+        profile = await self._actor_profile(actor_id)
+        producer_organization_id = await self._producer_organization_id_from_draft_payload(payload.payload, profile)
+        draft_kind = payload.draft_kind.upper()
+        target_project_id = await self._target_project_internal_id(
+            payload.target_project_id,
+            draft_kind=draft_kind,
+            actor_id=actor_id,
+            actor_role=actor_role,
+        )
+        draft = ProjectDraft(
+            owner_profile_id=profile.id,
+            producer_organization_id=producer_organization_id,
+            draft_kind=draft_kind,
+            target_project_id=target_project_id,
+            current_step=_normalize_draft_step(payload.current_step),
+            status="DRAFT",
+            payload=payload.payload,
+        )
+        self.session.add(draft)
+        await self.session.flush()
+        await create_audit_event(
+            self.session,
+            action="PROJECT_DRAFT_CREATED",
+            entity_type="project_drafts",
+            entity_id=draft.id,
+            actor_role=actor_role,
+            metadata={
+                "actor_external_id": actor_id,
+                "current_step": draft.current_step,
+                "draft_kind": draft.draft_kind,
+                "target_project_id": str(draft.target_project_id) if draft.target_project_id else None,
+            },
+        )
+        await self.session.commit()
+        return await self._draft_to_item(draft)
+
+    async def update_project_draft(
+        self,
+        draft_id: str,
+        payload: ProjectDraftUpdate,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+    ) -> ProjectDraftItem:
+        draft = await self._get_project_draft_model(draft_id, actor_id=actor_id, actor_role=actor_role)
+        if draft.status != "DRAFT":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Apenas rascunhos abertos podem ser alterados")
+
+        if payload.draft_kind is not None:
+            draft.draft_kind = payload.draft_kind.upper()
+        if payload.target_project_id is not None or payload.draft_kind is not None:
+            draft.target_project_id = await self._target_project_internal_id(
+                payload.target_project_id or (str(draft.target_project_id) if draft.target_project_id else None),
+                draft_kind=draft.draft_kind,
+                actor_id=actor_id,
+                actor_role=actor_role,
+            )
+        if payload.current_step is not None:
+            draft.current_step = _normalize_draft_step(payload.current_step)
+        if payload.payload is not None:
+            draft.payload = payload.payload
+            profile = await self._actor_profile(actor_id)
+            draft.producer_organization_id = await self._producer_organization_id_from_draft_payload(payload.payload, profile)
+        if payload.status is not None:
+            draft.status = payload.status
+        draft.updated_at = datetime.now(timezone.utc)
+
+        await create_audit_event(
+            self.session,
+            action="PROJECT_DRAFT_UPDATED",
+            entity_type="project_drafts",
+            entity_id=draft.id,
+            actor_role=actor_role,
+            metadata={
+                "actor_external_id": actor_id,
+                "current_step": draft.current_step,
+                "status": draft.status,
+                "draft_kind": draft.draft_kind,
+                "target_project_id": str(draft.target_project_id) if draft.target_project_id else None,
+            },
+        )
+        await self.session.commit()
+        return await self._draft_to_item(draft)
+
+    async def add_project_draft_document(
+        self,
+        draft_id: str,
+        *,
+        document_type: str,
+        filename: str,
+        content_type: str | None,
+        extension: str,
+        content: bytes,
+        sha256: str,
+        mime_type: str,
+        size_bytes: int,
+        actor_id: str | None,
+        actor_role: str | None,
+    ) -> ProjectDraftDocumentItem:
+        profile = await self._actor_profile(actor_id)
+        draft = await self._get_project_draft_model(draft_id, actor_id=actor_id, actor_role=actor_role)
+        if draft.status != "DRAFT":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Apenas rascunhos abertos aceitam documentos")
+
+        location = project_draft_document_location(str(draft.id), document_type, sha256, extension)
+        await upload_storage_object(location.bucket, location.object_path, content, mime_type)
+        document = ProjectDraftDocument(
+            draft_id=draft.id,
+            owner_profile_id=profile.id,
+            document_type=document_type,
+            storage_bucket=location.bucket,
+            storage_object_path=location.object_path,
+            storage_path=location.uri,
+            sha256_hash=sha256,
+            mime_type=mime_type,
+            size_bytes=size_bytes,
+            metadata_={"filename": filename, "content_type": content_type},
+        )
+        self.session.add(document)
+        draft.updated_at = datetime.now(timezone.utc)
+        await self.session.flush()
+        await create_audit_event(
+            self.session,
+            action="PROJECT_DRAFT_DOCUMENT_UPLOADED",
+            entity_type="project_draft_documents",
+            entity_id=document.id,
+            actor_role=actor_role,
+            metadata={
+                "actor_external_id": actor_id,
+                "draft_id": str(draft.id),
+                "document_type": document_type,
+                "sha256": sha256,
+            },
+        )
+        await self.session.commit()
+        return draft_document_item(document)
+
+    async def submit_project_draft(
+        self,
+        draft_id: str,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+    ) -> tuple[ProjectDraftItem, ProjectMRCA]:
+        draft = await self._get_project_draft_model(draft_id, actor_id=actor_id, actor_role=actor_role)
+        if draft.status != "DRAFT":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este rascunho não está aberto para envio")
+
+        draft_documents = await self._draft_documents(draft.id)
+        project_payload = project_create_from_draft_payload(draft.payload)
+        if draft.draft_kind == "EDIT":
+            if draft.target_project_id is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rascunho de edição sem projeto alvo")
+            project_dto = await self.update_project(
+                str(draft.target_project_id),
+                ProjectUpdate.model_validate(project_payload.model_dump()),
+                actor_id=actor_id,
+                actor_role=actor_role,
+                commit=False,
+            )
+            project = await self._get_project_model(project_dto.friendlyId)
+        else:
+            _validate_required_draft_documents(draft_documents)
+            validate_project_tags(project_payload.tags or [])
+            project_dto = await self.create_project(project_payload, actor_id=actor_id, actor_role=actor_role, commit=False)
+            project = await self._get_project_model(project_dto.friendlyId)
+
+        for draft_document in draft_documents:
+            extension = _document_extension(draft_document)
+            location = project_document_location(
+                project.friendly_id,
+                draft_document.document_type,
+                draft_document.sha256_hash,
+                extension,
+            )
+            await copy_storage_object(location.bucket, draft_document.storage_object_path, location.object_path)
+            self.session.add(
+                Document(
+                    owner_profile_id=draft_document.owner_profile_id,
+                    owner_organization_id=draft.producer_organization_id,
+                    project_id=project.id,
+                    document_type=draft_document.document_type,
+                    storage_bucket=location.bucket,
+                    storage_object_path=location.object_path,
+                    storage_path=location.uri,
+                    sha256_hash=draft_document.sha256_hash,
+                    mime_type=draft_document.mime_type,
+                    size_bytes=draft_document.size_bytes,
+                    metadata_={
+                        **(draft_document.metadata_ or {}),
+                        "draft_id": str(draft.id),
+                        "draft_document_id": str(draft_document.id),
+                    },
+                )
+            )
+
+        now = datetime.now(timezone.utc)
+        draft.status = "SUBMITTED"
+        draft.submitted_project_id = project.id
+        draft.submitted_at = now
+        draft.updated_at = now
+        await create_audit_event(
+            self.session,
+            action="PROJECT_DRAFT_SUBMITTED",
+            entity_type="project_drafts",
+            entity_id=draft.id,
+            actor_role=actor_role,
+            metadata={
+                "actor_external_id": actor_id,
+                "friendly_id": project.friendly_id,
+                "document_count": len(draft_documents),
+                "draft_kind": draft.draft_kind,
+            },
+        )
+        await self.session.commit()
+        return await self._draft_to_item(draft), await self.project_to_mrca(project)
+
+    async def create_project(
+        self,
+        payload: ProjectCreate,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+        commit: bool = True,
+    ) -> ProjectMRCA:
         validate_project_tags(payload.tags)
 
+        region = await self._get_inventory_region(payload.location.stateId or payload.location.state)
         producer = await self._resolve_producer(payload.producer_id, actor_id)
         certifier = await self._get_organization(payload.certifier_id)
         registry = await self._get_first_organization_by_role("registry")
@@ -150,6 +469,7 @@ class ProjectsService:
         baseline = deterministic_baseline(payload)
         now = datetime.now(timezone.utc)
         source_hash = "baseline-" + baseline.baseline_hash
+        image_url = await _store_project_image(payload.image_url, friendly_id)
 
         project = Project(
             friendly_id=friendly_id,
@@ -161,14 +481,15 @@ class ProjectsService:
             methodology=_methodology_for_type(payload.project_type),
             methodology_link=None,
             status="AWAITING_CERTIFICATION",
+            public_marketplace=payload.public_marketplace,
             producer_organization_id=producer.id,
             developer_organization_id=producer.id,
             auditor_organization_id=auditor.id if auditor else None,
             certifier_organization_id=certifier.id,
             registry_organization_id=registry.id if registry else None,
-            city=payload.location.city,
-            state=payload.location.state,
-            state_id=payload.location.stateId,
+            city=payload.location.city.strip(),
+            state=region.name,
+            state_id=region.uf.lower(),
             biome=payload.location.bioma,
             latitude=Decimal(str(payload.location.coordinates.lat)),
             longitude=Decimal(str(payload.location.coordinates.lng)),
@@ -178,13 +499,13 @@ class ProjectsService:
             carbon_stock=Decimal(str(payload.carbon_stock or _credit_potential_from_baseline(baseline))),
             investment_value_brl=Decimal("0"),
             vintage=str(now.year),
-            image_url="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80",
+            image_url=image_url or "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80",
             serial_start=f"BR-{now.year}-{friendly_id[-3:]}-000001",
             serial_end=f"BR-{now.year}-{friendly_id[-3:]}-{int(_credit_potential_from_baseline(baseline)):06d}",
             contract_address="pending",
             merkle_root=baseline.baseline_hash,
             blockchain_timestamp=baseline.captured_at,
-            timeline=initial_project_timeline(now, has_tags=bool(payload.tags)),
+            timeline=initial_project_timeline(now, tag_count=len(payload.tags or [])),
             metadata_={
                 "project_type": payload.project_type,
                 "baseline_adapter": "deterministic_baseline",
@@ -211,17 +532,21 @@ class ProjectsService:
         )
 
         for tag in payload.tags or []:
+            has_qtag = _tag_has_qtag(tag)
+            tag_uid = _clean_optional_string(tag.tag_uid) if has_qtag else None
+            cmac = _clean_optional_string(tag.cmac) if has_qtag else None
             self.session.add(
                 ProjectTag(
                     project_id=project.id,
-                    tag_uid=tag.tag_uid,
-                    cmac=tag.cmac,
+                    has_qtag=has_qtag,
+                    tag_uid=tag_uid,
+                    cmac=cmac,
                     latitude=Decimal(str(tag.latitude)),
                     longitude=Decimal(str(tag.longitude)),
                     vertex_label=tag.vertex_label.strip().upper(),
                     first_seen_at=now,
                     last_seen_at=now,
-                    metadata_={"source": "api-v1-project-create"},
+                    metadata_={"source": "api-v1-project-create", "has_qtag": has_qtag},
                 )
             )
 
@@ -233,7 +558,109 @@ class ProjectsService:
             actor_role=actor_role,
             metadata={"actor_external_id": actor_id, "friendly_id": friendly_id},
         )
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
+        else:
+            await self.session.flush()
+        return await self.project_to_mrca(project)
+
+    async def update_project(
+        self,
+        project_id: str,
+        payload: ProjectUpdate,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+        commit: bool = True,
+    ) -> ProjectMRCA:
+        project = await self.get_editable_project_model(project_id, actor_id=actor_id, actor_role=actor_role)
+
+        validate_project_tags(payload.tags)
+
+        region = await self._get_inventory_region(payload.location.stateId or payload.location.state)
+        producer = await self._resolve_producer(payload.producer_id, actor_id)
+        certifier = await self._get_organization(payload.certifier_id)
+        now = datetime.now(timezone.utc)
+
+        before_data = {
+            "name": project.name,
+            "status": project.status,
+            "public_marketplace": bool(project.public_marketplace),
+            "city": project.city,
+            "state_id": project.state_id,
+            "area_hectares": float(project.area_hectares),
+            "carbon_stock": float(project.carbon_stock),
+        }
+
+        project.name = payload.name
+        project.description = payload.description
+        project.methodology = _methodology_for_type(payload.project_type)
+        project.public_marketplace = payload.public_marketplace
+        project.producer_organization_id = producer.id
+        project.developer_organization_id = producer.id
+        project.certifier_organization_id = certifier.id
+        project.city = payload.location.city.strip()
+        project.state = region.name
+        project.state_id = region.uf.lower()
+        project.biome = payload.location.bioma
+        project.latitude = Decimal(str(payload.location.coordinates.lat))
+        project.longitude = Decimal(str(payload.location.coordinates.lng))
+        project.svg_x = Decimal(str(payload.location.coordinates.svgX)) if payload.location.coordinates.svgX is not None else None
+        project.svg_y = Decimal(str(payload.location.coordinates.svgY)) if payload.location.coordinates.svgY is not None else None
+        project.area_hectares = Decimal(str(payload.area_hectares or _area_from_tags(payload.tags)))
+        project.carbon_stock = Decimal(str(payload.carbon_stock or float(project.carbon_stock)))
+        if payload.image_url:
+            project.image_url = await _store_project_image(payload.image_url, project.friendly_id)
+        project.metadata_ = {
+            **(project.metadata_ or {}),
+            "project_type": payload.project_type,
+            "last_edit_source": "api-v1-project-update",
+        }
+        project.updated_at = now
+
+        if payload.tags is not None:
+            await self.session.execute(delete(ProjectTag).where(ProjectTag.project_id == project.id))
+            for tag in payload.tags:
+                has_qtag = _tag_has_qtag(tag)
+                tag_uid = _clean_optional_string(tag.tag_uid) if has_qtag else None
+                cmac = _clean_optional_string(tag.cmac) if has_qtag else None
+                self.session.add(
+                    ProjectTag(
+                        project_id=project.id,
+                        has_qtag=has_qtag,
+                        tag_uid=tag_uid,
+                        cmac=cmac,
+                        latitude=Decimal(str(tag.latitude)),
+                        longitude=Decimal(str(tag.longitude)),
+                        vertex_label=tag.vertex_label.strip().upper(),
+                        first_seen_at=now,
+                        last_seen_at=now,
+                        metadata_={"source": "api-v1-project-update", "has_qtag": has_qtag},
+                    )
+                )
+
+        await create_audit_event(
+            self.session,
+            action="PROJECT_UPDATED",
+            entity_type="projects",
+            entity_id=project.id,
+            actor_role=actor_role,
+            before_data=before_data,
+            after_data={
+                "name": project.name,
+                "status": project.status,
+                "public_marketplace": bool(project.public_marketplace),
+                "city": project.city,
+                "state_id": project.state_id,
+                "area_hectares": float(project.area_hectares),
+                "carbon_stock": float(project.carbon_stock),
+            },
+            metadata={"actor_external_id": actor_id, "friendly_id": project.friendly_id},
+        )
+        if commit:
+            await self.session.commit()
+        else:
+            await self.session.flush()
         return await self.project_to_mrca(project)
 
     async def catalog(self, role: str) -> CatalogResponse:
@@ -370,6 +797,7 @@ class ProjectsService:
                 },
             ),
             status=project.status,
+            publicMarketplace=bool(project.public_marketplace),
             metrics=ProjectMetrics(
                 totalAreaHa=float(project.area_hectares),
                 carbonStock=float(project.carbon_stock),
@@ -410,6 +838,146 @@ class ProjectsService:
         if project is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projeto não encontrado")
         return project
+
+    async def _get_project_draft_model(
+        self,
+        draft_id: str,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+    ) -> ProjectDraft:
+        try:
+            draft_uuid = uuid.UUID(draft_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rascunho não encontrado") from exc
+
+        draft = (
+            await self.session.execute(select(ProjectDraft).where(ProjectDraft.id == draft_uuid))
+        ).scalar_one_or_none()
+        if draft is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rascunho não encontrado")
+
+        if actor_role != "admin":
+            profile = await self._actor_profile(actor_id)
+            if draft.owner_profile_id != profile.id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Rascunho pertence a outro usuário")
+        return draft
+
+    async def _target_project_internal_id(
+        self,
+        project_id: str | None,
+        *,
+        draft_kind: str,
+        actor_id: str | None = None,
+        actor_role: str | None = None,
+    ) -> uuid.UUID | None:
+        normalized_kind = draft_kind.upper()
+        if normalized_kind == "CREATE":
+            return None
+        if normalized_kind != "EDIT":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de rascunho inválido")
+        if not project_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rascunho de edição deve informar o projeto alvo")
+        project = await self._get_project_model(project_id)
+        await self._assert_project_edit_permission(project, actor_id=actor_id, actor_role=actor_role)
+        return project.id
+
+    async def _scope_projects_statement(self, statement: Any, *, actor_id: str | None, actor_role: str | None) -> Any:
+        if not actor_role:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário autenticado não encontrado")
+        if actor_role == "admin":
+            return statement
+
+        profile = await self._actor_profile(actor_id)
+        organization_id = profile.organization_id
+        if organization_id is None:
+            return statement.where(false())
+
+        if actor_role == "producer":
+            return statement.where(
+                or_(
+                    Project.producer_organization_id == organization_id,
+                    Project.developer_organization_id == organization_id,
+                )
+            )
+        if actor_role == "certifier":
+            return statement.where(Project.certifier_organization_id == organization_id)
+        if actor_role == "auditor":
+            return statement.where(Project.auditor_organization_id == organization_id)
+        return statement.where(false())
+
+    async def _assert_project_edit_permission(
+        self,
+        project: Project,
+        *,
+        actor_id: str | None,
+        actor_role: str | None,
+    ) -> None:
+        if actor_role == "admin":
+            return
+        profile = await self._actor_profile(actor_id)
+        organization_id = profile.organization_id
+        allowed = False
+        if organization_id is not None and actor_role == "producer":
+            allowed = organization_id in {project.producer_organization_id, project.developer_organization_id}
+        elif organization_id is not None and actor_role == "certifier":
+            allowed = organization_id == project.certifier_organization_id
+
+        if not allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seu perfil não pode editar este projeto")
+
+    async def _actor_profile(self, actor_id: str | None) -> Profile:
+        if not actor_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário autenticado não encontrado")
+        filters = [Profile.external_id == actor_id]
+        try:
+            filters.append(Profile.id == uuid.UUID(actor_id))
+        except ValueError:
+            pass
+        profile = (await self.session.execute(select(Profile).where(or_(*filters)))).scalar_one_or_none()
+        if profile is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário autenticado não encontrado")
+        return profile
+
+    async def _draft_documents(self, draft_id: uuid.UUID) -> list[ProjectDraftDocument]:
+        return list(
+            (
+                await self.session.execute(
+                    select(ProjectDraftDocument)
+                    .where(ProjectDraftDocument.draft_id == draft_id)
+                    .order_by(ProjectDraftDocument.uploaded_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    async def _draft_to_item(self, draft: ProjectDraft) -> ProjectDraftItem:
+        documents = await self._draft_documents(draft.id)
+        target_project = await self.session.get(Project, draft.target_project_id) if draft.target_project_id else None
+        return ProjectDraftItem(
+            id=str(draft.id),
+            status=draft.status,
+            draftKind=draft.draft_kind,
+            targetProjectId=target_project.friendly_id if target_project else None,
+            currentStep=draft.current_step,
+            payload=draft.payload or {},
+            documents=[draft_document_item(document) for document in documents],
+            submittedProjectId=str(draft.submitted_project_id) if draft.submitted_project_id else None,
+            submittedAt=draft.submitted_at.isoformat() if draft.submitted_at else None,
+            createdAt=draft.created_at.isoformat(),
+            updatedAt=draft.updated_at.isoformat(),
+        )
+
+    async def _producer_organization_id_from_draft_payload(self, payload: dict[str, Any], profile: Profile) -> uuid.UUID | None:
+        producer_external_id = _draft_payload_producer_id(payload)
+        if producer_external_id:
+            organization_id = await self.session.scalar(
+                select(Organization.id).where(Organization.external_id == producer_external_id)
+            )
+            if organization_id is not None:
+                return organization_id
+        return profile.organization_id
 
     async def _get_organization(self, organization_id: str) -> Organization:
         result = await self.session.execute(select(Organization).where(Organization.external_id == organization_id))
@@ -503,6 +1071,26 @@ class ProjectsService:
         rows = list((await self.session.execute(select(Organization).where(Organization.id.in_(clean_ids)))).scalars().all())
         return {row.id: row for row in rows}
 
+    async def _get_inventory_region(self, state_value: str) -> InventoryRegion:
+        normalized = state_value.strip().lower()
+        if not normalized:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="UF é obrigatória")
+
+        region = (
+            await self.session.execute(
+                select(InventoryRegion).where(
+                    or_(
+                        func.lower(InventoryRegion.uf) == normalized,
+                        func.lower(InventoryRegion.id) == normalized,
+                        func.lower(InventoryRegion.name) == normalized,
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if region is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="UF deve existir no catálogo de UFs do Brasil")
+        return region
+
     async def _next_friendly_id(self) -> str:
         year = datetime.now(timezone.utc).year
         count = await self.session.scalar(select(func.count()).select_from(Project))
@@ -513,6 +1101,212 @@ class ProjectsService:
             if exists is None:
                 return friendly_id
             sequence += 1
+
+
+def project_create_from_draft_payload(payload: dict[str, Any]) -> ProjectCreate:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rascunho sem payload de projeto")
+
+    candidate = payload.get("project")
+    if isinstance(candidate, dict):
+        return _validate_project_create_payload(candidate)
+    if {"name", "project_type", "location", "certifier_id"}.issubset(payload.keys()):
+        return _validate_project_create_payload(payload)
+    return _validate_project_create_payload(_project_payload_from_ui_draft(payload))
+
+
+def _validate_project_create_payload(payload: dict[str, Any]) -> ProjectCreate:
+    try:
+        return ProjectCreate.model_validate(payload)
+    except ValidationError as exc:
+        details = "; ".join(".".join(str(part) for part in error["loc"]) for error in exc.errors()[:5])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Rascunho incompleto para envio: {details}") from exc
+
+
+def _project_payload_from_ui_draft(payload: dict[str, Any]) -> dict[str, Any]:
+    form = payload.get("form")
+    if not isinstance(form, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rascunho sem dados de projeto para envio")
+
+    tags = _normalize_draft_tags(payload.get("tags") or [])
+    selected_region = payload.get("selectedRegion") if isinstance(payload.get("selectedRegion"), dict) else {}
+    state_value = str(selected_region.get("uf") or form.get("state") or "").strip()
+    coordinates = payload.get("coordinates") if isinstance(payload.get("coordinates"), dict) else _average_draft_coordinates(tags)
+    producer_id = str(form.get("producerId") or "").strip() or None
+
+    return {
+        "name": str(form.get("name") or "").strip(),
+        "description": f"{str(form.get('description') or '').strip()}\n\nMetodologia declarada: {str(form.get('methodology') or '').strip()}",
+        "project_type": str(form.get("projectType") or "").strip(),
+        "producer_id": producer_id,
+        "certifier_id": str(form.get("certifierId") or "").strip(),
+        "area_hectares": _optional_float(form.get("areaHectares")),
+        "carbon_stock": _optional_float(form.get("carbonStock")),
+        "public_marketplace": bool(form.get("publicMarketplace")),
+        "image_url": str(form.get("imageUrl") or "").strip() or None,
+        "location": {
+            "city": str(form.get("city") or "").strip(),
+            "state": str(selected_region.get("name") or state_value).strip(),
+            "stateId": state_value.lower(),
+            "bioma": str(form.get("bioma") or "").strip(),
+            "coordinates": coordinates,
+        },
+        "tags": tags,
+    }
+
+
+def _normalize_draft_tags(raw_tags: Any) -> list[dict[str, Any]]:
+    tags: list[dict[str, Any]] = []
+    if not isinstance(raw_tags, list):
+        return tags
+
+    for index, tag in enumerate(raw_tags, start=1):
+        if not isinstance(tag, dict):
+            continue
+        tag_uid = _clean_optional_string(tag.get("tag_uid") or tag.get("tagUid") or tag.get("uid"))
+        cmac = _clean_optional_string(tag.get("cmac"))
+        raw_has_qtag = tag.get("has_qtag") if "has_qtag" in tag else tag.get("hasQtag")
+        has_qtag = _coerce_optional_bool(raw_has_qtag)
+        if has_qtag is None:
+            has_qtag = bool(tag_uid or cmac)
+        tags.append(
+            {
+                "has_qtag": has_qtag,
+                "tag_uid": tag_uid if has_qtag else None,
+                "cmac": cmac if has_qtag else None,
+                "latitude": _required_float(tag.get("latitude")),
+                "longitude": _required_float(tag.get("longitude")),
+                "vertex_label": tag.get("vertex_label") or tag.get("vertexLabel") or tag.get("vertex") or chr(64 + index),
+            }
+        )
+    return tags
+
+
+def _average_draft_coordinates(tags: list[dict[str, Any]]) -> dict[str, float | None]:
+    if not tags:
+        return {"lat": 0.0, "lng": 0.0, "svgX": None, "svgY": None}
+    return {
+        "lat": sum(float(tag["latitude"]) for tag in tags) / len(tags),
+        "lng": sum(float(tag["longitude"]) for tag in tags) / len(tags),
+        "svgX": None,
+        "svgY": None,
+    }
+
+
+def _required_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _clean_optional_string(value: Any) -> str | None:
+    cleaned = str(value or "").strip()
+    return cleaned or None
+
+
+def _coerce_optional_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "sim"}:
+            return True
+        if normalized in {"false", "0", "no", "nao", "não", ""}:
+            return False
+    return bool(value)
+
+
+def _draft_payload_producer_id(payload: dict[str, Any]) -> str | None:
+    candidates = [payload]
+    if isinstance(payload.get("project"), dict):
+        candidates.append(payload["project"])
+    if isinstance(payload.get("form"), dict):
+        candidates.append(payload["form"])
+    for candidate in candidates:
+        producer_id = candidate.get("producer_id") or candidate.get("producerId")
+        if producer_id:
+            return str(producer_id)
+    return None
+
+
+def _normalize_draft_step(value: str | None) -> str:
+    normalized = (value or "project").strip().lower()
+    if normalized not in {"project", "qtags", "documents", "review"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Etapa de rascunho inválida")
+    return normalized
+
+
+def _validate_required_draft_documents(documents: list[ProjectDraftDocument]) -> None:
+    types = {document.document_type.upper() for document in documents}
+    errors: list[str] = []
+    if not ({"LEGAL_OWNERSHIP", "CAR"} & types):
+        errors.append("documento legal ou CAR")
+    if "FOREST_INVENTORY" not in types:
+        errors.append("inventário florestal")
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Envie {', '.join(errors)} antes de enviar o projeto.",
+        )
+
+
+def _document_extension(document: ProjectDraftDocument) -> str:
+    filename = (document.metadata_ or {}).get("filename")
+    extension = PurePath(str(filename or document.storage_path)).suffix.lower()
+    return extension or ".bin"
+
+
+IMAGE_MIME_EXTENSIONS = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+}
+
+
+async def _store_project_image(image_url: str | None, project_friendly_id: str) -> str | None:
+    if not image_url or not image_url.startswith("data:image/"):
+        return image_url
+
+    decoded = _decode_project_image_data_url(image_url)
+    if decoded is None:
+        return image_url
+
+    mime_type, content, extension = decoded
+    sha256 = hashlib.sha256(content).hexdigest()
+    location = project_image_location(project_friendly_id, sha256, extension)
+    uploaded = await upload_storage_object(location.bucket, location.object_path, content, mime_type)
+    if not uploaded:
+        return image_url
+    return storage_public_object_url(location.bucket, location.object_path) or location.uri
+
+
+def _decode_project_image_data_url(image_url: str) -> tuple[str, bytes, str] | None:
+    header, separator, encoded = image_url.partition(",")
+    if not separator or ";base64" not in header:
+        return None
+    mime_type = header.removeprefix("data:").split(";", 1)[0].lower()
+    extension = IMAGE_MIME_EXTENSIONS.get(mime_type)
+    if extension is None:
+        return None
+    try:
+        content = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+    return mime_type, content, extension
 
 
 def deterministic_baseline(payload: ProjectCreate) -> BaselineDTO:
@@ -532,14 +1326,48 @@ def deterministic_baseline(payload: ProjectCreate) -> BaselineDTO:
 def validate_project_tags(tags: list[Any] | None) -> None:
     if tags is None:
         return
-    if len(tags) != 4:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar exatamente 4 tags NFC")
+    if len(tags) < 4:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar no mínimo de 4 vértices")
+
     labels = [tag.vertex_label.strip().upper() for tag in tags]
-    if sorted(labels) != ["A", "B", "C", "D"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto deve informar os vértices A, B, C e D")
+    if any(not label for label in labels):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Todo vértice deve ter um identificador")
+    if len(set(labels)) != len(labels):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Os vértices não podem repetir")
+    for tag in tags:
+        if _tag_has_qtag(tag) and not _clean_optional_string(tag.tag_uid):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Vértice {tag.vertex_label} com QTAG deve informar UID")
+        if _tag_has_qtag(tag) and not _clean_optional_string(tag.cmac):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Vértice {tag.vertex_label} com QTAG deve informar CMAC")
+
+    coordinates = [(float(tag.latitude), float(tag.longitude)) for tag in tags]
+    if any(lat < -90 or lat > 90 or lng < -180 or lng > 180 for lat, lng in coordinates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coordenadas dos vértices fora do intervalo válido")
+    if len(set(coordinates)) != len(coordinates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="As coordenadas dos vértices não podem repetir")
+    if _polygon_area(coordinates) <= 0.000000001:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Os vértices precisam formar uma área válida, não uma linha")
 
 
-def initial_project_timeline(now: datetime, *, has_tags: bool) -> list[dict[str, str]]:
+def _tag_has_qtag(tag: Any) -> bool:
+    explicit = getattr(tag, "has_qtag", None)
+    if explicit is not None:
+        return bool(explicit)
+    return bool(_clean_optional_string(getattr(tag, "tag_uid", None)) or _clean_optional_string(getattr(tag, "cmac", None)))
+
+
+def _polygon_area(coordinates: list[tuple[float, float]]) -> float:
+    center_lat = sum(lat for lat, _ in coordinates) / len(coordinates)
+    center_lng = sum(lng for _, lng in coordinates) / len(coordinates)
+    ordered = sorted(coordinates, key=lambda item: math.atan2(item[0] - center_lat, item[1] - center_lng))
+    area = 0.0
+    for index, (lat, lng) in enumerate(ordered):
+        next_lat, next_lng = ordered[(index + 1) % len(ordered)]
+        area += lng * next_lat - next_lng * lat
+    return abs(area) / 2
+
+
+def initial_project_timeline(now: datetime, *, tag_count: int) -> list[dict[str, str]]:
     today = now.date().isoformat()
     events = [
         {
@@ -571,15 +1399,15 @@ def initial_project_timeline(now: datetime, *, has_tags: bool) -> list[dict[str,
             "desc": "Projeto enviado para a fila da certificadora.",
         },
     ]
-    if has_tags:
+    if tag_count > 0:
         events.insert(
             1,
             {
                 "code": "QTAGS_RECORDED",
-                "title": "QTAGs registradas",
+                "title": "Vértices registrados",
                 "date": today,
                 "status": "complete",
-                "desc": "Quatro QTAGs/vértices A, B, C e D foram registrados.",
+                "desc": f"{tag_count} vértices foram registrados para formar a área do projeto.",
             },
         )
     return events
@@ -612,10 +1440,12 @@ def mask_document(document: str | None) -> str | None:
 
 
 def tag_item(tag: ProjectTag) -> dict[str, Any]:
+    has_qtag = bool(tag.has_qtag)
     return {
         "id": str(tag.id),
+        "hasQtag": has_qtag,
         "tagUid": tag.tag_uid,
-        "cmac": mask_token(tag.cmac),
+        "cmac": mask_token(tag.cmac) if has_qtag else None,
         "latitude": float(tag.latitude),
         "longitude": float(tag.longitude),
         "vertex": tag.vertex_label,
@@ -672,6 +1502,8 @@ def document_item(document: Document) -> dict[str, Any]:
     return {
         "id": str(document.id),
         "type": document.document_type,
+        "storageBucket": document.storage_bucket,
+        "storageObjectPath": document.storage_object_path,
         "storagePath": document.storage_path,
         "sha256Hash": document.sha256_hash,
         "mimeType": document.mime_type,
@@ -679,6 +1511,23 @@ def document_item(document: Document) -> dict[str, Any]:
         "uploadedAt": document.uploaded_at.isoformat(),
         "metadata": document.metadata_ or {},
     }
+
+
+def draft_document_item(document: ProjectDraftDocument) -> ProjectDraftDocumentItem:
+    metadata = document.metadata_ or {}
+    return ProjectDraftDocumentItem(
+        id=str(document.id),
+        documentType=document.document_type,
+        filename=metadata.get("filename"),
+        mimeType=document.mime_type,
+        sizeBytes=document.size_bytes,
+        sha256=document.sha256_hash,
+        storageBucket=document.storage_bucket,
+        storageObjectPath=document.storage_object_path,
+        storagePath=document.storage_path,
+        uploadedAt=document.uploaded_at.isoformat(),
+        status="UPLOADED",
+    )
 
 
 def credit_item(credit: EnvironmentalCredit) -> dict[str, Any]:

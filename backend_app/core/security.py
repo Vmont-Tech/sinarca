@@ -58,6 +58,12 @@ def require_user(authorization: str | None = Header(default=None)) -> Authentica
     return AuthenticatedUser(id=str(payload["sub"]), role=payload["role"])
 
 
+def optional_user(authorization: str | None = Header(default=None)) -> AuthenticatedUser | None:
+    if not authorization:
+        return None
+    return require_user(authorization)
+
+
 def _create_token(user_id: str, role: UserRole, token_type: str, expires_at: datetime) -> str:
     settings = get_settings()
     payload = {

@@ -2,16 +2,25 @@ import React, { useState, useEffect } from 'react';
 import Brazil from '@svg-maps/brazil';
 import { database } from '../../services/database';
 
-export default function ProjectDotMap() {
+const hasMapCoordinates = (project: any) => (
+    Number.isFinite(Number(project.location?.coordinates?.svgX)) &&
+    Number.isFinite(Number(project.location?.coordinates?.svgY))
+);
+
+type ProjectDotMapProps = {
+    ownedOnly?: boolean;
+};
+
+export default function ProjectDotMap({ ownedOnly = false }: ProjectDotMapProps) {
     const [projects, setProjects] = useState<any[]>([]);
     
     useEffect(() => {
         const load = async () => {
-            const data = await database.getRawMarketProjects();
-            setProjects(data);
+            const data = await database.getRawMarketProjects({ ownedOnly });
+            setProjects((data || []).filter(hasMapCoordinates));
         };
         load();
-    }, []);
+    }, [ownedOnly]);
 
     return (
         <div className="w-full h-full relative bg-gray-50 overflow-hidden flex items-center justify-center">
@@ -20,6 +29,8 @@ export default function ProjectDotMap() {
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox={Brazil.viewBox}
                     className="w-full h-full drop-shadow-sm"
+                    role="img"
+                    aria-label="Mapa estático de localização dos projetos"
                 >
                     {/* Render Brazil States */}
                     {Brazil.locations.map((location: any) => (
@@ -36,19 +47,18 @@ export default function ProjectDotMap() {
                     {/* Render Project Markers (Dots) */}
                     {projects.map((project, i) => (
                         <g key={project.id || i} className="group/marker">
-                            {/* Pulse */}
+                            <title>{project.name}</title>
                             <circle
                                 cx={project.location?.coordinates?.svgX || 0}
                                 cy={project.location?.coordinates?.svgY || 0}
-                                r="12"
-                                className="fill-primary/20 animate-ping opacity-75"
+                                r="7"
+                                className="fill-emerald-200"
                             />
-                            {/* Core Dot */}
                             <circle
                                 cx={project.location?.coordinates?.svgX || 0}
                                 cy={project.location?.coordinates?.svgY || 0}
-                                r="4"
-                                className="fill-primary"
+                                r="3.5"
+                                className="fill-emerald-600 stroke-white stroke-[1.5px]"
                             />
                         </g>
                     ))}

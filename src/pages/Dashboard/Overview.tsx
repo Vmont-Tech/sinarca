@@ -17,7 +17,8 @@ import {
     DollarSign,
     Users,
     ClipboardCheck,
-    Folder
+    Folder,
+    Pencil
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { database } from '../../services/database';
@@ -28,21 +29,31 @@ export default function Overview() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [recentProjects, setRecentProjects] = useState<any[]>([]);
+    const isProducerAccount = user?.role === 'producer';
 
     useEffect(() => {
         const loadRecent = async () => {
             try {
-                const data = await database.getMarketProjects({ limit: 5 });
+                const data = await database.getMarketProjects({ limit: 5, ownedOnly: isProducerAccount });
                 setRecentProjects(data || []);
             } catch (error) {
                 console.error("Erro ao carregar projetos:", error);
             }
         };
         loadRecent();
-    }, []);
+    }, [isProducerAccount]);
 
     const isProducer = user?.role === 'producer' || user?.role === 'admin';
     const isCompany = user?.role === 'company';
+    const projectTargetId = (project: any) => project?.friendlyId || project?.projectId || project?.id;
+    const openProject = (project: any) => {
+        const targetId = projectTargetId(project);
+        if (targetId) navigate(`/painel/mrca/${targetId}`);
+    };
+    const editProject = (project: any) => {
+        const targetId = projectTargetId(project);
+        if (targetId) navigate(`/painel/mrca/${targetId}/editar`);
+    };
 
     if (isProducer) {
         return (
@@ -54,14 +65,14 @@ export default function Overview() {
                         label="Total de Projetos" 
                         value="5" 
                         sub="Todos os projetos registrados" 
-                        color="text-primary"
+                        color="text-emerald-700"
                     />
                     <SummaryCard 
                         icon={Leaf} 
                         label="Créditos Ativos" 
                         value="250" 
                         sub="Créditos de carbono ativos" 
-                        color="text-primary"
+                        color="text-emerald-700"
                     />
                     <SummaryCard 
                         icon={ClipboardCheck} 
@@ -78,8 +89,8 @@ export default function Overview() {
                         <div className="flex items-center justify-between mb-8">
                             <h3 className="text-xl font-bold text-black tracking-tight">Projetos Recentes</h3>
                             <div className="flex gap-4">
-                                <button onClick={() => navigate('/painel/adicionar-projeto')} className="bg-primary text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg hover:scale-105 transition-all">Adicionar Projeto</button>
-                                <button className="text-primary text-xs font-bold uppercase tracking-widest hover:underline">Ver Todos</button>
+                                <button onClick={() => navigate('/painel/adicionar-projeto')} className="bg-primary text-black text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg hover:bg-primary-hover hover:scale-105 transition-all">Adicionar Projeto</button>
+                                <button onClick={() => navigate('/painel/projetos')} className="text-emerald-700 text-xs font-bold uppercase tracking-widest underline-offset-4 hover:text-emerald-800 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-700/20 rounded-lg px-2 py-1">Ver Todos</button>
                             </div>
                         </div>
                         <div className="overflow-x-auto">
@@ -94,21 +105,21 @@ export default function Overview() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {recentProjects.map((p, i) => (
-                                        <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
+                                        <tr key={p.friendlyId || p.projectId || p.id || i} className="group hover:bg-gray-50/50 transition-colors">
                                             <td className="py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700">
                                                         <TreePine className="w-5 h-5" />
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-bold text-black">{p.project?.name || 'Projeto Ambiental'}</p>
-                                                        <p className="text-[10px] text-gray-400">{p.project?.location || 'Brasil'}</p>
+                                                        <p className="text-[11px] font-medium text-gray-600">{p.project?.location || 'Brasil'}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="py-4">
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${
-                                                    p.status === 'Auditado' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                                                    p.status === 'Auditado' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-700'
                                                 }`}>
                                                     {p.status}
                                                 </span>
@@ -116,8 +127,23 @@ export default function Overview() {
                                             <td className="py-4 font-bold text-sm text-black">{p.quantity}</td>
                                             <td className="py-4">
                                                 <div className="flex gap-2">
-                                                    <button className="p-2 text-gray-400 hover:text-primary transition-colors">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openProject(p)}
+                                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+                                                        aria-label={`Ver projeto ${p.project?.name || p.friendlyId || p.projectId || ''}`.trim()}
+                                                        title="Ver projeto"
+                                                    >
                                                         <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editProject(p)}
+                                                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+                                                        aria-label={`Editar projeto ${p.project?.name || p.friendlyId || p.projectId || ''}`.trim()}
+                                                        title="Editar projeto"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -132,10 +158,10 @@ export default function Overview() {
                     <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col h-full">
                         <div className="flex items-center justify-between mb-8">
                             <h3 className="text-xl font-bold text-black tracking-tight">Localização dos Projetos</h3>
-                            <MapPin className="w-5 h-5 text-primary" />
+                            <MapPin className="w-5 h-5 text-emerald-700" />
                         </div>
                         <div className="flex-1 bg-gray-50 rounded-2xl overflow-hidden relative border border-gray-100 min-h-[400px]">
-                            <ProjectDotMap />
+                            <ProjectDotMap ownedOnly={isProducerAccount} />
                         </div>
                     </div>
                 </div>
@@ -317,7 +343,7 @@ export default function Overview() {
             <div>
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-black tracking-tight">Projetos em Destaque</h3>
-                    <button className="text-primary text-xs font-bold uppercase tracking-widest">Ver Todos</button>
+                    <button onClick={() => navigate('/painel/projetos')} className="text-emerald-700 text-xs font-bold uppercase tracking-widest underline-offset-4 hover:text-emerald-800 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-700/20 rounded-lg px-2 py-1">Ver Todos</button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {recentProjects.slice(0, 3).map((p, i) => (
@@ -325,21 +351,21 @@ export default function Overview() {
                             <div className="h-40 bg-gray-100 relative">
                                 <img src={`https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80`} className="w-full h-full object-cover" />
                                 <div className="absolute top-4 left-4">
-                                    <span className="px-3 py-1 rounded-full bg-primary/20 backdrop-blur-md text-primary text-[9px] font-bold uppercase tracking-widest">Floresta</span>
+                                    <span className="px-3 py-1 rounded-full bg-emerald-100 backdrop-blur-md text-emerald-800 text-[9px] font-bold uppercase tracking-widest">Floresta</span>
                                 </div>
                             </div>
                             <div className="p-6">
                                 <h4 className="font-bold text-black mb-1">{p.project?.name || 'Reserva Natural'}</h4>
-                                <p className="text-[10px] text-gray-400 flex items-center gap-1 mb-4">
+                                <p className="text-[11px] font-medium text-gray-600 flex items-center gap-1 mb-4">
                                     <MapPin className="w-3 h-3" /> {p.project?.location || 'Brasil'}
                                 </p>
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <p className="text-[9px] text-gray-400 uppercase font-bold mb-1">Disponíveis</p>
-                                        <p className="text-primary font-bold">{p.quantity}</p>
+                                        <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Disponíveis</p>
+                                        <p className="text-emerald-700 font-bold">{p.quantity}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[9px] text-gray-400 uppercase font-bold mb-1">Preço/crédito</p>
+                                        <p className="text-[10px] text-gray-600 uppercase font-bold mb-1">Preço/crédito</p>
                                         <p className="text-black font-bold">R$ 28,50</p>
                                     </div>
                                 </div>
@@ -360,11 +386,11 @@ function SummaryCard({ icon: Icon, label, value, sub, color }: any) {
                     <Icon className="w-8 h-8" />
                 </div>
                 <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+                    <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-1">{label}</p>
                     <div className="flex items-baseline gap-2">
                         <span className="text-4xl font-black text-black tracking-tighter">{value}</span>
                     </div>
-                    <p className="text-[10px] text-gray-400">{sub}</p>
+                    <p className="text-[11px] font-medium text-gray-600">{sub}</p>
                 </div>
             </div>
         </div>
@@ -374,12 +400,12 @@ function SummaryCard({ icon: Icon, label, value, sub, color }: any) {
 function MetricCard({ icon: Icon, label, value, unit }: any) {
     return (
         <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 mb-6">
                 <Icon className="w-8 h-8" />
             </div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{label}</p>
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">{label}</p>
             <span className="text-3xl font-black text-black mb-1">{value}</span>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{unit}</p>
+            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{unit}</p>
         </div>
     );
 }
@@ -387,11 +413,11 @@ function MetricCard({ icon: Icon, label, value, unit }: any) {
 function CompanyMetric({ label, value, icon: Icon }: any) {
     return (
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-primary">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700">
                 <Icon className="w-6 h-6" />
             </div>
             <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1">{label}</p>
                 <p className="text-2xl font-black text-black tracking-tight">{value}</p>
             </div>
         </div>

@@ -118,6 +118,7 @@ create table projects (
   methodology text not null,
   methodology_link text,
   status project_status not null default 'REGISTERED',
+  public_marketplace boolean not null default false,
   producer_organization_id uuid references organizations(id),
   developer_organization_id uuid references organizations(id),
   auditor_organization_id uuid references organizations(id),
@@ -148,11 +149,16 @@ create table projects (
   updated_at timestamptz not null default now()
 );
 
+create index projects_public_marketplace_ready_idx on projects (public_marketplace, status, blockchain_timestamp desc, created_at desc)
+  where public_marketplace is true
+    and status in ('ACTIVE', 'AVAILABLE');
+
 create table project_tags (
   id uuid primary key default uuid_generate_v4(),
   project_id uuid not null references projects(id) on delete cascade,
-  tag_uid text not null,
-  cmac text not null,
+  has_qtag boolean not null default false,
+  tag_uid text,
+  cmac text,
   latitude numeric(10, 6) not null,
   longitude numeric(10, 6) not null,
   vertex_label text not null,
@@ -163,7 +169,7 @@ create table project_tags (
   created_at timestamptz not null default now()
 );
 
-create unique index project_tags_tag_uid_idx on project_tags (tag_uid);
+create unique index project_tags_tag_uid_idx on project_tags (tag_uid) where tag_uid is not null;
 create index project_tags_project_id_idx on project_tags (project_id);
 
 create table project_baselines (
@@ -377,6 +383,8 @@ create table documents (
   owner_organization_id uuid references organizations(id),
   project_id uuid references projects(id),
   document_type text not null,
+  storage_bucket text not null default 'projects',
+  storage_object_path text,
   storage_path text not null,
   sha256_hash text not null,
   mime_type text not null,
@@ -386,6 +394,7 @@ create table documents (
 );
 
 create unique index documents_sha256_hash_idx on documents (sha256_hash);
+create index documents_storage_bucket_object_path_idx on documents (storage_bucket, storage_object_path);
 
 create table audit_events (
   id uuid primary key default uuid_generate_v4(),

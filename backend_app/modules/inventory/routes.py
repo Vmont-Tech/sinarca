@@ -14,6 +14,8 @@ from backend_app.core.security import AuthenticatedUser, require_user
 from backend_app.db.models import Document, InventoryRegion, Organization, Profile
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
+from backend_app.modules.supabase_storage import upload_storage_object
+from backend_app.modules.storage_paths import user_document_location
 
 router = APIRouter(tags=["inventory"])
 
@@ -72,11 +74,16 @@ async def declare_inventory(
     }
     encoded = json.dumps(declaration, sort_keys=True).encode()
     sha256 = hashlib.sha256(encoded).hexdigest()
+    owner_id = str(owner_profile.id if owner_profile else owner_org.id if owner_org else current_user.id)
+    location = user_document_location(owner_id, "INVENTORY_DECLARATION", sha256, ".json")
+    await upload_storage_object(location.bucket, location.object_path, encoded, "application/json")
     document = Document(
         owner_profile_id=owner_profile.id if owner_profile else None,
         owner_organization_id=owner_org.id if owner_org else None,
         document_type="INVENTORY_DECLARATION",
-        storage_path=f"inventory/declarations/{sha256}.json",
+        storage_bucket=location.bucket,
+        storage_object_path=location.object_path,
+        storage_path=location.uri,
         sha256_hash=sha256,
         mime_type="application/json",
         size_bytes=len(encoded),
@@ -121,11 +128,16 @@ async def upload_inventory_document(
     expected_mime = MIME_BY_EXTENSION[extension]
     sha256 = hashlib.sha256(content).hexdigest()
     owner_profile, owner_org = await resolve_owner(session, current_user.id)
+    owner_id = str(owner_profile.id if owner_profile else owner_org.id if owner_org else current_user.id)
+    location = user_document_location(owner_id, "INVENTORY_UPLOAD", sha256, extension)
+    await upload_storage_object(location.bucket, location.object_path, content, expected_mime)
     document = Document(
         owner_profile_id=owner_profile.id if owner_profile else None,
         owner_organization_id=owner_org.id if owner_org else None,
         document_type="INVENTORY_UPLOAD",
-        storage_path=f"inventory/uploads/{sha256}{extension}",
+        storage_bucket=location.bucket,
+        storage_object_path=location.object_path,
+        storage_path=location.uri,
         sha256_hash=sha256,
         mime_type=expected_mime,
         size_bytes=len(content),
@@ -149,6 +161,8 @@ async def upload_inventory_document(
         "mime_type": expected_mime,
         "size_bytes": len(content),
         "sha256": sha256,
+        "storage_bucket": document.storage_bucket,
+        "storage_object_path": document.storage_object_path,
         "storage_path": document.storage_path,
         "status": "UPLOADED",
     }
@@ -171,4 +185,3 @@ async def resolve_owner(session: AsyncSession, external_id: str) -> tuple[Profil
     if organization is None:
         organization = (await session.execute(select(Organization).where(Organization.external_id == external_id))).scalar_one_or_none()
     return profile, organization
-

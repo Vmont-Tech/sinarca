@@ -45,6 +45,7 @@ export interface ProjectMRCA {
         coordinates: Coordinates;
     };
     status: ProjectStatus;
+    publicMarketplace: boolean;
     metrics: {
         totalAreaHa: number;
         carbonStock: number; // Volume de Créditos Potenciais/Gerados

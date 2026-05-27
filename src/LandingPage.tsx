@@ -123,7 +123,7 @@ export default function LandingPage() {
     const loadPublicData = async () => {
       try {
         const [projects, transactions] = await Promise.all([
-          database.getRawMarketProjects(),
+          database.getRawMarketProjects({ publicMarketplaceOnly: true }),
           database.getTransactions(),
         ]);
         if (!active) return;
