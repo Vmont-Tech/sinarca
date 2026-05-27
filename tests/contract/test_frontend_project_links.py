@@ -37,6 +37,15 @@ def test_producer_overview_has_working_actions_and_readable_static_map() -> None
     assert "onClick={() => openProject(p)}" in overview
     assert "aria-label={`Ver projeto" in overview
     assert "text-gray-600" in overview
+    assert "PROJECTS_PER_PAGE = 5" in overview
+    assert "portfolioOnly: isProducerAccount" in overview
+    assert "const projectTotal = dashboardProjects.length" in overview
+    assert "const paginatedProjects = dashboardProjects.slice" in overview
+    assert "setProjectPage((page) => Math.max(1, page - 1))" in overview
+    assert "Página {projectPage} de {totalProjectPages}" in overview
+    assert "value={projectTotal.toLocaleString('pt-BR')}" in overview
+    assert "value=\"5\"" not in overview
+    assert "item.project?.lifecycleStatus !== 'DRAFT'" in overview
 
     assert "animate-ping" not in project_dot_map
     assert "Mapa estático de localização dos projetos" in project_dot_map

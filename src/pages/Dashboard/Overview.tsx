@@ -18,24 +18,39 @@ import {
     Users,
     ClipboardCheck,
     Folder,
-    Pencil
+    Pencil,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { database } from '../../services/database';
 import { useAuth } from '../../contexts/AuthContext';
 import ProjectDotMap from '../../components/maps/ProjectDotMap';
 
+const PROJECTS_PER_PAGE = 5;
+
 export default function Overview() {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [recentProjects, setRecentProjects] = useState<any[]>([]);
+    const [dashboardProjects, setDashboardProjects] = useState<any[]>([]);
+    const [projectPage, setProjectPage] = useState(1);
     const isProducerAccount = user?.role === 'producer';
 
     useEffect(() => {
         const loadRecent = async () => {
             try {
-                const data = await database.getMarketProjects({ limit: 5, ownedOnly: isProducerAccount });
-                setRecentProjects(data || []);
+                const data = await database.getMarketProjects({
+                    limit: 1000,
+                    ownedOnly: isProducerAccount,
+                    portfolioOnly: isProducerAccount,
+                });
+                const savedProjects = (data || []).filter((item: any) =>
+                    (item.friendlyId || item.projectId) &&
+                    item.project?.lifecycleStatus !== 'DRAFT' &&
+                    item.raw?.status !== 'DRAFT'
+                );
+                setDashboardProjects(savedProjects);
+                setProjectPage(1);
             } catch (error) {
                 console.error("Erro ao carregar projetos:", error);
             }
@@ -45,6 +60,11 @@ export default function Overview() {
 
     const isProducer = user?.role === 'producer' || user?.role === 'admin';
     const isCompany = user?.role === 'company';
+    const projectTotal = dashboardProjects.length;
+    const totalProjectPages = Math.max(1, Math.ceil(projectTotal / PROJECTS_PER_PAGE));
+    const firstProjectIndex = projectTotal === 0 ? 0 : (projectPage - 1) * PROJECTS_PER_PAGE + 1;
+    const lastProjectIndex = Math.min(projectPage * PROJECTS_PER_PAGE, projectTotal);
+    const paginatedProjects = dashboardProjects.slice((projectPage - 1) * PROJECTS_PER_PAGE, projectPage * PROJECTS_PER_PAGE);
     const projectTargetId = (project: any) => project?.friendlyId || project?.projectId || project?.id;
     const openProject = (project: any) => {
         const targetId = projectTargetId(project);
@@ -63,8 +83,8 @@ export default function Overview() {
                     <SummaryCard 
                         icon={Folder} 
                         label="Total de Projetos" 
-                        value="5" 
-                        sub="Todos os projetos registrados" 
+                        value={projectTotal.toLocaleString('pt-BR')}
+                        sub="Projetos salvos vinculados"
                         color="text-emerald-700"
                     />
                     <SummaryCard 
@@ -86,8 +106,13 @@ export default function Overview() {
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                     {/* Recent Projects Table */}
                     <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-xl font-bold text-black tracking-tight">Projetos Recentes</h3>
+                        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <h3 className="text-xl font-bold text-black tracking-tight">Projetos Recentes</h3>
+                                <p className="mt-1 text-xs font-medium text-gray-600">
+                                    {projectTotal.toLocaleString('pt-BR')} projeto(s) salvo(s), 5 por página.
+                                </p>
+                            </div>
                             <div className="flex gap-4">
                                 <button onClick={() => navigate('/painel/adicionar-projeto')} className="bg-primary text-black text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg hover:bg-primary-hover hover:scale-105 transition-all">Adicionar Projeto</button>
                                 <button onClick={() => navigate('/painel/projetos')} className="text-emerald-700 text-xs font-bold uppercase tracking-widest underline-offset-4 hover:text-emerald-800 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-700/20 rounded-lg px-2 py-1">Ver Todos</button>
@@ -104,7 +129,7 @@ export default function Overview() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {recentProjects.map((p, i) => (
+                                    {paginatedProjects.map((p, i) => (
                                         <tr key={p.friendlyId || p.projectId || p.id || i} className="group hover:bg-gray-50/50 transition-colors">
                                             <td className="py-4">
                                                 <div className="flex items-center gap-3">
@@ -149,8 +174,43 @@ export default function Overview() {
                                             </td>
                                         </tr>
                                     ))}
+                                    {paginatedProjects.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="py-10 text-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                                                Nenhum projeto salvo encontrado.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="mt-6 flex flex-col gap-3 border-t border-gray-50 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs font-semibold text-gray-600">
+                                Mostrando {firstProjectIndex}-{lastProjectIndex} de {projectTotal.toLocaleString('pt-BR')} projeto(s)
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setProjectPage((page) => Math.max(1, page - 1))}
+                                    disabled={projectPage === 1}
+                                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-gray-200 text-gray-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Página anterior de projetos"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <span className="min-w-32 rounded-xl bg-gray-50 px-4 py-3 text-center text-xs font-bold text-gray-700">
+                                    Página {projectPage} de {totalProjectPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setProjectPage((page) => Math.min(totalProjectPages, page + 1))}
+                                    disabled={projectPage === totalProjectPages}
+                                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-gray-200 text-gray-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Próxima página de projetos"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -232,7 +292,7 @@ export default function Overview() {
                             <button onClick={() => navigate('/painel/auditoria')} className="bg-primary text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:scale-105 transition-transform">Iniciar Vistoria</button>
                         </div>
                         <div className="space-y-4">
-                            {recentProjects.slice(0, 4).map((p, i) => (
+                            {dashboardProjects.slice(0, 4).map((p, i) => (
                                 <div key={i} className="flex items-center justify-between p-4 rounded-2xl border border-gray-50 hover:border-primary/20 transition-colors group">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
@@ -346,7 +406,7 @@ export default function Overview() {
                     <button onClick={() => navigate('/painel/projetos')} className="text-emerald-700 text-xs font-bold uppercase tracking-widest underline-offset-4 hover:text-emerald-800 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-700/20 rounded-lg px-2 py-1">Ver Todos</button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {recentProjects.slice(0, 3).map((p, i) => (
+                    {dashboardProjects.slice(0, 3).map((p, i) => (
                         <div key={i} className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm group cursor-pointer hover:shadow-xl transition-all">
                             <div className="h-40 bg-gray-100 relative">
                                 <img src={`https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80`} className="w-full h-full object-cover" />
