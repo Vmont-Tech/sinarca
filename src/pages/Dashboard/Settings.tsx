@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import UserAvatar from '../../components/UserAvatar';
 import {
     User,
     ShieldCheck,
@@ -35,11 +36,6 @@ export default function Settings() {
     const [avatarUploading, setAvatarUploading] = useState(false);
     const [documentUploading, setDocumentUploading] = useState(false);
     const [message, setMessage] = useState('');
-    const avatarSrc = useMemo(() => {
-        const trimmed = (user?.avatar || '').trim();
-        if (trimmed.startsWith('http')) return trimmed;
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'SINARCA')}&background=16a34a&color=fff&size=200`;
-    }, [user?.avatar, name]);
 
     useEffect(() => {
         setName(user?.name || '');
@@ -111,13 +107,12 @@ export default function Settings() {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center text-center">
                         <div className="relative mb-6">
-                            <div className="w-32 h-32 rounded-full bg-gray-50 border-2 border-white shadow-xl overflow-hidden">
-                                <img 
-                                    src={avatarSrc}
-                                    alt="Avatar" 
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
+                            <UserAvatar
+                                name={name}
+                                avatar={user?.avatar}
+                                className="w-32 h-32 rounded-full bg-primary text-white border-2 border-white shadow-xl"
+                                textClassName="text-5xl font-medium"
+                            />
                         </div>
                         <h3 className="text-xl font-bold text-black uppercase tracking-tight">{name}</h3>
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">

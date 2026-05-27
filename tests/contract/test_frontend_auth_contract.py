@@ -34,6 +34,20 @@ def test_frontend_profile_contract_keeps_editable_fields() -> None:
     assert "await updateProfile({ name, email, organization: company, phone, document }" in settings
 
 
+def test_profile_avatar_falls_back_to_local_initials_without_external_service() -> None:
+    avatar_component = read("src/components/UserAvatar.tsx")
+    settings = read("src/pages/Dashboard/Settings.tsx")
+    dashboard_layout = read("src/layouts/DashboardLayout.tsx")
+
+    assert "function initialsFromName" in avatar_component
+    assert "return initials || 'S';" in avatar_component
+    assert "onError={() => setImageFailed(true)}" in avatar_component
+    assert "ui-avatars.com" not in settings
+    assert "ui-avatars.com" not in dashboard_layout
+    assert "<UserAvatar" in settings
+    assert "<UserAvatar" in dashboard_layout
+
+
 def test_login_registration_has_profile_specific_fields() -> None:
     login_page = read("src/pages/Login.tsx")
 

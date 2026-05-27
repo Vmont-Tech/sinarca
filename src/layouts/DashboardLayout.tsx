@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../assets/logo.png';
 import LogoLight from '../assets/sinarca-logo-recortado.svg';
 import { useAuth } from '../contexts/AuthContext';
+import UserAvatar from '../components/UserAvatar';
 import {
     LayoutDashboard,
     TreePine,
@@ -204,13 +205,12 @@ export default function DashboardLayout() {
                                         {isProducer ? 'Produtor' : isCertifier ? 'Certificadora' : isAuditor ? 'Auditor de Impacto' : 'Empresa Compradora'}
                                     </p>
                                 </div>
-                                <div className="w-12 h-12 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden">
-                                    <img
-                                        src={(user?.avatar || '').startsWith('http') ? user?.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'SINARCA')}&background=00ff94&color=fff`}
-                                        alt="Avatar"
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
+                                <UserAvatar
+                                    name={user?.name}
+                                    avatar={user?.avatar}
+                                    className="w-12 h-12 rounded-full bg-primary text-white border-2 border-white shadow-sm"
+                                    textClassName="text-base font-bold"
+                                />
                                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
                             </button>
 
