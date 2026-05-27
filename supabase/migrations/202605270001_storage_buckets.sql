@@ -17,6 +17,10 @@ set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "public read profile images" on storage.objects;
+drop policy if exists "backend service manages profile images" on storage.objects;
+drop policy if exists "backend service manages user documents" on storage.objects;
+
 create policy "public read profile images"
   on storage.objects for select
   to anon, authenticated

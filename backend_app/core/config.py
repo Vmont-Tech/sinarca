@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     etherfuse_api_url: str | None = None
     polygon_rpc_url: str | None = None
     supabase_url: str | None = None
+    supabase_public_url: str | None = None
     supabase_anon_key: str | None = None
     supabase_service_role_key: str | None = None
 

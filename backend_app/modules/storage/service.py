@@ -72,7 +72,7 @@ class SupabaseStorageService:
             raise StorageUploadError("Supabase Storage indisponível") from exc
 
     def _storage_path(self, bucket: str, object_path: str, *, public: bool) -> str:
-        base_url = (self.settings.supabase_url or "").rstrip("/")
+        base_url = ((self.settings.supabase_public_url if public else None) or self.settings.supabase_url or "").rstrip("/")
         if public and base_url.startswith("http"):
             return f"{base_url}/storage/v1/object/public/{bucket}/{quote(object_path, safe='/')}"
         return f"supabase://{bucket}/{object_path}"
