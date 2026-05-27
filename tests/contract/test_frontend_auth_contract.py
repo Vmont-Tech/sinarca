@@ -17,9 +17,36 @@ def test_frontend_profile_contract_keeps_editable_fields() -> None:
     assert "phone?: string;" in auth_context
     assert "organization: raw?.organization" in auth_context
     assert "phone: raw?.phone" in auth_context
+    assert "if (normalized === 'admin') return 'company';" not in auth_context
     assert "useState(user?.organization || '')" in settings
     assert "useState(user?.phone || '')" in settings
-    assert "await updateProfile({ name, email, organization: company, phone }" in settings
+    assert "useState(user?.document || '')" in settings
+    assert "uploadAvatar: (file: File) => Promise<void>;" in auth_context
+    assert "uploadUserDocument: (file: File, documentType: string) => Promise<UserDocumentUpload | null>;" in auth_context
+    assert "new FormData()" in auth_context
+    assert "apiPost<any>('/auth/me/avatar', formData)" in auth_context
+    assert "apiPost<UserDocumentUpload>('/auth/me/documents', formData)" in auth_context
+    assert 'accept="image/png,image/jpeg,image/webp"' in settings
+    assert 'accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx"' in settings
+    assert "handleAvatarSelected" in settings
+    assert "handleUserDocumentSelected" in settings
+    assert "Avatar / Logo URL" not in settings
+    assert "await updateProfile({ name, email, organization: company, phone, document }" in settings
+
+
+def test_login_registration_has_profile_specific_fields() -> None:
+    login_page = read("src/pages/Login.tsx")
+
+    assert "const REGISTRATION_PROFILE_CONFIG" in login_page
+    assert "registrationProfile = REGISTRATION_PROFILE_CONFIG[role]" in login_page
+    assert "regOrganization" in login_page
+    assert "regPhone" in login_page
+    assert "organization: regOrganization" in login_page
+    assert "phone: regPhone" in login_page
+    assert "Dados do perfil {registrationProfile.title}" in login_page
+    assert "registrationProfile.organizationLabel" in login_page
+    assert "registrationProfile.documentLabel" in login_page
+    assert "registrationProfile.phoneLabel" in login_page
 
 
 def test_frontend_auth_does_not_keep_local_user_database_fallback() -> None:

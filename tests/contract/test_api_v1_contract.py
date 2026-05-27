@@ -45,13 +45,24 @@ def test_api_v1_auth_registers_certifier_and_updates_profile_fields() -> None:
             "document": "11222333000144",
             "password": "senha-segura-123",
             "role": "certifier",
+            "organization": "Certificadora Contrato Ltda",
+            "phone": "+55 11 95555-0000",
         },
     )
 
     assert response.status_code == 201
     payload = response.json()
     assert payload["user"]["role"] == "certifier"
+    assert payload["user"]["organization"] == "Certificadora Contrato Ltda"
+    assert payload["user"]["phone"] == "+55 11 95555-0000"
+    assert payload["user"]["avatar"] is None
     assert payload["access_token"]
+
+    avatar = client.post(
+        "/api/v1/auth/me/avatar",
+        headers={"Authorization": f"Bearer {payload['access_token']}"},
+        files={"file": ("certifier.png", b"\x89PNG\r\n\x1a\ncertifier", "image/png")},
+    )
 
     updated = client.patch(
         "/api/v1/auth/me",
@@ -61,16 +72,17 @@ def test_api_v1_auth_registers_certifier_and_updates_profile_fields() -> None:
             "organization": "Organização de Certificação",
             "phone": "+55 11 99999-9999",
             "document": "99888777000166",
-            "avatar": "https://cdn.sinarca.com.br/avatars/certifier.png",
         },
     )
 
+    assert avatar.status_code == 200
+    assert avatar.json()["avatar"].startswith("supabase://profiles/")
     assert updated.status_code == 200
     updated_user = updated.json()
     assert updated_user["name"] == "Certificadora Contrato Atualizada"
     assert updated_user["organization"] == "Organização de Certificação"
     assert updated_user["document"] == "99888777000166"
-    assert updated_user["avatar"] == "https://cdn.sinarca.com.br/avatars/certifier.png"
+    assert updated_user["avatar"] == avatar.json()["avatar"]
 
 
 def test_api_v1_auth_rejects_public_admin_registration() -> None:

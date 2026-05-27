@@ -17,6 +17,78 @@ const RoleBtn = ({ active, onClick, label, icon }: { active: boolean, onClick: (
     </button>
 );
 
+const REGISTRATION_PROFILE_CONFIG: Record<Exclude<UserRole, 'admin'>, {
+    title: string;
+    summary: string;
+    nameLabel: string;
+    documentLabel: string;
+    organizationLabel: string;
+    emailLabel: string;
+    phoneLabel: string;
+    namePlaceholder: string;
+    documentPlaceholder: string;
+    organizationPlaceholder: string;
+    emailPlaceholder: string;
+    phonePlaceholder: string;
+}> = {
+    producer: {
+        title: 'Produtor',
+        summary: 'Informe o responsável, a propriedade ou organização produtora e os contatos para originar projetos ambientais.',
+        nameLabel: 'Responsável',
+        documentLabel: 'CPF/CNPJ rural',
+        organizationLabel: 'Propriedade / organização produtora',
+        emailLabel: 'E-mail do produtor',
+        phoneLabel: 'Telefone do responsável',
+        namePlaceholder: 'Nome do responsável',
+        documentPlaceholder: 'CPF, CNPJ ou CAF',
+        organizationPlaceholder: 'Fazenda, associação ou cooperativa',
+        emailPlaceholder: 'produtor@organizacao.com',
+        phonePlaceholder: '+55 63 99999-0000',
+    },
+    auditor: {
+        title: 'Auditor',
+        summary: 'Cadastre o auditor responsável pela verificação técnica, laudos e evidências de campo.',
+        nameLabel: 'Nome do auditor',
+        documentLabel: 'CPF ou registro profissional',
+        organizationLabel: 'Empresa de auditoria',
+        emailLabel: 'E-mail profissional',
+        phoneLabel: 'Telefone profissional',
+        namePlaceholder: 'Nome completo',
+        documentPlaceholder: 'CPF ou registro',
+        organizationPlaceholder: 'Consultoria ou auditoria independente',
+        emailPlaceholder: 'auditor@empresa.com',
+        phonePlaceholder: '+55 11 99999-0000',
+    },
+    company: {
+        title: 'Empresa',
+        summary: 'Informe os dados da empresa compradora para inventário, compra e compensação de créditos.',
+        nameLabel: 'Responsável corporativo',
+        documentLabel: 'CNPJ',
+        organizationLabel: 'Razão social',
+        emailLabel: 'E-mail corporativo',
+        phoneLabel: 'Telefone corporativo',
+        namePlaceholder: 'Nome do responsável',
+        documentPlaceholder: '00.000.000/0001-00',
+        organizationPlaceholder: 'Empresa Compradora Ltda',
+        emailPlaceholder: 'compras@empresa.com',
+        phonePlaceholder: '+55 11 99999-0000',
+    },
+    certifier: {
+        title: 'Certificadora',
+        summary: 'Cadastre a certificadora responsável por metodologia, aprovação técnica e emissão do ativo.',
+        nameLabel: 'Responsável técnico',
+        documentLabel: 'CNPJ da certificadora',
+        organizationLabel: 'Certificadora',
+        emailLabel: 'E-mail institucional',
+        phoneLabel: 'Telefone institucional',
+        namePlaceholder: 'Nome do responsável',
+        documentPlaceholder: '00.000.000/0001-00',
+        organizationPlaceholder: 'Certificadora Ambiental Ltda',
+        emailPlaceholder: 'certificacao@empresa.com',
+        phonePlaceholder: '+55 11 99999-0000',
+    },
+};
+
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -32,6 +104,8 @@ const Login = () => {
     // Registration State
     const [regName, setRegName] = useState('');
     const [regDoc, setRegDoc] = useState(''); // CPF/CNPJ
+    const [regOrganization, setRegOrganization] = useState('');
+    const [regPhone, setRegPhone] = useState('');
     const [regCorpEmail, setRegCorpEmail] = useState('');
     const [regPass, setRegPass] = useState('');
     const [regConfirmPass, setRegConfirmPass] = useState('');
@@ -41,6 +115,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [role, setRole] = useState<Exclude<UserRole, 'admin'>>('producer');
+    const registrationProfile = REGISTRATION_PROFILE_CONFIG[role];
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -90,6 +165,18 @@ const Login = () => {
             setError('As senhas digitadas não conferem.');
             return;
         }
+        if (!regName.trim() || !regDoc.trim() || !regOrganization.trim() || !regPhone.trim() || !regCorpEmail.trim()) {
+            setError(`Complete os dados obrigatórios do perfil ${registrationProfile.title}.`);
+            return;
+        }
+        if (!regCorpEmail.includes('@')) {
+            setError('Informe um e-mail válido para o cadastro.');
+            return;
+        }
+        if (regPass.length < 8) {
+            setError('A senha deve ter no mínimo 8 caracteres.');
+            return;
+        }
         if (!termsAccepted) {
             setError('É necessário aceitar os Termos de Uso.');
             return;
@@ -100,6 +187,8 @@ const Login = () => {
             await register({
                 name: regName,
                 document: regDoc,
+                organization: regOrganization,
+                phone: regPhone,
                 email: regCorpEmail,
                 password: regPass,
                 role: role
@@ -229,7 +318,7 @@ const Login = () => {
 
                             {/* Error Message */}
                             {error && (
-                                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-[10px] font-bold text-red-500 uppercase tracking-widest">
+                                <div role="alert" aria-live="polite" className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-[10px] font-bold text-red-500 uppercase tracking-widest">
                                     {error}
                                 </div>
                             )}
@@ -278,39 +367,71 @@ const Login = () => {
                             {/* Register Form */}
                             {activeTab === 'register' && (
                                 <form className="space-y-6" onSubmit={handleRegister}>
+                                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                                            Dados do perfil {registrationProfile.title}
+                                        </p>
+                                        <p className="mt-2 text-xs leading-relaxed text-gray-400">
+                                            {registrationProfile.summary}
+                                        </p>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nome</label>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.nameLabel}</label>
                                             <input 
                                             type="text" 
                                             value={regName}
                                             onChange={(e) => setRegName(e.target.value)}
                                             autoComplete="name"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                            placeholder="Seu nome"
+                                            placeholder={registrationProfile.namePlaceholder}
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">CPF/CNPJ</label>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.documentLabel}</label>
                                             <input 
                                             type="text" 
                                             value={regDoc}
                                             onChange={(e) => setRegDoc(e.target.value)}
                                             autoComplete="off"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                            placeholder="Documento"
+                                            placeholder={registrationProfile.documentPlaceholder}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.organizationLabel}</label>
+                                            <input
+                                                type="text"
+                                                value={regOrganization}
+                                                onChange={(e) => setRegOrganization(e.target.value)}
+                                                autoComplete="organization"
+                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none"
+                                                placeholder={registrationProfile.organizationPlaceholder}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.phoneLabel}</label>
+                                            <input
+                                                type="tel"
+                                                value={regPhone}
+                                                onChange={(e) => setRegPhone(e.target.value)}
+                                                autoComplete="tel"
+                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none"
+                                                placeholder={registrationProfile.phonePlaceholder}
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">E-mail Corporativo</label>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.emailLabel}</label>
                                         <input 
                                             type="email" 
                                             value={regCorpEmail}
                                             onChange={(e) => setRegCorpEmail(e.target.value)}
                                             autoComplete="email"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                            placeholder="nome@empresa.com"
+                                            placeholder={registrationProfile.emailPlaceholder}
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">

@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from backend_app.core.roles import require_role
 from backend_app.core.security import AuthenticatedUser, create_access_token, decode_token
-from backend_app.db.models import Profile
+from backend_app.db.models import Document, Profile
 from backend_app.db.session import get_sessionmaker
 from backend_app.main import app
 
@@ -106,6 +106,134 @@ def test_register_persists_profile_for_subsequent_login():
     assert asyncio.run(_get_profile_by_email(email)) is not None
 
 
+def test_register_persists_profile_metadata_for_selected_role():
+    email = f"perfil-produtor.{uuid.uuid4().hex[:8]}@sinarca.com.br"
+
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "name": "Produtor com Perfil",
+            "email": email,
+            "document": "321.654.987-10",
+            "password": "senha-super-secreta",
+            "role": "producer",
+            "organization": "Fazenda Perfil Vivo",
+            "phone": "+55 63 99999-1111",
+            "avatar": "https://cdn.sinarca.com.br/profiles/produtor.png",
+        },
+    )
+
+    assert response.status_code == 201
+    user = response.json()["user"]
+    assert user["role"] == "producer"
+    assert user["organization"] == "Fazenda Perfil Vivo"
+    assert user["phone"] == "+55 63 99999-1111"
+    assert user["avatar"] is None
+
+
+def test_profile_avatar_upload_persists_profiles_bucket_url():
+    email = f"avatar.bucket.{uuid.uuid4().hex[:8]}@sinarca.com.br"
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "name": "Perfil com Avatar",
+            "email": email,
+            "document": "123.123.123-12",
+            "password": "senha-super-secreta",
+            "role": "producer",
+        },
+    )
+    token = register_response.json()["access_token"]
+
+    response = client.post(
+        "/api/v1/auth/me/avatar",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("avatar.png", b"\x89PNG\r\n\x1a\navatar-bucket", "image/png")},
+    )
+
+    assert response.status_code == 200
+    avatar_url = response.json()["avatar"]
+    assert avatar_url.startswith("supabase://profiles/")
+    assert "/avatar/" in avatar_url
+    profile = asyncio.run(_get_profile_by_email(email))
+    assert profile is not None
+    assert profile.avatar_url == avatar_url
+
+
+def test_profile_document_upload_persists_user_documents_bucket():
+    email = f"documento.bucket.{uuid.uuid4().hex[:8]}@sinarca.com.br"
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "name": "Perfil com Documento",
+            "email": email,
+            "document": "321.321.321-32",
+            "password": "senha-super-secreta",
+            "role": "company",
+        },
+    )
+    token = register_response.json()["access_token"]
+
+    response = client.post(
+        "/api/v1/auth/me/documents",
+        headers={"Authorization": f"Bearer {token}"},
+        data={"document_type": "IDENTITY"},
+        files={"file": ("identidade.pdf", f"%PDF-1.4\nidentidade {email}\n%%EOF".encode(), "application/pdf")},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["bucket"] == "user-documents"
+    assert payload["storage_path"].startswith("supabase://user-documents/")
+    assert "/documents/identity/" in payload["storage_path"]
+    document = asyncio.run(_get_document_by_hash(payload["sha256"]))
+    assert document is not None
+    assert document.storage_path == payload["storage_path"]
+    assert document.metadata_["bucket"] == "user-documents"
+
+
+def test_admin_can_provision_admin_without_public_registration():
+    email = f"admin.provisionado.{uuid.uuid4().hex[:8]}@sinarca.com.br"
+    admin_token = create_access_token("admin-001", "admin")
+
+    response = client.post(
+        "/api/v1/auth/admin/provision",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={
+            "name": "Admin Provisionado",
+            "email": email,
+            "document": "00000000099",
+            "password": "senha-admin-segura",
+            "organization": "Operação SINARCA",
+            "phone": "+55 11 99999-9999",
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["user"]["role"] == "admin"
+    assert payload["user"]["email"] == email
+    assert payload["user"]["organization"] == "Operação SINARCA"
+
+
+def test_non_admin_cannot_provision_admin():
+    email = f"admin.bloqueado.{uuid.uuid4().hex[:8]}@sinarca.com.br"
+    producer_token = create_access_token("prod-001", "producer")
+
+    response = client.post(
+        "/api/v1/auth/admin/provision",
+        headers={"Authorization": f"Bearer {producer_token}"},
+        json={
+            "name": "Admin Bloqueado",
+            "email": email,
+            "document": "00000000098",
+            "password": "senha-admin-segura",
+        },
+    )
+
+    assert response.status_code == 403
+
+
 def test_auth_me_and_profile_update_use_bearer_jwt():
     login_response = client.post(
         "/api/v1/auth/login",
@@ -190,4 +318,10 @@ def test_role_guard_rejects_wrong_role_and_allows_admin():
 async def _get_profile_by_email(email: str) -> Profile | None:
     async with get_sessionmaker()() as session:
         result = await session.execute(select(Profile).where(Profile.email == email))
+        return result.scalar_one_or_none()
+
+
+async def _get_document_by_hash(sha256_hash: str) -> Document | None:
+    async with get_sessionmaker()() as session:
+        result = await session.execute(select(Document).where(Document.sha256_hash == sha256_hash))
         return result.scalar_one_or_none()

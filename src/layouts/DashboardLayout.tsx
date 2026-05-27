@@ -205,7 +205,11 @@ export default function DashboardLayout() {
                                     </p>
                                 </div>
                                 <div className="w-12 h-12 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden">
-                                    <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=00ff94&color=fff`} alt="Avatar" className="w-full h-full object-cover" />
+                                    <img
+                                        src={(user?.avatar || '').startsWith('http') ? user?.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'SINARCA')}&background=00ff94&color=fff`}
+                                        alt="Avatar"
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
                                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
                             </button>

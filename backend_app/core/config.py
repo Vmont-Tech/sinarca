@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     stellar_network: str = "testnet"
     etherfuse_api_url: str | None = None
     polygon_rpc_url: str | None = None
+    supabase_url: str | None = None
+    supabase_anon_key: str | None = None
+    supabase_service_role_key: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

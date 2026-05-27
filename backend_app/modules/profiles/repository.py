@@ -47,6 +47,10 @@ class SQLAlchemyProfileRepository:
         profile = result.scalar_one_or_none()
         return await self._record_from_profile(profile) if profile is not None else None
 
+    async def get_profile_model(self, user_id: str) -> Profile | None:
+        result = await self.session.execute(select(Profile).where(_profile_identity_filter(user_id)))
+        return result.scalar_one_or_none()
+
     async def get_by_login(self, login: str) -> ProfileRecord | None:
         normalized = login.strip().lower()
         result = await self.session.execute(
@@ -73,6 +77,9 @@ class SQLAlchemyProfileRepository:
         document: str,
         role: UserRole,
         password_hash_value: str,
+        organization: str | None = None,
+        phone: str | None = None,
+        avatar: str | None = None,
     ) -> ProfileRecord:
         profile = Profile(
             external_id=f"user-{email.strip().lower()}",
@@ -81,9 +88,14 @@ class SQLAlchemyProfileRepository:
             document=document,
             role=role,
             password_hash=password_hash_value,
+            phone=phone,
+            avatar_url=avatar,
         )
         self.session.add(profile)
         await self.session.flush()
+        if organization:
+            await self._upsert_profile_organization(profile, organization)
+            await self.session.flush()
         return await self._record_from_profile(profile)
 
     async def update(self, user_id: str, **updates: str | None) -> ProfileRecord | None:
