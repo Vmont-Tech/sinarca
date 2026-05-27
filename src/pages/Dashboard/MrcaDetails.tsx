@@ -18,6 +18,7 @@ import {
     Users,
 } from 'lucide-react';
 import ProjectGeofencePreview from '../../components/ProjectGeofencePreview';
+import { ProjectLifecycleTimeline } from '../../components/ProjectLifecycleTimeline';
 import { database, type ProjectPublicDossier } from '../../services/database';
 import type { ProjectTagDraft, VertexLabel } from '../../services/projectOrigination';
 import LogoLight from '../../assets/sinarca-logo-recortado.svg';
@@ -237,8 +238,14 @@ export default function MrcaDetails() {
                                     </div>
                                 </div>
 
+                                <ProjectLifecycleTimeline
+                                    stages={project.lifecycle}
+                                    currentStage={project.currentLifecycleStage}
+                                    variant="full"
+                                />
+
                                 <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Linha do tempo pública</h3>
+                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Eventos registrados</h3>
                                     {project.timeline.length > 0 ? (
                                         <div className="space-y-6">
                                             {project.timeline.map((event: any, index) => (

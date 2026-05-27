@@ -152,7 +152,22 @@ def test_projects_collection_detail_catalogs_and_creation_use_persistent_api() -
     assert collection["projects"]
 
     project = collection["projects"][0]
-    for key in ["id", "friendlyId", "name", "description", "status", "methodology", "location", "metrics", "entities", "blockchain", "image", "timeline"]:
+    for key in [
+        "id",
+        "friendlyId",
+        "name",
+        "description",
+        "status",
+        "methodology",
+        "location",
+        "metrics",
+        "entities",
+        "blockchain",
+        "image",
+        "timeline",
+        "lifecycle",
+        "currentLifecycleStage",
+    ]:
         assert key in project
 
     detail_response = client.get(f"/api/v1/projects/{project['friendlyId']}")
@@ -233,6 +248,20 @@ def test_projects_collection_detail_catalogs_and_creation_use_persistent_api() -
     assert created["metadata"]["cmac_validation_status"] == "RECORDED_DECLARED_VALUE"
     assert created["metadata"]["baseline_source"] == "deterministic_baseline"
     assert created["metadata"]["sentinel_status"] == "BLOCKED_MISSING_PROVIDER_CREDENTIALS"
+    assert created["currentLifecycleStage"]["code"] == "AWAITING_CERTIFICATION"
+    assert created["currentLifecycleStage"]["label"] == "Certificação"
+    assert [stage["code"] for stage in created["lifecycle"]] == [
+        "CREATED",
+        "AWAITING_CERTIFICATION",
+        "TOKENIZED_LOCKED",
+        "AWAITING_AUDIT",
+        "AVAILABLE",
+        "RESERVED",
+        "RETIRED",
+    ]
+    assert created["lifecycle"][0]["state"] == "completed"
+    assert created["lifecycle"][1]["state"] == "current"
+    assert created["lifecycle"][2]["state"] == "pending"
 
     timeline_codes = [event.get("code") for event in created["timeline"]]
     assert timeline_codes == [

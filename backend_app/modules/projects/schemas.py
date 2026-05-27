@@ -69,6 +69,8 @@ class ProjectMRCA(BaseModel):
     entities: ProjectEntities
     blockchain: BlockchainData
     timeline: list[dict[str, Any]]
+    lifecycle: list[dict[str, Any]] = Field(default_factory=list)
+    currentLifecycleStage: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

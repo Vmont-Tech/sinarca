@@ -75,6 +75,63 @@ PRODUCER_PORTFOLIO_PROJECT_STATUSES = (
     "RETIRED",
 )
 EDITABLE_PROJECT_STATUSES = ("DRAFT", "CREATED", "REGISTERED", "BASELINE_PENDING", "AWAITING_CERTIFICATION")
+PROJECT_LIFECYCLE_STAGES: tuple[dict[str, str], ...] = (
+    {
+        "code": "CREATED",
+        "label": "Registro",
+        "description": "Demarcação física e cadastro do projeto com vértices.",
+    },
+    {
+        "code": "AWAITING_CERTIFICATION",
+        "label": "Certificação",
+        "description": "Validação técnica da metodologia, documentos e potencial.",
+    },
+    {
+        "code": "TOKENIZED_LOCKED",
+        "label": "Tokenização",
+        "description": "Créditos emitidos em status bloqueado para rastreio.",
+    },
+    {
+        "code": "AWAITING_AUDIT",
+        "label": "Auditoria",
+        "description": "Inspeção de campo e validação biométrica ou satélite.",
+    },
+    {
+        "code": "AVAILABLE",
+        "label": "Listagem",
+        "description": "Disponível para marketplace e consulta pública.",
+    },
+    {
+        "code": "RESERVED",
+        "label": "Liquidação",
+        "description": "Reserva, compra ou transferência dos créditos.",
+    },
+    {
+        "code": "RETIRED",
+        "label": "Resgate",
+        "description": "Aposentadoria definitiva para compensação real.",
+    },
+)
+PROJECT_STATUS_TO_LIFECYCLE_CODE = {
+    "DRAFT": "CREATED",
+    "CREATED": "CREATED",
+    "REGISTERED": "CREATED",
+    "BASELINE_PENDING": "CREATED",
+    "AWAITING_CERTIFICATION": "AWAITING_CERTIFICATION",
+    "CERTIFIED_AWAITING_TREASURY": "TOKENIZED_LOCKED",
+    "TOKENIZED_LOCKED": "TOKENIZED_LOCKED",
+    "AWAITING_AUDIT": "AWAITING_AUDIT",
+    "AUDITED": "AWAITING_AUDIT",
+    "ACTIVE": "AVAILABLE",
+    "AVAILABLE": "AVAILABLE",
+    "RESERVED": "RESERVED",
+    "TRANSFERRED": "RESERVED",
+    "RETIRED": "RETIRED",
+    "BLOCKED_AUDIT_REQUIRED": "AWAITING_AUDIT",
+    "RECALCULATION_REQUIRED": "AWAITING_AUDIT",
+    "SUSPENDED": "AWAITING_CERTIFICATION",
+}
+BLOCKED_PROJECT_STATUSES = {"BLOCKED_AUDIT_REQUIRED", "RECALCULATION_REQUIRED", "SUSPENDED"}
 
 
 class ProjectsService:
@@ -801,6 +858,7 @@ class ProjectsService:
                 project.registry_organization_id,
             ]
         )
+        lifecycle, current_lifecycle_stage = project_lifecycle_for_status(project.status)
         return ProjectMRCA(
             id=project.source_hash or str(project.id),
             friendlyId=project.friendly_id,
@@ -846,6 +904,8 @@ class ProjectsService:
                 serialRange={"start": project.serial_start, "end": project.serial_end},
             ),
             timeline=list(project.timeline or []),
+            lifecycle=lifecycle,
+            currentLifecycleStage=current_lifecycle_stage,
             metadata=project.metadata_ or {},
         )
 
@@ -1387,6 +1447,42 @@ def _polygon_area(coordinates: list[tuple[float, float]]) -> float:
         next_lat, next_lng = ordered[(index + 1) % len(ordered)]
         area += lng * next_lat - next_lng * lat
     return abs(area) / 2
+
+
+def project_lifecycle_for_status(project_status: str | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    normalized_status = (project_status or "CREATED").upper()
+    current_code = PROJECT_STATUS_TO_LIFECYCLE_CODE.get(normalized_status, "CREATED")
+    current_index = next(
+        (index for index, stage in enumerate(PROJECT_LIFECYCLE_STAGES) if stage["code"] == current_code),
+        0,
+    )
+    total = len(PROJECT_LIFECYCLE_STAGES)
+    is_blocked = normalized_status in BLOCKED_PROJECT_STATUSES
+    lifecycle: list[dict[str, Any]] = []
+
+    for index, stage in enumerate(PROJECT_LIFECYCLE_STAGES):
+        is_current = index == current_index
+        if index < current_index:
+            state = "completed"
+        elif is_current and is_blocked:
+            state = "blocked"
+        elif is_current:
+            state = "current"
+        else:
+            state = "pending"
+
+        item: dict[str, Any] = {
+            **stage,
+            "index": index + 1,
+            "total": total,
+            "state": state,
+            "isCurrent": is_current,
+        }
+        if is_current:
+            item["projectStatus"] = normalized_status
+        lifecycle.append(item)
+
+    return lifecycle, lifecycle[current_index]
 
 
 def initial_project_timeline(now: datetime, *, tag_count: int) -> list[dict[str, str]]:

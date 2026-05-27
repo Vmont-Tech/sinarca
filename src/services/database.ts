@@ -204,6 +204,8 @@ const mapProjectToFeedItem = (proj: ProjectMRCA) => {
         quantity: proj.metrics.carbonStock,
         unit: 'tCO₂e',
         period: proj.metrics.vintage,
+        lifecycle: proj.lifecycle,
+        currentLifecycleStage: proj.currentLifecycleStage,
         project: {
             name: proj.name,
             location: `${proj.location.city}, ${proj.location.state}`,
@@ -212,6 +214,8 @@ const mapProjectToFeedItem = (proj: ProjectMRCA) => {
             image: proj.image,
             description: proj.description,
             lifecycleStatus: proj.status,
+            lifecycle: proj.lifecycle,
+            currentLifecycleStage: proj.currentLifecycleStage,
         },
         chain: {
             emitter: { name: proj.entities.certifier.name },

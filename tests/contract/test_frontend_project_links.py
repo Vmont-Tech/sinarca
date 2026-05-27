@@ -417,3 +417,19 @@ def test_public_project_pages_request_only_public_marketplace_ready_projects() -
     assert "max-w-7xl" in feed
     assert "px-4" in feed
     assert "apiGet<any>('/marketplace')" in credit_marketplace
+
+
+def test_project_cards_and_dossier_render_canonical_lifecycle() -> None:
+    database_service = read("src/services/database.ts")
+    project_card = read("src/components/ProjectCardMRCA.tsx")
+    lifecycle_component = read("src/components/ProjectLifecycleTimeline.tsx")
+    details = read("src/pages/Dashboard/MrcaDetails.tsx")
+
+    assert "currentLifecycleStage: proj.currentLifecycleStage" in database_service
+    assert "lifecycle: proj.lifecycle" in database_service
+    assert "ProjectLifecycleTimeline" in project_card
+    assert "ProjectLifecycleTimeline" in details
+    assert "Etapa atual" in lifecycle_component
+    assert "CREATED" in lifecycle_component
+    assert "AVAILABLE" in lifecycle_component
+    assert "Eventos registrados" in details

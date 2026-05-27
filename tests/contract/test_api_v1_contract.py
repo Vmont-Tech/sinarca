@@ -96,6 +96,11 @@ def test_public_dossier_contract_exposes_project_transparency_data() -> None:
     payload = response.json()
     assert payload["success"] is True
     assert payload["project"]["friendlyId"] == "PRC-2024-002"
+    lifecycle = payload["project"]["lifecycle"]
+    lifecycle_codes = [stage["code"] for stage in lifecycle]
+    assert payload["project"]["currentLifecycleStage"]["code"] in lifecycle_codes
+    assert {"CREATED", "AWAITING_CERTIFICATION", "AVAILABLE"}.issubset(lifecycle_codes)
+    assert any(stage["state"] == "current" for stage in lifecycle)
     assert payload["tags"]
     assert payload["baseline"]["baselineHash"]
     assert payload["certifications"]
