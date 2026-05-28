@@ -227,8 +227,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. backend-rebuild | 6/6 | Complete | 2026-05-22 |
-| 2. public-transparency-and-profiles | 0/5 | Planned | - |
-| 3. project-origination-and-documents | 0/5 | Planned | - |
+| 2. public-transparency-and-profiles | 5/5 | Complete | 2026-05-26 |
+| 3. project-origination-and-documents | 5/5 | Complete | 2026-05-26 |
 | 4. certification-workbench | 0/0 | Not planned | - |
 | 5. audit-monitoring-and-anomalies | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |
