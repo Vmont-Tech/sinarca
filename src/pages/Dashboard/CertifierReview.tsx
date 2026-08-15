@@ -7,20 +7,39 @@ import {
     FileCheck2,
     FileText,
     History,
+    RotateCcw,
     ShieldCheck,
     Tag,
+    Upload,
+    XCircle,
 } from 'lucide-react';
 import ProjectGeofencePreview from '../../components/ProjectGeofencePreview';
 import type { ProjectTagDraft, VertexLabel } from '../../services/projectOrigination';
 import {
+    decideCertification,
+    decisionErrorMessage,
+    fetchCertificationHistory,
     fetchCertifierQueue,
     fetchCertifierReview,
     PENDENCY_CATEGORY_OPTIONS,
+    type CertificationDecision,
+    type CertificationHistoryEvent,
     type CertifierQueueScope,
     type CertifierReviewDossier,
+    type PendencyCategory,
 } from '../../services/certifierReview';
 
 type TabId = 'resumo' | 'qtags' | 'documentos' | 'calculo' | 'decisao' | 'historico';
+
+type DecisionDraft = {
+    decision: CertificationDecision;
+    methodology: string;
+    creditPotential: string;
+    creditPotentialAdjustmentReason: string;
+    notes: string;
+    rejectionCategory: PendencyCategory | '';
+    certificate: File | null;
+};
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof FileText }> = [
     { id: 'resumo', label: 'Resumo', icon: FileText },
@@ -78,6 +97,21 @@ const EmptyState = ({ text }: { text: string }) => (
     </div>
 );
 
+const CREDIT_POTENTIAL_TOLERANCE = 0.01;
+
+const canSubmit = (draft: DecisionDraft, review: CertifierReviewDossier): boolean => {
+    if (draft.decision === 'APPROVE') {
+        if (!review.dossier.complete) return false;
+        if (!draft.certificate) return false;
+        if (!draft.methodology.trim()) return false;
+        const value = Number(draft.creditPotential);
+        if (!Number.isFinite(value) || value <= 0) return false;
+        if (Math.abs(value - review.calculation.suggestedCreditPotential) > CREDIT_POTENTIAL_TOLERANCE && !draft.creditPotentialAdjustmentReason.trim()) return false;
+        return true;
+    }
+    return Boolean(draft.rejectionCategory) && draft.notes.trim().length > 0;
+};
+
 export default function CertifierReview() {
     const [scope, setScope] = React.useState<CertifierQueueScope>('main');
     const [items, setItems] = React.useState<any[]>([]);
@@ -89,6 +123,13 @@ export default function CertifierReview() {
     const [reviewLoading, setReviewLoading] = React.useState<string | null>(null);
     const [message, setMessage] = React.useState('');
     const [error, setError] = React.useState('');
+    const [draftByProject, setDraftByProject] = React.useState<Record<string, DecisionDraft>>({});
+    const [submitting, setSubmitting] = React.useState<string | null>(null);
+    const [approvedLabels, setApprovedLabels] = React.useState<string[] | null>(null);
+    const [historyByProject, setHistoryByProject] = React.useState<Record<string, CertificationHistoryEvent[]>>({});
+    const [historyOptionsByProject, setHistoryOptionsByProject] = React.useState<Record<string, { eventTypes: Array<{ value: string; label: string }>; actorRoles: string[] }>>({});
+    const [historyLoading, setHistoryLoading] = React.useState<string | null>(null);
+    const [historyFilters, setHistoryFilters] = React.useState<Record<string, { eventType: string; actorRole: string }>>({});
 
     const loadQueue = React.useCallback(async (targetScope: CertifierQueueScope) => {
         setLoading(true);
@@ -120,10 +161,112 @@ export default function CertifierReview() {
         try {
             const review = await fetchCertifierReview(key);
             setReviewByProject((current) => ({ ...current, [key]: review }));
+            setDraftByProject((current) => (current[key] ? current : {
+                ...current,
+                [key]: {
+                    decision: 'APPROVE',
+                    methodology: review.calculation.methodology ?? '',
+                    creditPotential: String(review.calculation.suggestedCreditPotential),
+                    creditPotentialAdjustmentReason: '',
+                    notes: '',
+                    rejectionCategory: '',
+                    certificate: null,
+                },
+            }));
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Não foi possível carregar o dossiê.');
         } finally {
             setReviewLoading(null);
+        }
+    };
+
+    const updateDraft = (key: string, patch: Partial<DecisionDraft>) => {
+        setDraftByProject((current) => ({
+            ...current,
+            [key]: { ...(current[key] as DecisionDraft), ...patch },
+        }));
+    };
+
+    const updateHistoryFilter = (key: string, patch: Partial<{ eventType: string; actorRole: string }>) => {
+        setHistoryFilters((current) => ({
+            ...current,
+            [key]: { ...(current[key] || { eventType: '', actorRole: '' }), ...patch },
+        }));
+    };
+
+    const loadHistory = React.useCallback(async (key: string, filters: { eventType: string; actorRole: string }) => {
+        setHistoryLoading(key);
+        try {
+            const response = await fetchCertificationHistory(key, {
+                eventType: filters.eventType || undefined,
+                actorRole: filters.actorRole || undefined,
+            });
+            setHistoryByProject((current) => ({ ...current, [key]: response.events }));
+            if (!filters.eventType && !filters.actorRole) {
+                setHistoryOptionsByProject((current) => ({
+                    ...current,
+                    [key]: { eventTypes: response.availableEventTypes, actorRoles: response.availableActorRoles },
+                }));
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Não foi possível carregar o histórico.');
+        } finally {
+            setHistoryLoading(null);
+        }
+    }, []);
+
+    const activeHistoryFilters = activeProjectId ? (historyFilters[activeProjectId] || { eventType: '', actorRole: '' }) : { eventType: '', actorRole: '' };
+
+    React.useEffect(() => {
+        if (activeTab !== 'historico' || !activeProjectId) return;
+        loadHistory(activeProjectId, activeHistoryFilters);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, activeProjectId, activeHistoryFilters.eventType, activeHistoryFilters.actorRole, loadHistory]);
+
+    const submitDecision = async (project: any) => {
+        const key = project.friendlyId || project.id;
+        const review = reviewByProject[key];
+        const draft = draftByProject[key];
+        if (!review || !draft) return;
+        setSubmitting(key);
+        setError('');
+        try {
+            const result = await decideCertification(key, {
+                decision: draft.decision,
+                methodology: draft.decision === 'APPROVE' ? draft.methodology : undefined,
+                creditPotential: draft.decision === 'APPROVE' ? Number(draft.creditPotential) : undefined,
+                creditPotentialAdjustmentReason: draft.decision === 'APPROVE' ? draft.creditPotentialAdjustmentReason : undefined,
+                notes: draft.notes,
+                rejectionCategory: draft.decision !== 'APPROVE' ? (draft.rejectionCategory || undefined) : undefined,
+                certificate: draft.decision === 'APPROVE' ? draft.certificate : undefined,
+            });
+            if (draft.decision === 'APPROVE') {
+                setApprovedLabels(result.statusLabels);
+                setMessage('Certificação aprovada. Certificado anexado e autorização enviada à tesouraria.');
+            } else {
+                setApprovedLabels(null);
+                setMessage('Decisão registrada. O produtor foi notificado da pendência.');
+            }
+            setReviewByProject((current) => {
+                const next = { ...current };
+                delete next[key];
+                return next;
+            });
+            setDraftByProject((current) => {
+                const next = { ...current };
+                delete next[key];
+                return next;
+            });
+            setHistoryByProject((current) => {
+                const next = { ...current };
+                delete next[key];
+                return next;
+            });
+            await loadQueue(scope);
+        } catch (err) {
+            setError(decisionErrorMessage(err, draft.decision));
+        } finally {
+            setSubmitting(null);
         }
     };
 
@@ -142,7 +285,20 @@ export default function CertifierReview() {
                 </div>
             </div>
 
-            {message && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</div>}
+            {message && (
+                <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    <p>{message}</p>
+                    {approvedLabels && (
+                        <div className="flex flex-wrap gap-2">
+                            {approvedLabels.map((label) => (
+                                <span key={label} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> {label}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
             {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
 
             <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 pb-4">
@@ -177,7 +333,11 @@ export default function CertifierReview() {
                     const key = project.friendlyId || project.id;
                     const isOpen = activeProjectId === key;
                     const review = reviewByProject[key];
+                    const draft = draftByProject[key];
                     const qtagDrafts = review ? buildQtagDrafts(review) : [];
+                    const currentHistoryFilters = historyFilters[key] || { eventType: '', actorRole: '' };
+                    const currentHistoryEvents = historyByProject[key] || [];
+                    const currentHistoryOptions = historyOptionsByProject[key] || { eventTypes: [], actorRoles: [] };
 
                     return (
                         <article key={project.id} className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -402,12 +562,218 @@ export default function CertifierReview() {
                                                 </section>
                                             )}
 
-                                            {activeTab === 'decisao' && (
-                                                <EmptyState text="Formulário de decisão em construção (Task 3)." />
+                                            {activeTab === 'decisao' && draft && (
+                                                <section className="space-y-6">
+                                                    <div className="flex flex-wrap gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateDraft(key, { decision: 'APPROVE' })}
+                                                            className={`inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 ${draft.decision !== 'APPROVE' ? 'opacity-40' : ''}`}
+                                                        >
+                                                            <CheckCircle2 className="h-4 w-4" /> Aprovar certificação
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateDraft(key, { decision: 'REQUEST_CHANGES' })}
+                                                            className={`inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-white hover:bg-amber-600 ${draft.decision !== 'REQUEST_CHANGES' ? 'opacity-40' : ''}`}
+                                                        >
+                                                            <RotateCcw className="h-4 w-4" /> Solicitar ajustes
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateDraft(key, { decision: 'REJECT' })}
+                                                            className={`inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-700 ${draft.decision !== 'REJECT' ? 'opacity-40' : ''}`}
+                                                        >
+                                                            <XCircle className="h-4 w-4" /> Reprovar projeto
+                                                        </button>
+                                                    </div>
+
+                                                    {draft.decision === 'APPROVE' && (
+                                                        <div className="space-y-4">
+                                                            <div className="grid gap-4 sm:grid-cols-2">
+                                                                <label className="space-y-1">
+                                                                    <span className="text-xs font-bold uppercase text-gray-400">Metodologia</span>
+                                                                    <input
+                                                                        value={draft.methodology}
+                                                                        onChange={(event) => updateDraft(key, { methodology: event.target.value })}
+                                                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                                    />
+                                                                </label>
+                                                                <label className="space-y-1">
+                                                                    <span className="text-xs font-bold uppercase text-gray-400">Potencial de crédito (tCO₂e)</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={draft.creditPotential}
+                                                                        onChange={(event) => updateDraft(key, { creditPotential: event.target.value })}
+                                                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                                    />
+                                                                </label>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                                                                <span>Sugerido pelo sistema: {review.calculation.suggestedCreditPotential} tCO₂e</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => updateDraft(key, { creditPotential: String(review.calculation.suggestedCreditPotential), creditPotentialAdjustmentReason: '' })}
+                                                                    className="rounded-lg border border-gray-200 px-2 py-1 font-bold text-gray-700 hover:bg-gray-50"
+                                                                >
+                                                                    Usar valor sugerido
+                                                                </button>
+                                                            </div>
+                                                            {Math.abs(Number(draft.creditPotential || 0) - review.calculation.suggestedCreditPotential) > CREDIT_POTENTIAL_TOLERANCE && (
+                                                                <label className="block space-y-1">
+                                                                    <span className="text-xs font-bold uppercase text-gray-400">Justificativa do ajuste</span>
+                                                                    <textarea
+                                                                        value={draft.creditPotentialAdjustmentReason}
+                                                                        onChange={(event) => updateDraft(key, { creditPotentialAdjustmentReason: event.target.value })}
+                                                                        rows={2}
+                                                                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                                    />
+                                                                </label>
+                                                            )}
+                                                            <label className="block space-y-1">
+                                                                <span className="text-xs font-bold uppercase text-gray-400">Notas técnicas</span>
+                                                                <textarea
+                                                                    value={draft.notes}
+                                                                    onChange={(event) => updateDraft(key, { notes: event.target.value })}
+                                                                    rows={3}
+                                                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                                />
+                                                            </label>
+                                                            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center transition hover:border-emerald-300 hover:bg-emerald-50">
+                                                                <Upload className="h-5 w-5 text-gray-400" />
+                                                                <span className="mt-2 text-sm font-bold text-gray-800">Anexar certificado (PDF)</span>
+                                                                <input
+                                                                    type="file"
+                                                                    accept="application/pdf"
+                                                                    className="sr-only"
+                                                                    onChange={(event) => updateDraft(key, { certificate: event.target.files?.[0] ?? null })}
+                                                                />
+                                                            </label>
+                                                            {draft.certificate && (
+                                                                <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2">
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-bold text-gray-800">{draft.certificate.name}</p>
+                                                                        <p className="text-xs text-gray-500">{formatBytes(draft.certificate.size)}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateDraft(key, { certificate: null })}
+                                                                        aria-label="Remover arquivo"
+                                                                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                                                                    >
+                                                                        <XCircle className="h-4 w-4" />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {draft.decision !== 'APPROVE' && (
+                                                        <div className="space-y-4">
+                                                            <label className="block space-y-1">
+                                                                <span className="text-xs font-bold uppercase text-gray-400">Categoria</span>
+                                                                <select
+                                                                    value={draft.rejectionCategory}
+                                                                    onChange={(event) => updateDraft(key, { rejectionCategory: event.target.value as PendencyCategory | '' })}
+                                                                    className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                                >
+                                                                    <option value="">Selecione uma categoria</option>
+                                                                    {PENDENCY_CATEGORY_OPTIONS.map((option) => (
+                                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </label>
+                                                            <label className="block space-y-1">
+                                                                <span className="text-xs font-bold uppercase text-gray-400">Descrição do motivo</span>
+                                                                <textarea
+                                                                    value={draft.notes}
+                                                                    onChange={(event) => updateDraft(key, { notes: event.target.value })}
+                                                                    rows={3}
+                                                                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    )}
+
+                                                    {draft.decision === 'REJECT' && (
+                                                        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                                                            Esta decisão fica registrada permanentemente no histórico e não pode ser editada. Selecione uma categoria e descreva o motivo antes de confirmar.
+                                                        </p>
+                                                    )}
+                                                    {draft.decision === 'REQUEST_CHANGES' && (
+                                                        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                                                            O projeto sai da fila principal e só retorna quando o produtor responder a esta pendência. Descreva claramente o que precisa ser corrigido.
+                                                        </p>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={!canSubmit(draft, review) || submitting === key}
+                                                        onClick={() => submitDecision(project)}
+                                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-950 px-6 py-3 text-sm font-bold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        {submitting === key ? 'Enviando decisão...' : 'Confirmar decisão'}
+                                                    </button>
+                                                </section>
                                             )}
 
                                             {activeTab === 'historico' && (
-                                                <EmptyState text="Linha do tempo filtrável em construção (Task 3)." />
+                                                <section className="space-y-4">
+                                                    <div className="grid gap-3 sm:grid-cols-2">
+                                                        <label className="space-y-1">
+                                                            <span className="text-xs font-bold uppercase text-gray-400">Tipo de evento</span>
+                                                            <select
+                                                                value={currentHistoryFilters.eventType}
+                                                                onChange={(event) => updateHistoryFilter(key, { eventType: event.target.value })}
+                                                                className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                            >
+                                                                <option value="">Todos</option>
+                                                                {currentHistoryOptions.eventTypes.map((option) => (
+                                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                                ))}
+                                                            </select>
+                                                        </label>
+                                                        <label className="space-y-1">
+                                                            <span className="text-xs font-bold uppercase text-gray-400">Ator</span>
+                                                            <select
+                                                                value={currentHistoryFilters.actorRole}
+                                                                onChange={(event) => updateHistoryFilter(key, { actorRole: event.target.value })}
+                                                                className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                                                            >
+                                                                <option value="">Todos</option>
+                                                                {currentHistoryOptions.actorRoles.map((role) => (
+                                                                    <option key={role} value={role}>{role}</option>
+                                                                ))}
+                                                            </select>
+                                                        </label>
+                                                    </div>
+
+                                                    {historyLoading === key && (
+                                                        <div className="text-sm font-semibold text-gray-500">Carregando histórico...</div>
+                                                    )}
+
+                                                    {historyLoading !== key && currentHistoryEvents.length === 0 && (
+                                                        <EmptyState text="Nenhum evento de certificação registrado para este projeto." />
+                                                    )}
+
+                                                    <div className="space-y-6">
+                                                        {currentHistoryEvents.map((event) => (
+                                                            <div key={event.id} className="flex gap-5">
+                                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                                                                    <CheckCircle2 className="h-5 w-5" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">{event.action} · {new Date(event.createdAt).toLocaleString('pt-BR')}</p>
+                                                                    <h4 className="mt-1 text-base font-bold text-black">{event.label}</h4>
+                                                                    <p className="mt-1 text-sm text-gray-500">{event.actorRole || 'sistema'}</p>
+                                                                    {(event.metadata?.description || event.metadata?.response) && (
+                                                                        <p className="mt-1 text-sm text-gray-500">{event.metadata?.description || event.metadata?.response}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </section>
                                             )}
                                         </>
                                     )}
