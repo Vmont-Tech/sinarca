@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
 from backend_app.core.security import AuthenticatedUser, optional_user
-from backend_app.db.models import Document
+from backend_app.db.models import CertificationPendency, Document
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
+from backend_app.modules.certifier.routes import pendency_item
 from backend_app.modules.inventory.routes import (
     ALLOWED_EXTENSIONS,
     MAX_UPLOAD_BYTES,
@@ -219,6 +220,25 @@ async def get_project_public_dossier(
     session: AsyncSession = Depends(get_session),
 ) -> ProjectPublicDossierResponse:
     return await ProjectsService(session).get_public_dossier(project_id)
+
+
+@router.get("/projects/{project_id}/pendencies")
+async def list_project_pendencies(
+    project_id: str,
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, object]]:
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+    pendencies = (
+        await session.execute(
+            select(CertificationPendency)
+            .where(CertificationPendency.project_id == project.id)
+            .order_by(CertificationPendency.created_at.desc())
+        )
+    ).scalars().all()
+    return [pendency_item(item) for item in pendencies]
 
 
 @router.post("/projects/{project_id}/documents", status_code=status.HTTP_201_CREATED)

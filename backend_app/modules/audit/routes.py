@@ -36,7 +36,11 @@ async def audit_queue(
     session: AsyncSession = Depends(get_session),
 ) -> QueueResponse:
     service = ProjectsService(session)
-    statement = select(Project).where(Project.status.in_(["AWAITING_AUDIT", "BLOCKED_AUDIT_REQUIRED"])).order_by(Project.created_at.asc())
+    statement = (
+        select(Project)
+        .where(Project.status.in_(["CERTIFIED_AWAITING_TREASURY", "AWAITING_AUDIT", "BLOCKED_AUDIT_REQUIRED"]))
+        .order_by(Project.created_at.asc())
+    )
     projects = [await service.project_to_mrca(project) for project in (await session.execute(statement)).scalars().all()]
     return QueueResponse(total=len(projects), projects=projects)
 
