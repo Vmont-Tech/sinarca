@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import PurePath
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +38,7 @@ from backend_app.modules.projects.schemas import (
     PublicProfileResponse,
 )
 from backend_app.modules.projects.service import CERTIFICATION_HISTORY_LABELS, ProjectsService, certification_item
-from backend_app.modules.supabase_storage import upload_storage_object
+from backend_app.modules.supabase_storage import download_storage_object, upload_storage_object
 from backend_app.modules.storage_paths import project_document_location
 
 router = APIRouter(tags=["projects"])
@@ -276,6 +276,67 @@ async def get_project_certification_history(
             for action in available_types
         ],
         availableActorRoles=sorted({event["actorRole"] for event in all_events if event["actorRole"]}),
+    )
+
+
+CERTIFICATE_DOWNLOAD_FORBIDDEN_DETAIL = (
+    "Download do certificado disponível apenas para o produtor, a certificadora e a "
+    "administração do projeto."
+)
+
+
+@router.get("/projects/{project_id}/certificate")
+async def download_project_certificate(
+    project_id: str,
+    current_user: AuthenticatedUser | None = Depends(optional_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Download do certificado da certificação (D-13, "quando permitido").
+
+    O bucket `projects` é privado (supabase/migrations/202605260006_...): não existe URL
+    pública utilizável, então o arquivo é servido pelo backend com a service role.
+    Falhas de permissão devolvem 403 (e não 401) de propósito: o cliente `src/services/api.ts`
+    limpa a sessão em 401, e esta rota é linkada a partir do dossiê PÚBLICO, onde o visitante
+    legitimamente não tem token.
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=CERTIFICATE_DOWNLOAD_FORBIDDEN_DETAIL
+        )
+    try:
+        await service._assert_project_edit_permission(
+            project, actor_id=current_user.id, actor_role=current_user.role
+        )
+    except HTTPException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=CERTIFICATE_DOWNLOAD_FORBIDDEN_DETAIL
+        ) from exc
+
+    certificate = await service.certification_certificate(project)
+    if certificate is None or not certificate.get("storageObjectPath"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificado ainda não anexado a este projeto.",
+        )
+
+    content = await download_storage_object(
+        str(certificate["storageBucket"]), str(certificate["storageObjectPath"])
+    )
+    if content is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Certificado indisponível: Supabase Storage não está configurado.",
+        )
+
+    filename = str(certificate.get("filename") or f"certificado-{project.friendly_id}.pdf")
+    safe_filename = PurePath(filename).name.replace('"', "")
+    return Response(
+        content=content,
+        media_type=str(certificate.get("mimeType") or "application/pdf"),
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
     )
 
 

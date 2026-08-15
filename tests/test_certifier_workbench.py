@@ -518,3 +518,45 @@ def test_certification_history_visible_to_producer() -> None:
         headers=auth_headers(*PRODUCER),
     )
     assert missing.status_code == 404
+
+
+def test_certificate_download_requires_project_membership(monkeypatch) -> None:
+    """D-13: referencia e hash sao publicos, o arquivo so sai para quem participa do projeto."""
+    project = create_certifiable_project(f"cert-{uuid.uuid4().hex[:8]}")
+    friendly_id = str(project["friendlyId"])
+
+    async def fake_download(bucket: str, object_path: str) -> bytes:
+        return PDF_BYTES
+
+    monkeypatch.setattr(
+        "backend_app.modules.projects.routes.download_storage_object", fake_download
+    )
+
+    anonymous = client.get(f"/api/v1/projects/{friendly_id}/certificate")
+    assert anonymous.status_code == 403
+    assert "produtor" in anonymous.json()["detail"]
+
+    outsider = client.get(
+        f"/api/v1/projects/{friendly_id}/certificate", headers=auth_headers(*COMPANY)
+    )
+    assert outsider.status_code == 403
+
+    without_certificate = client.get(
+        f"/api/v1/projects/{friendly_id}/certificate", headers=auth_headers(*PRODUCER)
+    )
+    assert without_certificate.status_code == 404
+
+    approval = client.patch(
+        f"/api/v1/certifier/projects/{friendly_id}/decision",
+        data=approve_payload(),
+        files={"certificate": ("certificado.pdf", PDF_BYTES, "application/pdf")},
+        headers=auth_headers(*CERTIFIER),
+    )
+    assert approval.status_code == 200, approval.text
+
+    owner = client.get(
+        f"/api/v1/projects/{friendly_id}/certificate", headers=auth_headers(*PRODUCER)
+    )
+    assert owner.status_code == 200, owner.text
+    assert owner.content == PDF_BYTES
+    assert "attachment" in owner.headers["content-disposition"]
