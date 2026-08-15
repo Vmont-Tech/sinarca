@@ -78,6 +78,9 @@ Progress: [███-------] 30%
 - [Roadmap]: A auditoria de checklist de fluxo/tela de 2026-05-26 não reabre a Phase 1; ela distribui as lacunas identificadas em fases próprias de produto/UX e operação.
 - [Roadmap]: A conferência contra `.planning/docs/bible/` adiciona cobertura explícita para campo mobile/PWA, pagamentos/settlement e requisitos transversais de segurança, privacidade, compliance, qualidade e governança de dados.
 - [Roadmap]: O checklist operacional em `.planning/docs/FLOW_SCREEN_CHECKLIST_AUDIT.md` é baseline obrigatório das Phases 2-10; cada plano futuro deve declarar cobertura do checklist, fora de escopo e gate de dados seed/API.
+- [Roadmap 2026-08-14]: Ingestão de `.planning/docs/bible/14_Novos_requisitos.md` (Integrity Layer) e `15_Geofance_sentinel_requisitos.md` (Satellite Monitoring) inseriu Phase 04.1 (geospatial-foundation) e 04.2 (integrity-layer-foundation) entre Phase 4 e Phase 5, expandiu a Phase 5 para `satellite-monitoring-and-field-audit` e inseriu Phase 05.1 (integrity-review-and-external-registries). Nenhum plano/execução foi afetado — Phase 4 segue READY_TO_PLAN sem bloqueio.
+- [Roadmap 2026-08-14]: Nem PRD 14 nem PRD 15 têm fundação hoje: zero PostGIS/geometry no schema, geofence é shoelace ingênuo sobre 4 pontos (backend e frontend), e `deterministic_baseline()` gera `ndvi_mean`/`sentinel_scene_id` por hash do nome do projeto, não por observação de satélite real.
+- [Roadmap 2026-08-14]: Sinarca não tem acesso a nenhum provedor de geoportal/registro externo (tipo InfoTerras) hoje; Phase 05.1 começa pela decisão documentada de build vs. buy antes de qualquer integração ONR/SIGEF/CAR.
 - [Phase 02]: A discussão foi fechada por documentos, sem pergunta bloqueante, porque checklist, Bible e roadmap já definem o recorte.
 - [Phase 02]: A fase foi dividida em cinco planos: navegação/legal, contrato público de API, dossiê/explorer UI, perfis públicos/rankings e auth/perfil.
 - [Phase 02]: Admin permanece sem cadastro público; provisionamento e gestão admin ficam na Phase 9.
@@ -104,11 +107,17 @@ Progress: [███-------] 30%
 - Phase 8 added: treasury-blockchain-and-interoperability.
 - Phase 9 added: admin-operations-and-observability.
 - Phase 10 added: security-compliance-and-data-governance.
+- Phase 04.1 inserted (2026-08-14): geospatial-foundation, após Phase 4.
+- Phase 04.2 inserted (2026-08-14): integrity-layer-foundation, após Phase 04.1.
+- Phase 5 edited (2026-08-14): audit-monitoring-and-anomalies → satellite-monitoring-and-field-audit.
+- Phase 05.1 inserted (2026-08-14): integrity-review-and-external-registries, após Phase 5.
 
 ### Pending Todos
 
 - Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
 - Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
+- Planejar Phase 04.1 (`geospatial-foundation`) — pré-requisito bloqueante de 04.2 e da Phase 5 expandida; nenhuma das duas pode ser executada antes dela.
+- Decidir e documentar build vs. buy de provedor de registro externo (ONR/SIGEF/CAR) antes de planejar a Phase 05.1 — sem fornecedor definido em 2026-08-14.
 
 ### Blockers/Concerns
 
