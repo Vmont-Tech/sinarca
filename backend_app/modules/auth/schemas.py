@@ -19,6 +19,17 @@ class RegisterRequest(BaseModel):
     document: str | None = None
     password: str
     role: str = "company"
+    organization: str | None = None
+    phone: str | None = None
+
+
+class AdminProvisionRequest(BaseModel):
+    name: str
+    email: EmailStr
+    document: str | None = None
+    password: str
+    organization: str | None = None
+    phone: str | None = None
 
 
 class AuthUser(BaseModel):
@@ -49,4 +60,17 @@ class ProfileUpdate(BaseModel):
     document: str | None = None
     organization: str | None = None
     phone: str | None = None
-    avatar: str | None = None
+
+
+class UserDocumentUploadResponse(BaseModel):
+    success: bool
+    id: str
+    filename: str
+    document_type: str
+    mime_type: str
+    size_bytes: int
+    sha256: str
+    storage_path: str
+    bucket: str
+    object_path: str
+    status: str
