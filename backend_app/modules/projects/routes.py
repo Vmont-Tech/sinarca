@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
 from backend_app.core.security import AuthenticatedUser, optional_user
-from backend_app.db.models import CertificationPendency, Document
+from backend_app.db.models import Certification, CertificationPendency, Document
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
 from backend_app.modules.certifier.routes import pendency_item
@@ -24,6 +24,7 @@ from backend_app.modules.inventory.routes import (
 from backend_app.modules.projects.schemas import (
     CatalogResponse,
     PendencyRespondRequest,
+    ProjectCertificationHistoryResponse,
     ProjectCreate,
     ProjectDraftCreate,
     ProjectDraftResponse,
@@ -36,7 +37,7 @@ from backend_app.modules.projects.schemas import (
     ProjectUpdate,
     PublicProfileResponse,
 )
-from backend_app.modules.projects.service import ProjectsService
+from backend_app.modules.projects.service import CERTIFICATION_HISTORY_LABELS, ProjectsService, certification_item
 from backend_app.modules.supabase_storage import upload_storage_object
 from backend_app.modules.storage_paths import project_document_location
 
@@ -223,6 +224,59 @@ async def get_project_public_dossier(
     session: AsyncSession = Depends(get_session),
 ) -> ProjectPublicDossierResponse:
     return await ProjectsService(session).get_public_dossier(project_id)
+
+
+@router.get("/projects/{project_id}/certification-history", response_model=ProjectCertificationHistoryResponse)
+async def get_project_certification_history(
+    project_id: str,
+    event_type: str | None = Query(default=None),
+    actor_role: str | None = Query(default=None),
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectCertificationHistoryResponse:
+    """Trilha INTERNA de certificação do projeto (D-22).
+
+    A rota do módulo da certificadora (`/certifier/projects/{id}/history`) é fechada em
+    require_role("certifier", "admin"). Esta rota existe para o produtor dono do projeto,
+    que a D-22 lista explicitamente entre quem vê notas internas completas, junto com
+    certificadora, admin e tesouraria — e a tesouraria opera hoje sob o papel `admin`,
+    porque `backend_app/core/roles.py` não define papel `treasury`.
+    O acesso NÃO é garantido só pelo papel: `_assert_project_edit_permission` restringe
+    à organização dona (producer/developer) ou à certificadora do projeto.
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(
+        project, actor_id=current_user.id, actor_role=current_user.role
+    )
+
+    all_events = await service.certification_history(project)
+    events = all_events
+    if event_type:
+        events = [event for event in events if event["action"] == event_type.upper()]
+    if actor_role:
+        events = [event for event in events if (event["actorRole"] or "") == actor_role.lower()]
+
+    certifications = (
+        await session.execute(
+            select(Certification)
+            .where(Certification.project_id == project.id)
+            .order_by(Certification.created_at.desc())
+        )
+    ).scalars().all()
+
+    available_types = sorted({event["action"] for event in all_events})
+    return ProjectCertificationHistoryResponse(
+        total=len(events),
+        events=events,
+        certifications=[certification_item(item) for item in certifications],
+        certificate=await service.certification_certificate(project),
+        availableEventTypes=[
+            {"value": action, "label": CERTIFICATION_HISTORY_LABELS.get(action, action)}
+            for action in available_types
+        ],
+        availableActorRoles=sorted({event["actorRole"] for event in all_events if event["actorRole"]}),
+    )
 
 
 @router.get("/projects/{project_id}/pendencies")

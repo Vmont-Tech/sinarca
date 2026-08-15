@@ -108,6 +108,16 @@ class ProjectPublicDossierResponse(BaseModel):
     certificationHistory: list[dict[str, Any]] = []
 
 
+class ProjectCertificationHistoryResponse(BaseModel):
+    success: bool = True
+    total: int
+    events: list[dict[str, Any]]
+    certifications: list[dict[str, Any]] = []
+    certificate: dict[str, Any] | None = None
+    availableEventTypes: list[dict[str, str]] = []
+    availableActorRoles: list[str] = []
+
+
 class CertifierReviewResponse(BaseModel):
     success: bool = True
     project: ProjectMRCA

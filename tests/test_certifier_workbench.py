@@ -475,3 +475,46 @@ def test_approve_rolls_back_when_treasury_package_fails(monkeypatch) -> None:
     )
     assert treasury_response.status_code == 200, treasury_response.text
     assert friendly_id not in {item["projectId"] for item in treasury_response.json()}
+
+
+def test_certification_history_visible_to_producer() -> None:
+    """D-22: produtor dono ve a trilha interna completa, incluindo notas da certificadora."""
+    project = create_certifiable_project(f"hist-{uuid.uuid4().hex[:8]}")
+    friendly_id = str(project["friendlyId"])
+
+    decision = client.patch(
+        f"/api/v1/certifier/projects/{friendly_id}/decision",
+        data=approve_payload(
+            decision="REQUEST_CHANGES",
+            rejection_category="DOCUMENTACAO_INCOMPLETA",
+            notes="NOTA INTERNA DA CERTIFICADORA",
+        ),
+        headers=auth_headers(*CERTIFIER),
+    )
+    assert decision.status_code == 200, decision.text
+
+    owner = client.get(
+        f"/api/v1/projects/{friendly_id}/certification-history",
+        headers=auth_headers(*PRODUCER),
+    )
+    assert owner.status_code == 200, owner.text
+    body = owner.json()
+    assert body["certifications"], "produtor deve ver as certificacoes do proprio projeto"
+    assert "notes" in body["certifications"][0]
+    assert "NOTA INTERNA DA CERTIFICADORA" in owner.text
+    assert body["events"] == sorted(body["events"], key=lambda event: event["createdAt"])
+
+    outsider = client.get(
+        f"/api/v1/projects/{friendly_id}/certification-history",
+        headers=auth_headers(*COMPANY),
+    )
+    assert outsider.status_code == 403
+
+    anonymous = client.get(f"/api/v1/projects/{friendly_id}/certification-history")
+    assert anonymous.status_code == 401
+
+    missing = client.get(
+        "/api/v1/projects/PRC-INEXISTENTE-0000/certification-history",
+        headers=auth_headers(*PRODUCER),
+    )
+    assert missing.status_code == 404
