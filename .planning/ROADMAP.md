@@ -6,6 +6,8 @@ O ciclo atual separa a base técnica do fechamento de produto. A Phase 1 permane
 
 A auditoria de checklist de 2026-05-26 identificou lacunas de fluxo, tela e operação que deixariam a Phase 1 extensa demais. A conferência contra `.planning/docs/bible/` adicionou os requisitos transversais de segurança, compliance, privacidade, governança de dados, qualidade e operação. Esses itens passam a ser programados como fases próprias a partir da Phase 2, preservando a Phase 1 como fundação concluída.
 
+A ingestão de `.planning/docs/bible/14_Novos_requisitos.md` (Sinarca Integrity Layer) e `.planning/docs/bible/15_Geofance_sentinel_requisitos.md` (Satellite Historical Reconstruction & Monitoring) em 2026-08-14 inseriu quatro fases: 04.1 (fundação geoespacial/PostGIS, pré-requisito comum de ambas as Bibles), 04.2 (fundação do Integrity Layer — Claim/Evidence/Conflict/Risk Score), a Phase 5 existente foi expandida para incorporar monitoramento satelital real via Copernicus Sentinel-2, e 05.1 (four-eyes review e registros externos, iniciando pela decisão de build vs. buy — sem fornecedor definido no momento da ingestão).
+
 ## Baseline de Fase
 
 `.planning/docs/FLOW_SCREEN_CHECKLIST_AUDIT.md` é a base de aceite das Phases 2-10. Todo plano futuro precisa declarar:
@@ -21,7 +23,10 @@ A auditoria de checklist de 2026-05-26 identificou lacunas de fluxo, tela e oper
 - [x] **Phase 2: public-transparency-and-profiles** - Fechar experiência pública, dossiê público de projeto, explorer, perfis públicos, cadastro por perfil e edição de perfil.
 - [x] **Phase 3: project-origination-and-documents** - Completar originação do projeto com produtor, localização, metodologia, QTAGs/NFC, geofence, documentos e timeline canônica.
 - [ ] **Phase 4: certification-workbench** - Completar revisão da certificadora, decisão técnica, certificado/documento, histórico e orquestração para lastro/mint bloqueado.
-- [ ] **Phase 5: audit-monitoring-and-anomalies** - Completar auditoria de campo, evidências, assinatura verificável, monitoramento NDVI, anomalias, bloqueio e desbloqueio auditável.
+- [ ] **Phase 4.1: geospatial-foundation** *(inserida)* - Introduzir PostGIS e perímetro real (geometry), backfill dos QTAGs e overlap interno — pré-requisito comum do Integrity Layer e do Satellite Monitoring.
+- [ ] **Phase 4.2: integrity-layer-foundation** *(inserida)* - Claim/Evidence/Conflict, estados de confiança, Risk Score e detecção de duplicidade — P0 do Sinarca Integrity Layer.
+- [ ] **Phase 5: satellite-monitoring-and-field-audit** *(expandida)* - Completar auditoria de campo e monitoramento via Copernicus Sentinel-2 real (NDVI/NDMI/NBR, reconstrução histórica, anomalias), substituindo o baseline determinístico atual.
+- [ ] **Phase 5.1: integrity-review-and-external-registries** *(inserida)* - Four-eyes review e verificação de registros oficiais (ONR/SIGEF/CAR) — começa pela decisão de build vs. buy, sem fornecedor definido hoje.
 - [ ] **Phase 6: marketplace-wallet-and-retirement** - Completar checkout, carteira off-chain, histórico/exportação, recibos, aposentadoria real e certificado de impacto.
 - [ ] **Phase 7: emissions-inventory-and-compensation** - Completar inventário de emissões, upload seguro pela UI, vínculo com compensação e dashboard emissões versus créditos.
 - [ ] **Phase 8: treasury-blockchain-and-interoperability** - Criar consoles operacionais para tesouraria, providers, Soroban/Stellar, mint/unlock/transfer/burn e lock-and-mint Polygon.
@@ -117,23 +122,92 @@ Plans:
   3. Certificado digital ou referência documental é registrado e exibido no projeto.
   4. Aprovação aciona ou prepara explicitamente o fluxo de lastro/mint bloqueado com status visível.
   5. Histórico de decisões por projeto fica disponível para certificadora e dossiê público quando aplicável.
-**Plans**: Not planned yet
+**Plans**: 7 plans
 
-### Phase 5: audit-monitoring-and-anomalies
-**Goal**: Completar auditoria de campo e monitoramento ambiental: cliente de campo web/PWA/mobile, evidências reais, assinatura verificável, NDVI/baseline, anomalias, bloqueio automático, notificação e desbloqueio auditável.
+Plans:
+- [x] 04-01-PLAN.md — Fundação de dados (migration, modelos de pendência/tesouraria) e contrato de testes CERT-01..05.
+- [x] 04-02-PLAN.md — Dossiê técnico da certificadora e minimização do dossiê público (serializadores público/interno).
+- [x] 04-03-PLAN.md — Decisão multipart append-only com gate de dossiê mínimo e certificado PDF obrigatório.
+- [x] 04-04-PLAN.md — Autorização atômica de lastro/mint bloqueado para a fila da tesouraria.
+- [x] 04-05-PLAN.md — Filas com escopo e contador, linha do tempo filtrável e ciclo de resposta do produtor.
+- [x] 04-06-PLAN.md — Bancada da certificadora no frontend: card expansível, seis abas e upload real do certificado.
+- [x] 04-07-PLAN.md — Certificado e histórico no dossiê público e trilha interna completa para o produtor (D-13/D-22).
+
+### Phase 04.1: geospatial-foundation (INSERTED)
+**Goal**: Introduzir PostGIS e persistir o perímetro do projeto como `geometry` real (declared/field_verified/certified/active), com backfill dos QTAGs existentes a partir do algoritmo de ordenação/shoelace hoje usado em runtime e detecção interna de overlap via `ST_Intersects`/`ST_Area`. Pré-requisito comum para as Phases 04.2 (Integrity Layer) e 05 (Satellite Monitoring) — nenhuma das duas tem onde persistir geometria sem esta fase.
 **Depends on**: Phase 4
 **Requirements**:
+  - `.planning/docs/bible/14_Novos_requisitos.md` seções 12-18 (Geospatial Integrity Engine, Canonical Geometry, validações geométricas, detecção de overlap).
+  - `.planning/docs/bible/15_Geofance_sentinel_requisitos.md` seções 5-8 (Project Boundary, tipos de perímetro, validações geográficas, persistência geoespacial).
+  - Migração de dados deve reaproveitar `project_tags` como origem de `declared_boundary`, sem duplicar ou substituir a tabela de QTAG/NFC físico.
+**Success Criteria** (what must be TRUE):
+  1. `postgis` está habilitado no Supabase e `project_boundaries` armazena `geometry(Polygon, 4326)` com colunas `declared_boundary`/`field_verified_boundary`/`certified_boundary`/`active_boundary`.
+  2. Todo projeto com QTAGs existentes (Phase 3) tem `declared_boundary` populada via backfill, sem perda de área/vértices em relação ao cálculo shoelace anterior.
+  3. `ST_IsValid`, autointerseção, vértices duplicados e divergência entre área declarada e calculada são validados no backend antes de persistir.
+  4. `ST_Intersects`/`ST_Area` detectam overlap entre dois projetos do próprio Sinarca e calculam `overlapPercentage`.
+  5. `ProjectGeofencePreview` (frontend) passa a renderizar a partir da geometria persistida, não do recálculo client-side dos 4 pontos.
+**Plans**: Not planned yet
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 04.1 to break down)
+
+### Phase 04.2: integrity-layer-foundation (INSERTED)
+**Goal**: Implementar o P0 do Sinarca Integrity Layer sobre a geometria real da Phase 04.1: entidades `Claim`/`Evidence`/`Conflict`, estados de confiança `DECLARED → IDENTITY_VERIFIED → EVIDENCE_VERIFIED → VERIFIED/ON_HOLD/SUSPENDED/REVOKED`, Risk Score 0-100 com sinais explicáveis e detecção de duplicidade/double claim internos ao Sinarca. Muda o princípio operacional do sistema de "dado enviado = fato" para "dado enviado = declaração até validação" — cross-cutting sobre Project (Phase 3), Certification (Phase 4) e Audit (Phase 5).
+**Depends on**: Phase 04.1
+**Requirements**:
+  - `.planning/docs/bible/14_Novos_requisitos.md` seções 4-11, 19-23 (princípios de produto, entidades, estados de confiança, Double Claiming Engine, Duplicate Detection, Risk Engine, Risk Classes).
+  - Reaproveitar `documents.sha256_hash` como base de `Evidence`; não recriar hashing de documento do zero.
+  - `audit_events` permanece como trilha de auditoria genérica; `Evidence`/`Claim` não a substituem, se relacionam a ela.
+**Success Criteria** (what must be TRUE):
+  1. Toda submissão relevante (propriedade, metodologia, direito de operar) gera um registro `Claim` com `status` e `confidenceScore` próprios, sem promover `projects.status` diretamente a partir do input do usuário.
+  2. `Evidence` referencia hash, origem, `validationMethod` e `validationStatus`, vinculada a um `Claim`.
+  3. `Conflict` é gerado automaticamente quando `ST_Intersects` (Phase 04.1) encontra overlap acima do limiar configurável, com severidade `CLEAR → CRITICAL`.
+  4. Risk Score é calculado com sinais explicáveis (ex.: "+30 SIGEF diverge da geometria") e projetos `CRITICAL` entram automaticamente em `ON_HOLD`.
+  5. O status público do projeto nunca usa apenas "Certified" sem explicitar o que foi verificado, conforme `.planning/docs/bible/14_Novos_requisitos.md` seção 40.
+**Plans**: Not planned yet
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 04.2 to break down)
+
+### Phase 5: satellite-monitoring-and-field-audit
+*(expandida — antes "audit-monitoring-and-anomalies"; escopo de satélite incorporado a partir de `.planning/docs/bible/15_Geofance_sentinel_requisitos.md`)*
+**Goal**: Completar auditoria de campo e monitoramento ambiental com evidência satelital real: cliente de campo web/PWA/mobile, evidências reais, assinatura verificável, e reconstrução histórica + monitoramento contínuo via Copernicus Sentinel-2 sobre a geometria da Phase 04.1 (NDVI/NDMI/NBR, baseline, anomalias, bloqueio automático, notificação, desbloqueio auditável). Substitui o baseline hoje determinístico (`deterministic_baseline()`, derivado de hash do nome do projeto) por observação satelital real, alimentando `Evidence` da Phase 04.2.
+**Depends on**: Phase 04.2
+**Requirements**:
   - `.planning/docs/FLOW_SCREEN_CHECKLIST_AUDIT.md` seções 5 e 6.
-  - Evidências não podem usar `mock://` como operação real.
+  - `.planning/docs/bible/15_Geofance_sentinel_requisitos.md` completo (Project Boundary como AOI, integração Copernicus, STAC, Statistical API, NDVI/NDMI/NBR, reconstrução histórica, anomalias, monitoramento contínuo).
+  - Evidências não podem usar `mock://` como operação real; baseline não pode mais ser gerado por `deterministic_baseline()`.
+  - Introduzir a primeira infraestrutura assíncrona do backend (scheduler leve, ex. APScheduler in-process) para reconstrução histórica e job diário de monitoramento — não bloquear a Statistical API na request HTTP síncrona.
 **Success Criteria** (what must be TRUE):
   1. Auditoria aceita fotos, vídeos, geolocalização, observações e laudo com upload real em experiência de campo.
   2. Assinatura digital/biométrica ou stub verificável é registrada pelo backend.
   3. Laudo e evidências aparecem no projeto interno e no dossiê público conforme regra de visibilidade.
   4. Auditoria pode reler QTAGs/NFC para validar integridade física da demarcação quando o ambiente/hardware permitir.
-  5. Monitoramento exibe baseline Sentinel-2, NDVI médio, pontos analisados e hash de referência.
-  6. Anomalias são registradas/listadas, bloqueiam projeto automaticamente, notificam papéis envolvidos e liberam desbloqueio após auditoria aprovada.
-  7. Recálculo de créditos após incidente ajusta disponibilidade e prepara ajuste de tokens quando aplicável.
+  5. `CopernicusProvider` reconstrói ao menos 5 anos de histórico NDVI mensal para a AOI (`project_boundaries.active_boundary`) e persiste `SatelliteObservation`.
+  6. Anomalias (`SatelliteAnomaly`) são detectadas por queda significativa de NDVI, nunca rotuladas automaticamente como `DEFORESTATION`, e geram `ProjectEvent` com estado `DETECTED → ANALYZED → CONFIRMED/DISMISSED`.
+  7. Monitoramento exibe baseline Sentinel-2 real, NDVI médio, pontos analisados e hash de referência — sem nenhum campo derivado de `deterministic_baseline()`.
+  8. Anomalias confirmadas bloqueiam projeto automaticamente, notificam papéis envolvidos e liberam desbloqueio após auditoria aprovada.
+  9. Recálculo de créditos após incidente ajusta disponibilidade e prepara ajuste de tokens quando aplicável.
+  10. Job de monitoramento roda periodicamente sem bloquear requests HTTP, respeita `maxCloudCoverage` configurável e é idempotente por `projectId + satellite + sceneId + processingVersion`.
 **Plans**: Not planned yet
+
+### Phase 05.1: integrity-review-and-external-registries (INSERTED)
+**Goal**: Fechar o P1 do Sinarca Integrity Layer: Integrity Review Console com regra de four-eyes para risco HIGH+ (nenhum ator único pode submeter, validar e aprovar o mesmo projeto), e verificação de registros oficiais (ONR/CNM, SIGEF/INCRA, CAR/SICAR) via uma interface `ExternalRegistryProvider` desacoplada — análoga em desenho ao `SatelliteProvider` da Phase 5. O Sinarca hoje **não tem acesso a nenhum provedor desse tipo** (ex.: geoportal InfoTerras-like); a primeira entrega desta fase é a decisão de build vs. buy documentada, não a integração em si.
+**Depends on**: Phase 04.2
+**Requirements**:
+  - `.planning/docs/bible/14_Novos_requisitos.md` seções 10, 25-27 (Validação fundiária, Human Review, Four-Eyes Principle, Independent Verification).
+  - Decisão de fornecedor (geoportal terceirizado tipo InfoTerras vs. integração direta com ONR/SIGEF/CAR vs. postergar) deve ficar registrada em `PROJECT.md` antes de qualquer plano de execução desta fase.
+  - `ExternalRegistryProvider` deve seguir o mesmo padrão de `assert_ready()` fail-closed já usado nos adapters blockchain (`backend_app/adapters/stellar.py`).
+**Success Criteria** (what must be TRUE):
+  1. Decisão de build vs. buy para verificação de registros externos está documentada, com fornecedor(es) avaliado(s) e escopo do MVP definido.
+  2. Interface `ExternalRegistryProvider` existe e tem ao menos uma implementação (real ou explicitamente bloqueada por credenciais ausentes, seguindo o padrão fail-closed do projeto).
+  3. Projetos com Risk Score HIGH ou superior exigem aprovação de dois revisores distintos (`require_role` atual evolui de ator único para dupla revisão).
+  4. Integrity Review Console exibe projeto, mapa, documentos, conflitos, fontes externas, risk score e justificativas, com ações `APPROVE/REQUEST_EVIDENCE/ON_HOLD/REJECT/ESCALATE/SUSPEND`.
+  5. Trust Badge no status público do projeto reflete exatamente quais checks (Identity/Land Evidence/Geofence/Overlap/Rights/Independent Audit) passaram, sem usar "Certified" isolado.
+**Plans**: Not planned yet
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 05.1 to break down)
 
 ### Phase 6: marketplace-wallet-and-retirement
 **Goal**: Completar marketplace, carteira off-chain e aposentadoria de créditos para empresas e cidadãos com checkout real, pagamento/settlement quando no escopo, ledger navegável, recibos, validação de saldo e certificado de impacto.
@@ -230,7 +304,10 @@ Plans:
 | 2. public-transparency-and-profiles | 5/5 | Complete | 2026-05-26 |
 | 3. project-origination-and-documents | 5/5 | Complete | 2026-05-26 |
 | 4. certification-workbench | 0/0 | Not planned | - |
-| 5. audit-monitoring-and-anomalies | 0/0 | Not planned | - |
+| 4.1. geospatial-foundation | 0/0 | Not planned | - |
+| 4.2. integrity-layer-foundation | 0/0 | Not planned | - |
+| 5. satellite-monitoring-and-field-audit | 0/0 | Not planned | - |
+| 5.1. integrity-review-and-external-registries | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |
 | 7. emissions-inventory-and-compensation | 0/0 | Not planned | - |
 | 8. treasury-blockchain-and-interoperability | 0/0 | Not planned | - |

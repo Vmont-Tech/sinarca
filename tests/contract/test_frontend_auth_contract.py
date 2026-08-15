@@ -86,6 +86,33 @@ def test_frontend_auth_does_not_keep_local_user_database_fallback() -> None:
     assert "based on hash" not in transaction_details
 
 
+def test_own_profile_route_fetches_real_metrics_instead_of_hardcoded_zeros() -> None:
+    user_profile = read("src/pages/Dashboard/UserProfile.tsx")
+
+    own_profile_block = user_profile.split("if (user) {", 1)[1].split("if (mounted) setProfile(null);", 1)[0]
+
+    assert "database.getPublicProfile(user.id)" in own_profile_block
+    assert own_profile_block.index("database.getPublicProfile(user.id)") < own_profile_block.index("projects: [],\n                                activity: [],")
+
+
+def test_auditor_profile_computes_real_approval_rate_instead_of_hardcoded_100() -> None:
+    auditor_profile = read("src/pages/Dashboard/AuditorProfile.tsx")
+
+    assert '<p className="text-3xl font-bold text-white mb-1">100%</p>' not in auditor_profile
+    assert "approvalRateLabel" in auditor_profile
+    assert "projects.filter((p: any) => p.type !== 'bloqueado')" in auditor_profile
+
+
+def test_session_expiry_clears_auth_context_user() -> None:
+    api = read("src/services/api.ts")
+    auth_context = read("src/contexts/AuthContext.tsx")
+
+    assert "SESSION_EXPIRED_EVENT" in api
+    assert "window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))" in api
+    assert "SESSION_EXPIRED_EVENT" in auth_context
+    assert "window.addEventListener(SESSION_EXPIRED_EVENT" in auth_context
+
+
 def test_certifier_navigation_keeps_single_traceability_item() -> None:
     dashboard_layout = read("src/layouts/DashboardLayout.tsx")
     certifier_block = dashboard_layout.split("{isCertifier && (", 1)[1].split("{isAuditor && (", 1)[0]

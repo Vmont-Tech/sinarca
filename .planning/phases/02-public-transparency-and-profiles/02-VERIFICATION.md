@@ -1,7 +1,22 @@
+---
+phase: "02"
+slug: "public-transparency-and-profiles"
+status: passed
+date: 2026-08-15
+---
+
 # Phase 02 Verification
 
-Data: 2026-05-26
-Branch: `feat/fase-2-transparencia-perfis`
+Data original: 2026-05-26 (implementação). Verificação completa fechada em 2026-08-15.
+Branch: `feat/fase-2-transparencia-perfis` (implementação) → `feat/fase-4-certification-workbench` (verificação).
+
+## Cobertura (2026-08-15)
+
+1. **Nyquist (`02-VALIDATION.md`)** — cobertura de teste automatizado auditada; 2 gaps corrigidos (comando obsoleto, bug de métricas zeradas no perfil próprio).
+2. **UAT (`02-UAT.md`)** — 10/10 testes passados, verificados via API contra o backend local (dossiê público, filtros de transação, mascaramento de perfil, cadastro/bloqueio de admin, persistência de edição).
+3. **Segurança (`02-SECURITY.md`)** — 21 ameaças verificadas no código atual: 18 já fechadas, 2 corrigidas nesta rodada (métrica fabricada em `AuditorProfile.tsx`, sessão expirada não notificava `AuthContext`), 1 aceita como risco documentado (duplicação de lógica entre páginas de perfil). `threats_open: 0`.
+
+Durante a verificação, foi descoberto que o container Docker local (`sinarca-sinarca-api-1`) estava rodando código de 2026-05-27 (~2,5 meses desatualizado). Containers reconstruídos (`docker compose build && up -d --force-recreate`) e evidências re-confirmadas contra o código atual.
 
 ## Resultado
 

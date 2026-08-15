@@ -1,5 +1,5 @@
 import { type ProjectMRCA, type InventoryItem } from '../data/mrca_db';
-import { apiGet, apiPatch } from './api';
+import { API_BASE_URL, apiGet, apiPatch } from './api';
 
 export type ProjectsResponse = {
     success: boolean;
@@ -101,6 +101,26 @@ export type TransactionFilters = {
     limit?: number;
 };
 
+export type ProjectCertificateReference = {
+    documentId: string;
+    sha256: string;
+    mimeType: string;
+    sizeBytes: number;
+    uploadedAt: string;
+    storagePath: string;
+    storageBucket?: string;
+    storageObjectPath?: string | null;
+    filename: string | null;
+    downloadAvailable: boolean;
+};
+
+export type ProjectPublicCertificationEvent = {
+    id: string;
+    action: string;
+    label: string;
+    createdAt: string;
+};
+
 export type ProjectPublicDossier = {
     success: boolean;
     project: ProjectMRCA;
@@ -112,6 +132,8 @@ export type ProjectPublicDossier = {
     credits: Array<Record<string, any>>;
     transactions: TransactionRecord[];
     chainEvents: Array<Record<string, any>>;
+    certificate: ProjectCertificateReference | null;
+    certificationHistory: ProjectPublicCertificationEvent[];
 };
 
 export type ProjectDossierDocument = {
@@ -295,6 +317,38 @@ export const database = {
             throw new Error('Dossiê público não encontrado na API');
         }
         return response;
+    },
+
+    downloadProjectCertificate: async (id: string): Promise<{ blob: Blob; filename: string }> => {
+        // NAO usar apiGet: request() sempre faz response.json() e limpa a sessao em 401.
+        // Aqui o corpo e binario e o 403 e um resultado legitimo para visitante anonimo.
+        const token = localStorage.getItem('sinarca_token');
+        const headers = new Headers();
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+
+        let response: Response;
+        try {
+            response = await fetch(`${API_BASE_URL}/projects/${encodeURIComponent(id)}/certificate`, {
+                method: 'GET',
+                headers,
+            });
+        } catch {
+            throw new Error('API indisponível. Verifique sua conexão ou se o serviço local está ativo.');
+        }
+
+        if (!response.ok) {
+            let detail = '';
+            try {
+                detail = (await response.json())?.detail || '';
+            } catch {
+                detail = '';
+            }
+            throw new Error(detail || `Não foi possível baixar o certificado (HTTP ${response.status}).`);
+        }
+
+        const disposition = response.headers.get('Content-Disposition') || '';
+        const match = /filename="?([^";]+)"?/i.exec(disposition);
+        return { blob: await response.blob(), filename: match?.[1] || `certificado-${id}.pdf` };
     },
 
     // === BUSCA UNIFICADA ===

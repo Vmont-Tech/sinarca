@@ -104,6 +104,32 @@ class ProjectPublicDossierResponse(BaseModel):
     credits: list[dict[str, Any]]
     transactions: list[dict[str, Any]]
     chainEvents: list[dict[str, Any]]
+    certificate: dict[str, Any] | None = None
+    certificationHistory: list[dict[str, Any]] = []
+
+
+class ProjectCertificationHistoryResponse(BaseModel):
+    success: bool = True
+    total: int
+    events: list[dict[str, Any]]
+    certifications: list[dict[str, Any]] = []
+    certificate: dict[str, Any] | None = None
+    availableEventTypes: list[dict[str, str]] = []
+    availableActorRoles: list[str] = []
+
+
+class CertifierReviewResponse(BaseModel):
+    success: bool = True
+    project: ProjectMRCA
+    baseline: dict[str, Any] | None = None
+    tags: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
+    dossier: dict[str, Any]
+    calculation: dict[str, Any]
+    certifications: list[dict[str, Any]] = []
+    pendencies: list[dict[str, Any]] = []
+    treasuryAuthorization: dict[str, Any] | None = None
+    certificate: dict[str, Any] | None = None
 
 
 class PublicProfileResponse(BaseModel):
@@ -175,6 +201,23 @@ class QueueResponse(BaseModel):
     success: bool = True
     total: int
     projects: list[ProjectMRCA]
+
+
+class CertifierQueueResponse(BaseModel):
+    success: bool = True
+    total: int
+    items: list[ProjectMRCA]
+    # Alias de compatibilidade: `CertifierReview.tsx` (frontend legado, ainda não migrado
+    # nesta fase) lê `response.projects`; mantido até um plano de UI (04-06/04-07) migrar
+    # o consumo para `items`, que é o campo exigido pelo contrato de testes desta fase
+    # (tests/test_certifier_workbench.py::test_correction_queue_split_and_producer_response).
+    projects: list[ProjectMRCA]
+    scope: Literal["main", "corrections"] = "main"
+    counts: dict[str, int] = Field(default_factory=dict)
+
+
+class PendencyRespondRequest(BaseModel):
+    response: str
 
 
 class ProjectTagInput(BaseModel):

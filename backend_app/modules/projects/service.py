@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.db.models import (
     Audit,
+    AuditEvent,
     Certification,
+    CertificationPendency,
     ChainEvent,
     Document,
     EnvironmentalCredit,
@@ -31,6 +33,7 @@ from backend_app.db.models import (
     ProjectDraft,
     ProjectDraftDocument,
     ProjectTag,
+    TreasuryAuthorization,
 )
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.projects.schemas import (
@@ -68,6 +71,7 @@ MARKETPLACE_READY_PROJECT_STATUSES = ("ACTIVE", "AVAILABLE")
 PRODUCER_PORTFOLIO_PROJECT_STATUSES = (
     "ACTIVE",
     "AVAILABLE",
+    "CERTIFIED_AWAITING_TREASURY",
     "AWAITING_AUDIT",
     "AUDITED",
     "BLOCKED_AUDIT_REQUIRED",
@@ -132,6 +136,57 @@ PROJECT_STATUS_TO_LIFECYCLE_CODE = {
     "SUSPENDED": "AWAITING_CERTIFICATION",
 }
 BLOCKED_PROJECT_STATUSES = {"BLOCKED_AUDIT_REQUIRED", "RECALCULATION_REQUIRED", "SUSPENDED"}
+
+REQUIRED_CERTIFICATION_DOCUMENT_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("documento legal ou CAR", ("LEGAL_OWNERSHIP", "CAR")),
+    ("inventário florestal", ("FOREST_INVENTORY",)),
+)
+REQUIRED_CERTIFICATION_VERTEX_COUNT = 4
+CERTIFICATION_CERTIFICATE_DOCUMENT_TYPE = "CERTIFICATION_CERTIFICATE"
+PUBLIC_DOCUMENT_TYPES: frozenset[str] = frozenset({CERTIFICATION_CERTIFICATE_DOCUMENT_TYPE})
+
+CERTIFICATION_HISTORY_ACTIONS: tuple[str, ...] = (
+    "CERTIFICATION_REVIEW_OPENED",
+    "CERTIFICATION_PENDENCY_CREATED",
+    "CERTIFICATION_PENDENCY_ANSWERED",
+    "CERTIFICATION_CHANGES_REQUESTED",
+    "CERTIFICATION_REJECTED",
+    "CERTIFICATION_APPROVED",
+    "CERTIFICATION_CERTIFICATE_ATTACHED",
+    "MINT_AUTHORIZED",
+    "TREASURY_QUEUE_CREATED",
+    # legado, gravado antes da Phase 04
+    "CERTIFIER_APPROVE",
+    "CERTIFIER_REJECT",
+    "CERTIFIER_REQUEST_CHANGES",
+)
+PUBLIC_CERTIFICATION_HISTORY_ACTIONS: frozenset[str] = frozenset({
+    "CERTIFICATION_APPROVED",
+    "CERTIFICATION_REJECTED",
+    "CERTIFICATION_CERTIFICATE_ATTACHED",
+    "MINT_AUTHORIZED",
+    "TREASURY_QUEUE_CREATED",
+    "CERTIFIER_APPROVE",
+    "CERTIFIER_REJECT",
+})
+CERTIFICATION_HISTORY_LABELS: dict[str, str] = {
+    "CERTIFICATION_REVIEW_OPENED": "Revisão aberta pela certificadora",
+    "CERTIFICATION_PENDENCY_CREATED": "Pendência criada para o produtor",
+    "CERTIFICATION_PENDENCY_ANSWERED": "Produtor respondeu à pendência",
+    "CERTIFICATION_CHANGES_REQUESTED": "Ajustes solicitados pela certificadora",
+    "CERTIFICATION_REJECTED": "Projeto reprovado pela certificadora",
+    "CERTIFICATION_APPROVED": "Certificação aprovada",
+    "CERTIFICATION_CERTIFICATE_ATTACHED": "Certificado anexado",
+    "MINT_AUTHORIZED": "Mint autorizado",
+    "TREASURY_QUEUE_CREATED": "Enviado para a fila da tesouraria",
+    "CERTIFIER_APPROVE": "Certificação aprovada",
+    "CERTIFIER_REJECT": "Projeto reprovado pela certificadora",
+    "CERTIFIER_REQUEST_CHANGES": "Ajustes solicitados pela certificadora",
+}
+DOSSIER_INCOMPLETE_DETAIL = (
+    "Dossiê incompleto: reúna baseline, as quatro QTAGs/geofence válidas e os documentos "
+    "obrigatórios antes de decidir. Uma pendência será gerada para o produtor corrigir."
+)
 
 
 class ProjectsService:
@@ -249,17 +304,185 @@ class ProjectsService:
             )
         ).all()
 
+        certificate = await self.certification_certificate(project)
+        certification_history = await self.certification_history(
+            project,
+            actions=PUBLIC_CERTIFICATION_HISTORY_ACTIONS,
+            include_metadata=False,
+        )
+
         return ProjectPublicDossierResponse(
             project=project_dto,
             tags=[tag_item(tag) for tag in tags],
             baseline=baseline_item(baseline),
-            certifications=[certification_item(item) for item in certifications],
+            certifications=[public_certification_item(item) for item in certifications],
             audits=[audit_item(item) for item in audits],
-            documents=[document_item(item) for item in documents],
+            documents=[
+                public_document_item(item) for item in documents if item.document_type.upper() in PUBLIC_DOCUMENT_TYPES
+            ],
             credits=[credit_item(item) for item in credits],
             chainEvents=[chain_event_item(item) for item in chain_events],
             transactions=[ledger_transaction_item(entry, account, project, event) for entry, account, event in transaction_rows],
+            certificate=certificate,
+            certificationHistory=certification_history,
         )
+
+    async def _latest_baseline_model(self, project: Project) -> ProjectBaseline | None:
+        return (
+            await self.session.execute(
+                select(ProjectBaseline)
+                .where(ProjectBaseline.project_id == project.id)
+                .order_by(ProjectBaseline.captured_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+    async def certification_dossier_status(self, project: Project) -> dict[str, Any]:
+        """Estado do dossiê mínimo exigido pela D-03 antes de qualquer decisão."""
+        baseline = await self._latest_baseline_model(project)
+        tags = (
+            await self.session.execute(
+                select(ProjectTag).where(ProjectTag.project_id == project.id).order_by(ProjectTag.vertex_label)
+            )
+        ).scalars().all()
+        documents = (
+            await self.session.execute(select(Document).where(Document.project_id == project.id))
+        ).scalars().all()
+
+        valid_tags = [
+            tag for tag in tags if tag.status.upper() == "ACTIVE" and tag.latitude is not None and tag.longitude is not None
+        ]
+        tags_complete = len(valid_tags) >= REQUIRED_CERTIFICATION_VERTEX_COUNT
+
+        present_types = {document.document_type.upper() for document in documents}
+        missing_groups = [
+            label
+            for label, group_types in REQUIRED_CERTIFICATION_DOCUMENT_GROUPS
+            if not (set(group_types) & present_types)
+        ]
+        documents_complete = not missing_groups
+
+        missing: list[str] = []
+        if baseline is None:
+            missing.append("baseline")
+        if not tags_complete:
+            missing.append("quatro QTAGs/geofence válidas")
+        if not documents_complete:
+            missing.append("documentos obrigatórios")
+
+        return {
+            "complete": baseline is not None and tags_complete and documents_complete,
+            "missing": missing,
+            "baseline": {
+                "present": baseline is not None,
+                "capturedAt": baseline.captured_at.isoformat() if baseline is not None else None,
+                "sentinelSceneId": baseline.sentinel_scene_id if baseline is not None else None,
+            },
+            "tags": {
+                "total": len(tags),
+                "valid": len(valid_tags),
+                "required": REQUIRED_CERTIFICATION_VERTEX_COUNT,
+                "complete": tags_complete,
+            },
+            "documents": {
+                "presentTypes": sorted(present_types),
+                "missingGroups": missing_groups,
+                "complete": documents_complete,
+            },
+        }
+
+    async def suggested_credit_potential(self, project: Project) -> dict[str, Any]:
+        """Sugestão de potencial de crédito (D-07), derivada do baseline persistido."""
+        baseline = await self._latest_baseline_model(project)
+        if baseline is not None:
+            vegetation_cover_pct = float(baseline.vegetation_cover_pct)
+            ndvi_mean = float(baseline.ndvi_mean)
+            suggested = round(vegetation_cover_pct * ndvi_mean * 100, 2)
+            source = "baseline"
+        else:
+            vegetation_cover_pct = None
+            ndvi_mean = None
+            suggested = float(project.carbon_stock or 0)
+            source = "carbon_stock"
+
+        return {
+            "suggestedCreditPotential": suggested,
+            "formula": "vegetationCoverPct * ndviMean * 100",
+            "source": source,
+            "vegetationCoverPct": vegetation_cover_pct,
+            "ndviMean": ndvi_mean,
+            "areaHectares": float(project.area_hectares) if project.area_hectares is not None else None,
+            "carbonStock": float(project.carbon_stock) if project.carbon_stock is not None else None,
+            "methodology": project.methodology,
+        }
+
+    async def assert_certification_dossier_complete(self, project: Project) -> dict[str, Any]:
+        status_payload = await self.certification_dossier_status(project)
+        if not status_payload["complete"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=DOSSIER_INCOMPLETE_DETAIL)
+        return status_payload
+
+    async def certification_history(
+        self,
+        project: Project,
+        *,
+        actions: tuple[str, ...] | frozenset[str] | None = None,
+        actor_role: str | None = None,
+        include_metadata: bool = True,
+    ) -> list[dict[str, Any]]:
+        statement = select(AuditEvent).where(
+            AuditEvent.entity_type == "projects",
+            AuditEvent.entity_id == project.id,
+            AuditEvent.action.in_(tuple(actions or CERTIFICATION_HISTORY_ACTIONS)),
+        )
+        if actor_role is not None:
+            statement = statement.where(AuditEvent.actor_role == actor_role)
+        statement = statement.order_by(AuditEvent.created_at.asc())
+        events = (await self.session.execute(statement)).scalars().all()
+
+        items: list[dict[str, Any]] = []
+        for event in events:
+            item: dict[str, Any] = {
+                "id": str(event.id),
+                "action": event.action,
+                "label": CERTIFICATION_HISTORY_LABELS.get(event.action, event.action),
+                "actorRole": event.actor_role,
+                "actorProfileId": str(event.actor_profile_id) if event.actor_profile_id is not None else None,
+                "createdAt": event.created_at.isoformat(),
+            }
+            if include_metadata:
+                item["metadata"] = event.metadata_ or {}
+                item["beforeData"] = event.before_data
+                item["afterData"] = event.after_data
+            items.append(item)
+        return items
+
+    async def certification_certificate(self, project: Project) -> dict[str, Any] | None:
+        document = (
+            await self.session.execute(
+                select(Document)
+                .where(
+                    Document.project_id == project.id,
+                    Document.document_type == CERTIFICATION_CERTIFICATE_DOCUMENT_TYPE,
+                )
+                .order_by(Document.uploaded_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if document is None:
+            return None
+        return {
+            "documentId": str(document.id),
+            "sha256": document.sha256_hash,
+            "mimeType": document.mime_type,
+            "sizeBytes": document.size_bytes,
+            "uploadedAt": document.uploaded_at.isoformat(),
+            "storagePath": document.storage_path,
+            "storageBucket": document.storage_bucket,
+            "storageObjectPath": document.storage_object_path,
+            "filename": (document.metadata_ or {}).get("filename"),
+            "downloadAvailable": bool(document.storage_object_path),
+        }
 
     async def list_project_drafts(
         self,
@@ -1602,6 +1825,33 @@ def certification_item(certification: Certification) -> dict[str, Any]:
     }
 
 
+def public_certification_item(certification: Certification) -> dict[str, Any]:
+    """Serializacao minimizada (D-20/D-22): sem notas internas."""
+    return {
+        "id": str(certification.id),
+        "methodology": certification.methodology,
+        "creditPotential": float(certification.credit_potential),
+        "decision": certification.decision,
+        "signedDocumentHash": certification.signed_document_hash,
+        "signedAt": certification.signed_at.isoformat() if certification.signed_at else None,
+        "createdAt": certification.created_at.isoformat(),
+    }
+
+
+def public_document_item(document: Document) -> dict[str, Any]:
+    """Documento publico: referencia e hash, sem metadados operacionais internos."""
+    return {
+        "id": str(document.id),
+        "type": document.document_type,
+        "sha256Hash": document.sha256_hash,
+        "mimeType": document.mime_type,
+        "sizeBytes": document.size_bytes,
+        "uploadedAt": document.uploaded_at.isoformat(),
+        "storagePath": document.storage_path,
+        "downloadAvailable": bool(document.storage_object_path),
+    }
+
+
 def audit_item(audit: Audit) -> dict[str, Any]:
     return {
         "id": str(audit.id),
@@ -1617,17 +1867,17 @@ def audit_item(audit: Audit) -> dict[str, Any]:
 
 
 def document_item(document: Document) -> dict[str, Any]:
+    # Dossiê público: nunca expor bucket/caminho de storage, hash completo ou
+    # metadata bruta (pode conter filename original) — só o suficiente para
+    # a UI listar o documento. Caminho/hash reais ficam restritos a rotas
+    # autenticadas que já os retornam via draft_document_item().
     return {
         "id": str(document.id),
         "type": document.document_type,
-        "storageBucket": document.storage_bucket,
-        "storageObjectPath": document.storage_object_path,
-        "storagePath": document.storage_path,
-        "sha256Hash": document.sha256_hash,
+        "sha256Hash": mask_token(document.sha256_hash),
         "mimeType": document.mime_type,
         "sizeBytes": document.size_bytes,
         "uploadedAt": document.uploaded_at.isoformat(),
-        "metadata": document.metadata_ or {},
     }
 
 

@@ -8,6 +8,8 @@ import {
     CheckCircle2,
     Copy,
     Database,
+    Download,
+    FileCheck2,
     FileText,
     Hash,
     Layers,
@@ -19,7 +21,7 @@ import {
 } from 'lucide-react';
 import ProjectGeofencePreview from '../../components/ProjectGeofencePreview';
 import { ProjectLifecycleTimeline } from '../../components/ProjectLifecycleTimeline';
-import { database, type ProjectPublicDossier } from '../../services/database';
+import { database, type ProjectPublicCertificationEvent, type ProjectPublicDossier } from '../../services/database';
 import type { ProjectTagDraft, VertexLabel } from '../../services/projectOrigination';
 import LogoLight from '../../assets/sinarca-logo-recortado.svg';
 
@@ -81,6 +83,8 @@ export default function MrcaDetails() {
     const [activeTab, setActiveTab] = useState<'overview' | 'integrity' | 'documents' | 'transactions'>('overview');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [certificateError, setCertificateError] = useState('');
+    const [certificateLoading, setCertificateLoading] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -107,6 +111,27 @@ export default function MrcaDetails() {
             active = false;
         };
     }, [id]);
+
+    const handleCertificateDownload = async () => {
+        if (!id) return;
+        setCertificateError('');
+        setCertificateLoading(true);
+        try {
+            const { blob, filename } = await database.downloadProjectCertificate(id);
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            setCertificateError(err instanceof Error ? err.message : 'Não foi possível baixar o certificado.');
+        } finally {
+            setCertificateLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -351,12 +376,68 @@ export default function MrcaDetails() {
                                                         </div>
                                                         <p className="text-[10px] font-mono text-primary break-all">{cert.signedDocumentHash || 'Documento não registrado'}</p>
                                                     </div>
-                                                    {cert.notes && <p className="text-sm text-gray-500 mt-4">{cert.notes}</p>}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
                                         <EmptyState text="Nenhuma certificação pública registrada." />
+                                    )}
+
+                                    {dossier.certificate && (
+                                        <div className="mt-6 p-5 rounded-xl border border-gray-100 bg-gray-50">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Certificado da certificação</p>
+                                                    <p className="text-sm font-black uppercase mt-1 truncate">
+                                                        {dossier.certificate.filename || 'Certificado assinado'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {dossier.certificate.mimeType} - {Number(dossier.certificate.sizeBytes || 0).toLocaleString('pt-BR')} bytes - {formatDate(dossier.certificate.uploadedAt)}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-4">Hash SHA-256</p>
+                                                    <p className="text-[10px] font-mono text-primary break-all">{dossier.certificate.sha256}</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-3">Referência de arquivo</p>
+                                                    <p className="text-[10px] font-mono text-gray-500 break-all">{dossier.certificate.storagePath}</p>
+                                                </div>
+                                                <FileCheck2 className="w-5 h-5 text-primary shrink-0" />
+                                            </div>
+                                            {dossier.certificate.downloadAvailable && (
+                                                <button
+                                                    onClick={handleCertificateDownload}
+                                                    disabled={certificateLoading}
+                                                    className="mt-5 inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-black text-white text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    {certificateLoading ? 'Preparando download...' : 'Baixar certificado'}
+                                                </button>
+                                            )}
+                                            {certificateError && (
+                                                <p className="mt-4 text-sm font-medium text-gray-500">{certificateError}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Histórico de certificação</h3>
+                                    {(dossier.certificationHistory ?? []).length > 0 ? (
+                                        <div className="space-y-6">
+                                            {(dossier.certificationHistory ?? []).map((event: ProjectPublicCertificationEvent) => (
+                                                <div key={event.id} className="flex gap-5">
+                                                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                                        <CheckCircle2 className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
+                                                            {event.action} · {formatDate(event.createdAt)}
+                                                        </p>
+                                                        <h4 className="text-base font-bold text-black mt-1">{event.label}</h4>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <EmptyState text="Nenhuma decisão pública de certificação registrada para este projeto." />
                                     )}
                                 </div>
 

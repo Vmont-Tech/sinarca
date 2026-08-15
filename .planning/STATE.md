@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-3-complete
-stopped_at: Phase 03 complete; next planning target is Phase 04
-last_updated: "2026-05-27T21:59:31-03:00"
-last_activity: 2026-05-27 -- Phase 03 completion reconciled
+status: completed
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-08-15T13:43:27.862Z"
+last_activity: 2026-08-15 -- Phase 04 marked complete
 progress:
-  total_phases: 10
-  completed_phases: 3
-  total_plans: 16
-  completed_plans: 16
-  percent: 30
+  total_phases: 13
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -25,18 +25,18 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 ## Current Position
 
-Phase: 04 (certification-workbench) — READY TO PLAN
-Plan: No Phase 04 plans yet
-Status: Phases 2 and 3 complete on branch `feat/fase-3-originacao-documentos`; next action is planning Phase 4
-Last activity: 2026-05-27 -- Phase 03 completion reconciled
+Phase: 04 — COMPLETE
+Plan: 7 of 7 complete
+Status: Phase 04 complete
+Last activity: 2026-08-15 -- Phase 04 marked complete
 
-Progress: [███-------] 30%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: tracked in per-plan summaries where available
 - Total execution time: tracked in phase summaries where available
 
@@ -51,6 +51,13 @@ Progress: [███-------] 30%
 | Phase 01-backend-rebuild P01-04 | 12min | 4 tasks | 26 files |
 | Phase 01-backend-rebuild P01-05 | 11min | 5 tasks | 17 files |
 | Phase 01-backend-rebuild P01-06 | 13min | 5 tasks | 14 files |
+| Phase 04 P01 | 25min | 3 tasks | 6 files |
+| Phase 04-certification-workbench P02 | 20min | 3 tasks | 6 files |
+| Phase 04-certification-workbench P03 | 30min | 3 tasks | 6 files |
+| Phase 04-certification-workbench P04 | 20min | 2 tasks | 2 files |
+| Phase 04-certification-workbench P05 | 35min | 3 tasks | 3 files |
+| Phase 04-certification-workbench P06 | 25min | 3 tasks | 2 files |
+| Phase 04-certification-workbench P07 | 30min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -78,6 +85,9 @@ Progress: [███-------] 30%
 - [Roadmap]: A auditoria de checklist de fluxo/tela de 2026-05-26 não reabre a Phase 1; ela distribui as lacunas identificadas em fases próprias de produto/UX e operação.
 - [Roadmap]: A conferência contra `.planning/docs/bible/` adiciona cobertura explícita para campo mobile/PWA, pagamentos/settlement e requisitos transversais de segurança, privacidade, compliance, qualidade e governança de dados.
 - [Roadmap]: O checklist operacional em `.planning/docs/FLOW_SCREEN_CHECKLIST_AUDIT.md` é baseline obrigatório das Phases 2-10; cada plano futuro deve declarar cobertura do checklist, fora de escopo e gate de dados seed/API.
+- [Roadmap 2026-08-14]: Ingestão de `.planning/docs/bible/14_Novos_requisitos.md` (Integrity Layer) e `15_Geofance_sentinel_requisitos.md` (Satellite Monitoring) inseriu Phase 04.1 (geospatial-foundation) e 04.2 (integrity-layer-foundation) entre Phase 4 e Phase 5, expandiu a Phase 5 para `satellite-monitoring-and-field-audit` e inseriu Phase 05.1 (integrity-review-and-external-registries). Nenhum plano/execução foi afetado — Phase 4 segue READY_TO_PLAN sem bloqueio.
+- [Roadmap 2026-08-14]: Nem PRD 14 nem PRD 15 têm fundação hoje: zero PostGIS/geometry no schema, geofence é shoelace ingênuo sobre 4 pontos (backend e frontend), e `deterministic_baseline()` gera `ndvi_mean`/`sentinel_scene_id` por hash do nome do projeto, não por observação de satélite real.
+- [Roadmap 2026-08-14]: Sinarca não tem acesso a nenhum provedor de geoportal/registro externo (tipo InfoTerras) hoje; Phase 05.1 começa pela decisão documentada de build vs. buy antes de qualquer integração ONR/SIGEF/CAR.
 - [Phase 02]: A discussão foi fechada por documentos, sem pergunta bloqueante, porque checklist, Bible e roadmap já definem o recorte.
 - [Phase 02]: A fase foi dividida em cinco planos: navegação/legal, contrato público de API, dossiê/explorer UI, perfis públicos/rankings e auth/perfil.
 - [Phase 02]: Admin permanece sem cadastro público; provisionamento e gestão admin ficam na Phase 9.
@@ -92,6 +102,22 @@ Progress: [███-------] 30%
 - [Phase 03]: Captura de campo web/PWA falha fechado para NFC/SUN sem credenciais, permite geolocalização com fallback manual e renderiza geofence SVG a partir das mesmas QTAGs enviadas no submit.
 - [Phase 03]: Documentos obrigatórios são selecionados no wizard, enviados via `FormData` após criação do projeto e só liberam sucesso final quando os uploads obrigatórios terminam.
 - [Phase 03]: Dossiê de projeto renderiza geofence a partir de `dossier.tags`, documentos reais de `dossier.documents`, timeline canônica da API e baseline rotulado como determinístico/Sentinel bloqueado quando aplicável.
+- [Phase 04]: Constraint unica (project_id, decision) de certifications removida; decisoes de certificacao passam a ser append-only (sempre INSERT, indice por project_id/created_at).
+- [Phase 04]: certification_pendencies e treasury_authorizations sao tabelas operacionais sem policy de SELECT no RLS; acesso exclusivo via backend_app com auth propria e guard de papel.
+- [Phase 04-certification-workbench]: Dossie publico minimizado: public_certification_item/public_document_item excluem notas internas e documentos nao PUBLIC_DOCUMENT_TYPES; certificate/certificationHistory expostos sem metadata/beforeData/afterData.
+- [Phase 04-certification-workbench]: assert_certification_dossier_complete usa HTTP 400 para propagar o detail exato do 04-UI-SPEC.md via src/services/api.ts.
+- [Phase 04-certification-workbench]: GET /certifier/projects/{id}/review entrega o dossie tecnico completo e registra CERTIFICATION_REVIEW_OPENED uma vez por ator.
+- [Phase 04-certification-workbench]: project.timeline nunca recebe as notes internas do certificador (nenhuma das tres decisoes); usa sempre uma descricao publica fixa, ja que project.timeline e serializado tanto no dossie publico quanto na revisao interna pelo mesmo project_to_mrca().
+- [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history e GET /projects/{id}/pendencies foram adicionados no plano 04-03 como funcionalidade critica ausente (Rule 2): nenhuma task os declarava, mas os proprios testes de aceite do plano exigem ambos.
+- [Phase 04-certification-workbench]: GET /treasury/authorizations retorna uma lista JSON no nivel raiz (nao o envelope success/total/authorizations), porque os testes de aceite pre-existentes ja esperam um array.
+- [Phase 04-certification-workbench]: TREASURY_QUEUE_CREATED e MINT_AUTHORIZED sao gravados com entity_type=projects/entity_id=project.id, para aparecerem na timeline de auditoria do projeto e no dossie publico, que filtram estritamente por entity_type==projects.
+- [Phase 04-certification-workbench]: CertifierQueueResponse usa items (chave exigida pelo teste imutável de 04-01) com projects como alias de compatibilidade com CertifierReview.tsx
+- [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history manteve formato de lista JSON no nível raiz com filtros event_type/actor_role, sem o envelope CertificationHistoryResponse descrito na prosa do plano, porque testes imutáveis de 04-01 consomem a rota como array
+- [Phase 04-certification-workbench]: fetchCertificationHistory monta o envelope events/availableEventTypes/availableActorRoles no cliente a partir da lista bruta retornada por GET /certifier/projects/{id}/history, ja que a rota manteve o formato de lista no nivel raiz (desvio ja documentado em 04-05-SUMMARY.md).
+- [Phase 04-certification-workbench]: A aba Documentos da bancada da certificadora usa document_item (sem filename/metadata) porque esse e o serializador interno realmente entregue pelo plano 04-02, distinto do public_document_item do dossie publico; o rotulo exibido usa o tipo do documento (documentTypeLabel).
+- [Phase 04-certification-workbench]: [Phase 04-certification-workbench]: GET /projects/{id}/certification-history entrega a trilha interna completa (com notes) para produtor dono, certificadora do projeto e admin, guardado por _assert_project_edit_permission org-scoped e nao apenas require_role.
+- [Phase 04-certification-workbench]: GET /projects/{id}/certificate usa optional_user (nao require_role) e converte 401/403 de _assert_project_edit_permission em 403 uniforme, para nao disparar clearAuthSession() no visitante anonimo do dossie publico.
+- [Phase 04-certification-workbench]: Dossie publico (MrcaDetails.tsx) exibe referencia/hash/download condicional do certificado e a linha do tempo publica de decisoes finais; codigo morto cert.notes removido, sem regressao de minimizacao (D-20).
 
 ### Roadmap Evolution
 
@@ -104,11 +130,17 @@ Progress: [███-------] 30%
 - Phase 8 added: treasury-blockchain-and-interoperability.
 - Phase 9 added: admin-operations-and-observability.
 - Phase 10 added: security-compliance-and-data-governance.
+- Phase 04.1 inserted (2026-08-14): geospatial-foundation, após Phase 4.
+- Phase 04.2 inserted (2026-08-14): integrity-layer-foundation, após Phase 04.1.
+- Phase 5 edited (2026-08-14): audit-monitoring-and-anomalies → satellite-monitoring-and-field-audit.
+- Phase 05.1 inserted (2026-08-14): integrity-review-and-external-registries, após Phase 5.
 
 ### Pending Todos
 
 - Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
 - Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
+- Planejar Phase 04.1 (`geospatial-foundation`) — pré-requisito bloqueante de 04.2 e da Phase 5 expandida; nenhuma das duas pode ser executada antes dela.
+- Decidir e documentar build vs. buy de provedor de registro externo (ONR/SIGEF/CAR) antes de planejar a Phase 05.1 — sem fornecedor definido em 2026-08-14.
 
 ### Blockers/Concerns
 
@@ -130,6 +162,6 @@ Progress: [███-------] 30%
 
 ## Session Continuity
 
-Last session: 2026-05-22T22:53:48.032Z
-Stopped at: Completed 01-backend-rebuild-01-06-PLAN.md
+Last session: 2026-08-15T13:42:19.383Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None

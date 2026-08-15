@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_SQL = ROOT / "supabase/migrations/202605220001_initial_schema.sql"
 RLS_SQL = ROOT / "supabase/migrations/202605220002_rls_policies.sql"
-STORAGE_SQL = ROOT / "supabase/migrations/202605270001_storage_buckets.sql"
+STORAGE_SQL = ROOT / "supabase/migrations/202605270002_storage_buckets.sql"
 SEED_SQL = ROOT / "supabase/seed.sql"
 INVENTORY_UF_MIGRATION_SQL = ROOT / "supabase/migrations/202605260001_inventory_regions_brazil_ufs.sql"
 PROJECT_DRAFTS_MIGRATION_SQL = ROOT / "supabase/migrations/202605260003_project_drafts.sql"

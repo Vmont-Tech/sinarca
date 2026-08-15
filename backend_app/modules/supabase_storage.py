@@ -62,6 +62,17 @@ class SupabaseStorageClient:
         )
         self._open(request)
 
+    def download_object(self, bucket: str, object_path: str) -> bytes:
+        request = urllib.request.Request(
+            self._object_url(bucket, object_path),
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {self.service_role_key}",
+                "Apikey": self.service_role_key,
+            },
+        )
+        return self._read(request)
+
     def public_object_url(self, bucket: str, object_path: str) -> str:
         quoted_path = urllib.parse.quote(object_path, safe="/")
         public_base_url = (self.public_url or self.supabase_url).rstrip("/")
@@ -75,6 +86,16 @@ class SupabaseStorageClient:
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 response.read()
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise SupabaseStorageError(f"Supabase Storage respondeu {exc.code}: {body}") from exc
+        except urllib.error.URLError as exc:
+            raise SupabaseStorageError(f"Supabase Storage indisponível: {exc.reason}") from exc
+
+    def _read(self, request: urllib.request.Request) -> bytes:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.read()
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             raise SupabaseStorageError(f"Supabase Storage respondeu {exc.code}: {body}") from exc
@@ -107,6 +128,20 @@ async def upload_storage_object(bucket: str, object_path: str, content: bytes, c
             detail="Não foi possível gravar o arquivo no Supabase Storage.",
         ) from exc
     return True
+
+
+async def download_storage_object(bucket: str, object_path: str) -> bytes | None:
+    """Le um objeto privado usando a service role. Devolve None quando nao ha credenciais."""
+    client = get_supabase_storage_client()
+    if client is None:
+        return None
+    try:
+        return await asyncio.to_thread(client.download_object, bucket, object_path)
+    except SupabaseStorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Não foi possível ler o certificado no Supabase Storage.",
+        ) from exc
 
 
 async def copy_storage_object(bucket: str, source_object_path: str | None, destination_object_path: str | None) -> bool:

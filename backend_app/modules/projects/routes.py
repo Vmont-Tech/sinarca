@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
+from datetime import datetime, timezone
 from pathlib import PurePath
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
 from backend_app.core.security import AuthenticatedUser, optional_user
-from backend_app.db.models import Document
+from backend_app.db.models import Certification, CertificationPendency, Document
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
+from backend_app.modules.certifier.routes import pendency_item
 from backend_app.modules.inventory.routes import (
     ALLOWED_EXTENSIONS,
     MAX_UPLOAD_BYTES,
@@ -20,6 +23,8 @@ from backend_app.modules.inventory.routes import (
 )
 from backend_app.modules.projects.schemas import (
     CatalogResponse,
+    PendencyRespondRequest,
+    ProjectCertificationHistoryResponse,
     ProjectCreate,
     ProjectDraftCreate,
     ProjectDraftResponse,
@@ -32,8 +37,8 @@ from backend_app.modules.projects.schemas import (
     ProjectUpdate,
     PublicProfileResponse,
 )
-from backend_app.modules.projects.service import ProjectsService
-from backend_app.modules.supabase_storage import upload_storage_object
+from backend_app.modules.projects.service import CERTIFICATION_HISTORY_LABELS, ProjectsService, certification_item
+from backend_app.modules.supabase_storage import download_storage_object, upload_storage_object
 from backend_app.modules.storage_paths import project_document_location
 
 router = APIRouter(tags=["projects"])
@@ -219,6 +224,235 @@ async def get_project_public_dossier(
     session: AsyncSession = Depends(get_session),
 ) -> ProjectPublicDossierResponse:
     return await ProjectsService(session).get_public_dossier(project_id)
+
+
+@router.get("/projects/{project_id}/certification-history", response_model=ProjectCertificationHistoryResponse)
+async def get_project_certification_history(
+    project_id: str,
+    event_type: str | None = Query(default=None),
+    actor_role: str | None = Query(default=None),
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectCertificationHistoryResponse:
+    """Trilha INTERNA de certificação do projeto (D-22).
+
+    A rota do módulo da certificadora (`/certifier/projects/{id}/history`) é fechada em
+    require_role("certifier", "admin"). Esta rota existe para o produtor dono do projeto,
+    que a D-22 lista explicitamente entre quem vê notas internas completas, junto com
+    certificadora, admin e tesouraria — e a tesouraria opera hoje sob o papel `admin`,
+    porque `backend_app/core/roles.py` não define papel `treasury`.
+    O acesso NÃO é garantido só pelo papel: `_assert_project_edit_permission` restringe
+    à organização dona (producer/developer) ou à certificadora do projeto.
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(
+        project, actor_id=current_user.id, actor_role=current_user.role
+    )
+
+    all_events = await service.certification_history(project)
+    events = all_events
+    if event_type:
+        events = [event for event in events if event["action"] == event_type.upper()]
+    if actor_role:
+        events = [event for event in events if (event["actorRole"] or "") == actor_role.lower()]
+
+    certifications = (
+        await session.execute(
+            select(Certification)
+            .where(Certification.project_id == project.id)
+            .order_by(Certification.created_at.desc())
+        )
+    ).scalars().all()
+
+    available_types = sorted({event["action"] for event in all_events})
+    return ProjectCertificationHistoryResponse(
+        total=len(events),
+        events=events,
+        certifications=[certification_item(item) for item in certifications],
+        certificate=await service.certification_certificate(project),
+        availableEventTypes=[
+            {"value": action, "label": CERTIFICATION_HISTORY_LABELS.get(action, action)}
+            for action in available_types
+        ],
+        availableActorRoles=sorted({event["actorRole"] for event in all_events if event["actorRole"]}),
+    )
+
+
+CERTIFICATE_DOWNLOAD_FORBIDDEN_DETAIL = (
+    "Download do certificado disponível apenas para o produtor, a certificadora e a "
+    "administração do projeto."
+)
+
+
+@router.get("/projects/{project_id}/certificate")
+async def download_project_certificate(
+    project_id: str,
+    current_user: AuthenticatedUser | None = Depends(optional_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Download do certificado da certificação (D-13, "quando permitido").
+
+    O bucket `projects` é privado (supabase/migrations/202605260006_...): não existe URL
+    pública utilizável, então o arquivo é servido pelo backend com a service role.
+    Falhas de permissão devolvem 403 (e não 401) de propósito: o cliente `src/services/api.ts`
+    limpa a sessão em 401, e esta rota é linkada a partir do dossiê PÚBLICO, onde o visitante
+    legitimamente não tem token.
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=CERTIFICATE_DOWNLOAD_FORBIDDEN_DETAIL
+        )
+    try:
+        await service._assert_project_edit_permission(
+            project, actor_id=current_user.id, actor_role=current_user.role
+        )
+    except HTTPException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=CERTIFICATE_DOWNLOAD_FORBIDDEN_DETAIL
+        ) from exc
+
+    certificate = await service.certification_certificate(project)
+    if certificate is None or not certificate.get("storageObjectPath"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificado ainda não anexado a este projeto.",
+        )
+
+    content = await download_storage_object(
+        str(certificate["storageBucket"]), str(certificate["storageObjectPath"])
+    )
+    if content is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Certificado indisponível: Supabase Storage não está configurado.",
+        )
+
+    filename = str(certificate.get("filename") or f"certificado-{project.friendly_id}.pdf")
+    safe_filename = PurePath(filename).name.replace('"', "")
+    return Response(
+        content=content,
+        media_type=str(certificate.get("mimeType") or "application/pdf"),
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+    )
+
+
+@router.get("/projects/{project_id}/pendencies")
+async def list_project_pendencies(
+    project_id: str,
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, object]]:
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+    pendencies = (
+        await session.execute(
+            select(CertificationPendency)
+            .where(CertificationPendency.project_id == project.id)
+            .order_by(CertificationPendency.created_at.desc())
+        )
+    ).scalars().all()
+    return [pendency_item(item) for item in pendencies]
+
+
+@router.post("/projects/{project_id}/pendencies/{pendency_id}/respond")
+async def respond_project_pendency(
+    project_id: str,
+    pendency_id: str,
+    payload: PendencyRespondRequest,
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    # T-04-17/T-04-18: guard org-scoped (nao apenas require_role) impede leitura/resposta
+    # por ID adivinhado de outra organizacao.
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+
+    try:
+        pendency_uuid = uuid.UUID(pendency_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pendência não encontrada") from exc
+
+    pendency = (
+        await session.execute(
+            select(CertificationPendency).where(
+                CertificationPendency.id == pendency_uuid,
+                CertificationPendency.project_id == project.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if pendency is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pendência não encontrada")
+    # T-04-19: pendencia resolvida e imutavel (D-09 por analogia) -- 409 nao 200 silencioso.
+    if pendency.status != "OPEN":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Esta pendência já foi respondida")
+
+    text_response = payload.response.strip()
+    if not text_response:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A resposta à pendência é obrigatória")
+
+    now = datetime.now(timezone.utc)
+    pendency.producer_response = text_response
+    pendency.responded_at = now
+    pendency.resolved_at = now
+    pendency.status = "RESOLVED"
+    try:
+        profile = await service._actor_profile(current_user.id)
+        pendency.responded_by_profile_id = profile.id
+    except HTTPException:
+        pendency.responded_by_profile_id = None
+
+    project.timeline = [
+        *(project.timeline or []),
+        {
+            "title": "Produtor respondeu à pendência",
+            "date": now.date().isoformat(),
+            "status": "completed",
+            "desc": text_response,
+        },
+    ]
+
+    # T-04-20: resposta do produtor rastreada com actor_external_id + pendency_id (repudiation).
+    await create_audit_event(
+        session,
+        action="CERTIFICATION_PENDENCY_ANSWERED",
+        entity_type="projects",
+        entity_id=project.id,
+        actor_role=current_user.role,
+        before_data={"pendency_status": "OPEN"},
+        after_data={"pendency_status": pendency.status},
+        metadata={
+            "actor_external_id": current_user.id,
+            "friendly_id": project.friendly_id,
+            "pendency_id": str(pendency.id),
+            "category": pendency.category,
+            "response": text_response,
+        },
+    )
+    await session.commit()
+
+    open_remaining = (
+        await session.execute(
+            select(func.count()).select_from(CertificationPendency).where(
+                CertificationPendency.project_id == project.id,
+                CertificationPendency.status == "OPEN",
+            )
+        )
+    ).scalar_one()
+
+    return {
+        "success": True,
+        "project_id": project.friendly_id,
+        "pendency_id": str(pendency.id),
+        "status": pendency.status,
+        "open_pendencies": int(open_remaining),
+        "back_to_main_queue": int(open_remaining) == 0,
+    }
 
 
 @router.post("/projects/{project_id}/documents", status_code=status.HTTP_201_CREATED)
