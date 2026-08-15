@@ -137,7 +137,7 @@ Nenhuma exclusão explícita documentada até o momento. Itens adiados para uma 
 | BASE-01..05 | Phase 1 | Complete |
 | PUBL-01..06 | Phase 2 | Complete |
 | ORIG-01..06 | Phase 3 | Complete |
-| CERT-01..05 | Phase 4 | Pending |
+| CERT-01..05 | Phase 4 | Complete |
 | GEOF-01..05 | Phase 4.1 | Pending |
 | INTG-01..05 | Phase 4.2 | Pending |
 | SATM-01..10 | Phase 5 | Pending |
