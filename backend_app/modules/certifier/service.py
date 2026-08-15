@@ -16,6 +16,7 @@ from backend_app.db.models import (
     Document,
     EnvironmentalCredit,
     Project,
+    TreasuryAuthorization,
 )
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.inventory import routes as inventory_upload
@@ -267,6 +268,7 @@ class CertifierService:
         # 7. Transições de status e efeitos por decisão.
         document: Document | None = None
         pendency: CertificationPendency | None = None
+        authorization: TreasuryAuthorization | None = None
 
         if decision == DECISION_APPROVE:
             assert upload is not None
@@ -279,6 +281,34 @@ class CertifierService:
                 desc="Certificação aprovada pela certificadora.",
                 status_value="completed",
             )
+
+            # Pacote mínimo de autorização para a tesouraria (D-18), criado na mesma
+            # transação da aprovação: se esta escrita falhar, a aprovação inteira reverte (D-19).
+            authorization = TreasuryAuthorization(
+                project_id=project.id,
+                certification_id=certification.id,
+                certifier_organization_id=project.certifier_organization_id,
+                certifier_profile_id=certification.certifier_profile_id,
+                methodology=certification.methodology,
+                approved_credit_potential=certification.credit_potential,
+                certificate_document_id=document.id,
+                certificate_sha256=str(upload["sha256"]),
+                status="PENDING",
+                authorized_at=datetime.now(timezone.utc),
+                metadata_={
+                    "friendly_id": project.friendly_id,
+                    "project_name": project.name,
+                    "vintage": project.vintage,
+                    "certificate_storage_path": document.storage_path,
+                    "credit_potential_suggested": suggested,
+                    "credit_potential_adjustment_reason": credit_potential_adjustment_reason,
+                    "authorized_by_external_id": actor.id,
+                    "authorized_by_role": actor.role,
+                    "source": "certifier_decision",
+                },
+            )
+            self.session.add(authorization)
+            await self.session.flush()
         elif decision == DECISION_REJECT:
             project.status = "SUSPENDED"
             assert rejection_category is not None
@@ -347,6 +377,44 @@ class CertifierService:
                     "storage_path": document.storage_path,
                 },
             )
+            assert authorization is not None
+            await create_audit_event(
+                self.session,
+                action="MINT_AUTHORIZED",
+                entity_type="projects",
+                entity_id=project.id,
+                actor_role=actor.role,
+                after_data={"credit_potential": final_potential, "status": project.status},
+                metadata={
+                    "actor_external_id": actor.id,
+                    "friendly_id": project.friendly_id,
+                    "certification_id": str(certification.id),
+                    "authorization_id": str(authorization.id),
+                    "execution": "DEFERRED_TO_TREASURY",
+                },
+            )
+            # NOTA: entity_type="projects" (não "treasury_authorizations") para que o evento
+            # apareça na timeline de auditoria do projeto (GET /certifier/projects/{id}/history
+            # e o dossiê público filtram por entity_type == "projects"); o vínculo com a
+            # autorização de tesouraria fica em metadata.authorization_id.
+            await create_audit_event(
+                self.session,
+                action="TREASURY_QUEUE_CREATED",
+                entity_type="projects",
+                entity_id=project.id,
+                actor_role=actor.role,
+                after_data={"status": authorization.status},
+                metadata={
+                    "actor_external_id": actor.id,
+                    "friendly_id": project.friendly_id,
+                    "project_id": str(project.id),
+                    "certification_id": str(certification.id),
+                    "authorization_id": str(authorization.id),
+                    "approved_credit_potential": final_potential,
+                    "methodology": certification.methodology,
+                    "certificate_sha256": str(upload["sha256"]),
+                },
+            )
         elif decision == DECISION_REJECT:
             await create_audit_event(
                 self.session,
@@ -407,6 +475,8 @@ class CertifierService:
             ),
             "pendency_id": (str(pendency.id) if pendency is not None else None),
             "statusLabels": (STATUS_LABELS_APPROVED if decision == DECISION_APPROVE else []),
+            "treasury_authorization_id": (str(authorization.id) if authorization is not None else None),
+            "treasury_status": (authorization.status if authorization is not None else None),
         }
 
     async def _ensure_locked_credit(self, project: Project, amount: Decimal) -> EnvironmentalCredit:
