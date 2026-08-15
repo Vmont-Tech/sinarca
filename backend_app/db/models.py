@@ -227,7 +227,7 @@ class ProjectBaseline(Base):
 
 class Certification(Base):
     __tablename__ = "certifications"
-    __table_args__ = (UniqueConstraint("project_id", "decision", name="certifications_project_decision_idx"),)
+    __table_args__ = (Index("certifications_project_created_idx", "project_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
@@ -239,6 +239,50 @@ class Certification(Base):
     notes: Mapped[str | None] = mapped_column(Text)
     signed_document_hash: Mapped[str | None] = mapped_column(String)
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class CertificationPendency(Base):
+    __tablename__ = "certification_pendencies"
+    __table_args__ = (
+        Index("certification_pendencies_project_status_idx", "project_id", "status", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    certification_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("certifications.id"))
+    certifier_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    raised_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'OPEN'"))
+    producer_response: Mapped[str | None] = mapped_column(Text)
+    responded_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class TreasuryAuthorization(Base):
+    __tablename__ = "treasury_authorizations"
+    __table_args__ = (
+        UniqueConstraint("certification_id", name="treasury_authorizations_certification_idx"),
+        Index("treasury_authorizations_status_idx", "status", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    certification_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("certifications.id"), nullable=False)
+    certifier_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    certifier_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    methodology: Mapped[str] = mapped_column(String, nullable=False)
+    approved_credit_potential: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    certificate_document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"))
+    certificate_sha256: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'PENDING'"))
+    authorized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = created_at_column()
 
 
