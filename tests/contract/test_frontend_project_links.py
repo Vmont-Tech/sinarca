@@ -87,7 +87,7 @@ def test_audit_report_preview_has_hover_copy_button() -> None:
     assert "focus:opacity-100" in auditor_review
 
 
-def test_audit_report_evidence_uses_mock_file_picker_instead_of_url_textarea() -> None:
+def test_audit_report_evidence_uses_local_file_picker_instead_of_url_textarea() -> None:
     auditor_review = read("src/pages/Dashboard/AuditorReview.tsx")
 
     assert "type=\"file\"" in auditor_review
@@ -101,8 +101,8 @@ def test_audit_report_evidence_uses_mock_file_picker_instead_of_url_textarea() -
     assert "Arquivos selecionados" in auditor_review
     assert "Tamanho:" in auditor_review
     assert auditor_review.index("Checklist de campo") < auditor_review.index("Fotos/documentos da vistoria") < auditor_review.index("Relatório de auditoria")
-    assert "addMockEvidenceFiles" in auditor_review
-    assert "removeMockEvidenceFile" in auditor_review
-    assert "mock://auditoria/${projectKey}/${encodeURIComponent(file.name)}" in auditor_review
-    assert "draft.evidenceFiles.map((file) => file.mockUrl)" in auditor_review
+    assert "addEvidenceFiles" in auditor_review
+    assert "removeEvidenceFile" in auditor_review
+    assert "local://auditoria/${projectKey}/${encodeURIComponent(file.name)}" in auditor_review
+    assert "draft.evidenceFiles.map((file) => file.localUrl)" in auditor_review
     assert "URLs de fotos/documentos" not in auditor_review

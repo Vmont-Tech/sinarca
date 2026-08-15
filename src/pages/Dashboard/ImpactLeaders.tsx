@@ -1,15 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Trophy,
     Building2,
-    Verified,
     List,
     ChevronRight,
     ShieldCheck,
     UserCheck,
-    Cloud,
-    TreePine,
-    DollarSign,
     TrendingUp,
     PlusCircle
 } from 'lucide-react';
@@ -27,7 +23,7 @@ interface Leader {
     rank: number;
     logoColor: string;
     initials: string;
-    type: 'company' | 'certifier' | 'auditor';
+    type: 'company' | 'certifier' | 'auditor' | 'producer';
 }
 
 const LOGO_COLORS: Record<string, string> = {
@@ -55,6 +51,7 @@ export default function ImpactLeaders() {
                 // 1. Fetch RAW Data Sources
                 const rawProjects = await database.getMarketProjects({ limit: 1000 });
                 const companies = await database.getCompanies();
+                const producers = await database.getProducers();
                 const certifiers = await database.getCertifiers();
                 const auditors = await database.getAuditors();
 
@@ -62,21 +59,23 @@ export default function ImpactLeaders() {
                 let rankingData: Leader[] = [];
 
                 if (activeTab === 'companies') {
-                    rankingData = companies.map((comp: any) => {
+                    const ecosystemCompanies = [...producers, ...companies];
+                    rankingData = ecosystemCompanies.map((comp: any) => {
                         const developedProjects = rawProjects.filter((p: any) => p.institution.name === comp.name);
                         const developedImpact = developedProjects.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0);
+                        const normalizedRole = String(comp.role || '').toLowerCase();
 
                         return {
                             id: comp.id,
                             name: comp.name,
-                            sector: comp.role === 'Developer' ? 'Desenvolvedor' : 'Compensador',
+                            sector: normalizedRole.includes('developer') || normalizedRole.includes('producer') ? 'Desenvolvedor' : 'Compensador',
                             totalImpact: developedImpact,
                             secondaryMetric: developedProjects.length, // Projects count
                             status: 'Ativo',
                             rank: 0,
                             logoColor: LOGO_COLORS['default'],
                             initials: comp.name.substring(0, 2).toUpperCase(),
-                            type: 'company' as const
+                            type: normalizedRole.includes('developer') || normalizedRole.includes('producer') ? 'producer' as const : 'company' as const
                         };
                     }).sort((a: any, b: any) => b.totalImpact - a.totalImpact);
 
@@ -153,9 +152,7 @@ export default function ImpactLeaders() {
     const formatCompact = (num: number) => new Intl.NumberFormat('pt-BR', { notation: "compact", maximumFractionDigits: 1 }).format(num);
 
     const getProfileLink = (leader: Leader) => {
-        if (leader.type === 'certifier') return `/painel/certificadoras/${leader.id}`;
-        if (leader.type === 'auditor') return `/painel/auditores/${leader.id}`;
-        return `/painel/empresas/${leader.id}`;
+        return `/perfil/${leader.id}`;
     };
 
     if (loading) return <div className="min-h-screen bg-[#121811] flex items-center justify-center text-sinarca-neon">Carregando dados de impacto...</div>;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PUBLIC_COMPLIANCE_EMAIL, PUBLIC_SUPPORT_EMAIL } from '../../constants/publicContact';
 
 interface LegalPageProps {
   title: string;
@@ -40,8 +41,8 @@ export const LegalPage: React.FC<LegalPageProps> = ({ title, subtitle, lastUpdat
           <p className="text-sm text-gray-500 mb-6">
             Dúvidas sobre a interpretação destes termos ou conformidade regulatória?
           </p>
-          <a href="mailto:juridico@sinarca.com.br" className="inline-flex items-center gap-2 text-secondary font-bold hover:gap-3 transition-all">
-            juridico@sinarca.com.br <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          <a href={`mailto:${PUBLIC_SUPPORT_EMAIL}`} className="inline-flex items-center gap-2 text-secondary font-bold hover:gap-3 transition-all">
+            {PUBLIC_SUPPORT_EMAIL} <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </a>
         </div>
         <div className="p-8 rounded-3xl bg-primary/5 border border-primary/10">
@@ -49,8 +50,8 @@ export const LegalPage: React.FC<LegalPageProps> = ({ title, subtitle, lastUpdat
           <p className="text-sm text-gray-500 mb-6">
             Para denúncias de irregularidades ou violações de conduta ambiental.
           </p>
-          <a href="mailto:compliance@sinarca.com.br" className="inline-flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
-            compliance@sinarca.com.br <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          <a href={`mailto:${PUBLIC_COMPLIANCE_EMAIL}`} className="inline-flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
+            {PUBLIC_COMPLIANCE_EMAIL} <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </a>
         </div>
       </div>

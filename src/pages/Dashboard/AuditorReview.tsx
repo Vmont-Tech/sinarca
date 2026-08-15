@@ -47,7 +47,7 @@ type AuditEvidenceFile = {
     name: string;
     size: number;
     type: string;
-    mockUrl: string;
+    localUrl: string;
 };
 
 type AuditDraft = {
@@ -127,7 +127,7 @@ const buildAuditReport = (
         `- Tag ${tag.position}: ${tag.status} em ${tag.latitude.toFixed(4)}, ${tag.longitude.toFixed(4)} ${statusMark(draft.checks.tagsLocated && draft.checks.tagsIntact)}`
     );
     const baseline = monitoring?.baseline;
-    const evidenceLines = draft.evidenceFiles.map((file) => `- ${file.name} (${file.type || 'arquivo'}) -> ${file.mockUrl}`);
+    const evidenceLines = draft.evidenceFiles.map((file) => `- ${file.name} (${file.type || 'arquivo'}) -> ${file.localUrl}`);
 
     return [
         `RELATÓRIO DE AUDITORIA - PROJETO ${project.friendlyId}`,
@@ -223,7 +223,7 @@ export default function AuditorReview() {
         setDraft((current) => ({ ...current, checks: { ...current.checks, [key]: checked } }));
     };
 
-    const addMockEvidenceFiles = (project: AuditItem, files: FileList | null) => {
+    const addEvidenceFiles = (project: AuditItem, files: FileList | null) => {
         if (!files || files.length === 0) return;
         const projectKey = project.friendlyId || project.id;
         const timestamp = Date.now();
@@ -235,7 +235,7 @@ export default function AuditorReview() {
             name: file.name,
             size: file.size,
             type: file.type || 'arquivo local',
-            mockUrl: `mock://auditoria/${projectKey}/${encodeURIComponent(file.name)}`,
+            localUrl: `local://auditoria/${projectKey}/${encodeURIComponent(file.name)}`,
         }));
         setEvidenceError(
             rejectedFiles.length > 0
@@ -248,7 +248,7 @@ export default function AuditorReview() {
         }));
     };
 
-    const removeMockEvidenceFile = (fileId: string) => {
+    const removeEvidenceFile = (fileId: string) => {
         setDraft((current) => ({
             ...current,
             evidenceFiles: current.evidenceFiles.filter((file) => file.id !== fileId),
@@ -279,7 +279,7 @@ export default function AuditorReview() {
         const longitude = draft.longitude ? Number(draft.longitude) : undefined;
         const evidenceUrls = [
             ...(monitoring?.baseline.evidenceUri ? [monitoring.baseline.evidenceUri] : []),
-            ...draft.evidenceFiles.map((file) => file.mockUrl),
+            ...draft.evidenceFiles.map((file) => file.localUrl),
         ];
 
         await apiPatch(`/audit/verify/${encodeURIComponent(project.id)}`, {
@@ -517,14 +517,14 @@ export default function AuditorReview() {
                                             <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center transition hover:border-blue-300 hover:bg-blue-50">
                                                 <FileUp className="h-6 w-6 text-blue-600" />
                                                 <span className="mt-2 text-sm font-bold text-gray-800">Selecionar arquivos</span>
-                                                <span className="mt-1 text-xs text-gray-500">Mock local até definirmos upload real</span>
+                                                <span className="mt-1 text-xs text-gray-500">Evidência local até o envio definitivo</span>
                                                 <input
                                                     type="file"
                                                     multiple
                                                     accept="image/*,.pdf,.doc,.docx,.heic"
                                                     className="sr-only"
                                                     onChange={(event) => {
-                                                        addMockEvidenceFiles(project, event.currentTarget.files);
+                                                        addEvidenceFiles(project, event.currentTarget.files);
                                                         event.currentTarget.value = '';
                                                     }}
                                                 />
@@ -537,11 +537,11 @@ export default function AuditorReview() {
                                                             <div className="min-w-0">
                                                                 <p className="truncate text-sm font-bold text-gray-800">{file.name}</p>
                                                                 <p className="text-xs text-gray-500">Tamanho: {formatFileSize(file.size)}</p>
-                                                                <p className="break-all text-xs text-gray-500">{file.mockUrl}</p>
+                                                                <p className="break-all text-xs text-gray-500">{file.localUrl}</p>
                                                             </div>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => removeMockEvidenceFile(file.id)}
+                                                                onClick={() => removeEvidenceFile(file.id)}
                                                                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
                                                                 title="Remover arquivo"
                                                                 aria-label={`Remover ${file.name}`}

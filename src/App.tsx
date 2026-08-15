@@ -28,7 +28,6 @@ import AuditorReview from './pages/Dashboard/AuditorReview';
 import CreditMarketplace from './pages/Dashboard/CreditMarketplace';
 import UserProfile from './pages/Dashboard/UserProfile';
 import Calculator from './pages/Dashboard/Calculator';
-import Institutional from './pages/Dashboard/Institutional';
 import RegisterInventory from './pages/Dashboard/RegisterInventory';
 import { Feed } from './pages/Dashboard/Feed'; // CONSULTA MRCA / EXPLORER
 import MonitoringNDVI from './pages/Dashboard/MonitoringNDVI';
@@ -77,6 +76,9 @@ function publicRoutes() {
       <Route path="rankings" element={<ImpactLeaders />} />
       <Route path="lideres" element={<ImpactLeaders />} />
       <Route path="auditores" element={<Auditors />} />
+      <Route path="certificadoras" element={<Certifiers />} />
+      <Route path="empresas" element={<Companies />} />
+      <Route path="produtores" element={<Companies />} />
 
       {/* Institucional / Legal */}
       <Route path="sobre" element={<AboutSinarca />} />

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Building2, Fingerprint, Star, ExternalLink, UserCheck, Shield } from 'lucide-react';
+import { Fingerprint, Star, ExternalLink, UserCheck, Shield } from 'lucide-react';
 import { database } from '../../services/database';
 
 export default function Auditors() {
@@ -62,7 +62,7 @@ export default function Auditors() {
                                     <p className="text-2xl font-bold text-white">{auditor.projects_audited}</p>
                                     <p className="text-[10px] uppercase text-text-muted tracking-wide font-bold">Projetos Auditados</p>
                                 </div>
-                                <Link to={`/painel/auditores/${auditor.id}`} className="flex items-center gap-2 bg-[#1A2E22] hover:bg-blue-900/40 text-blue-400 hover:text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border border-blue-900/30 hover:border-blue-500">
+                                <Link to={`/perfil/${auditor.id}`} className="flex items-center gap-2 bg-[#1A2E22] hover:bg-blue-900/40 text-blue-400 hover:text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border border-blue-900/30 hover:border-blue-500">
                                     Ver Perfil <ExternalLink className="w-3.5 h-3.5" />
                                 </Link>
                             </div>

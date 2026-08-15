@@ -29,6 +29,7 @@ export type CatalogResponse<T = any> = {
     certifiers?: T[];
     auditors?: T[];
     companies?: T[];
+    producers?: T[];
 };
 
 export type TransactionRecord = {
@@ -41,6 +42,8 @@ export type TransactionRecord = {
     createdAt?: string;
     status: string;
     hash: string;
+    projectId?: string | null;
+    buyer?: string | null;
     entities: {
         from: string;
         to: string;
@@ -50,6 +53,38 @@ export type TransactionRecord = {
 export type TransactionsResponse = {
     success: boolean;
     transactions: TransactionRecord[];
+};
+
+export type TransactionResponse = {
+    success: boolean;
+    transaction: TransactionRecord;
+};
+
+export type TransactionFilters = {
+    projectId?: string;
+    hash?: string;
+    type?: string;
+    buyer?: string;
+    status?: string;
+    limit?: number;
+};
+
+export type ProjectPublicDossier = {
+    success: boolean;
+    project: ProjectMRCA;
+    tags: Array<Record<string, any>>;
+    baseline: Record<string, any> | null;
+    certifications: Array<Record<string, any>>;
+    audits: Array<Record<string, any>>;
+    documents: Array<Record<string, any>>;
+    credits: Array<Record<string, any>>;
+    transactions: TransactionRecord[];
+    chainEvents: Array<Record<string, any>>;
+};
+
+export type PublicProfileResponse = {
+    success: boolean;
+    profile: Record<string, any>;
 };
 
 export type MonitoringProjectResponse = {
@@ -157,6 +192,11 @@ export const database = {
         return asArray(response, 'companies', []);
     },
 
+    getProducers: async () => {
+        const response = await apiGet<CatalogResponse>('/producers');
+        return asArray(response, 'producers', []);
+    },
+
     // === CONTA DE MERCADO VOLUNTÁRIO ===
     getMarketProjects: async ({ type = 'all', state = 'all', limit = 20 }: any) => {
         const projects = await getProjectsFromApi();
@@ -188,6 +228,14 @@ export const database = {
         return response?.project;
     },
 
+    getProjectPublicDossier: async (id: string): Promise<ProjectPublicDossier> => {
+        const response = await apiGet<ProjectPublicDossier>(`/projects/${encodeURIComponent(id)}/public-dossier`);
+        if (!response?.project) {
+            throw new Error('Dossiê público não encontrado na API');
+        }
+        return response;
+    },
+
     // === BUSCA UNIFICADA ===
     search: async (query: string) => {
         const q = query.toLowerCase();
@@ -216,9 +264,26 @@ export const database = {
         return asArray<InventoryItem>(response, 'inventory', []);
     },
 
-    getTransactions: async (): Promise<TransactionRecord[]> => {
-        const response = await apiGet<TransactionsResponse>('/transactions');
+    getTransactions: async (filters: TransactionFilters = {}): Promise<TransactionRecord[]> => {
+        const params = new URLSearchParams();
+        if (filters.projectId) params.set('project_id', filters.projectId);
+        if (filters.hash) params.set('hash', filters.hash);
+        if (filters.type && filters.type !== 'all') params.set('type', filters.type);
+        if (filters.buyer) params.set('buyer', filters.buyer);
+        if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+        if (filters.limit) params.set('limit', String(filters.limit));
+        const response = await apiGet<TransactionsResponse>(`/transactions${params.toString() ? `?${params}` : ''}`);
         return asArray<TransactionRecord>(response, 'transactions', []);
+    },
+
+    getTransactionByHash: async (hash: string): Promise<TransactionRecord | null> => {
+        const response = await apiGet<TransactionResponse>(`/transactions/${encodeURIComponent(hash)}`);
+        return response?.transaction || null;
+    },
+
+    getPublicProfile: async (id: string): Promise<Record<string, any> | null> => {
+        const response = await apiGet<PublicProfileResponse>(`/profiles/${encodeURIComponent(id)}`);
+        return response?.profile || null;
     },
 
     getMonitoringProject: async (id: string): Promise<MonitoringProjectResponse> => {

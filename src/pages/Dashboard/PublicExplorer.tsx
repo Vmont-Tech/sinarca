@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Activity,
     Search,
-    Filter,
     ArrowRight,
     Leaf,
     ShieldCheck,
@@ -21,9 +20,11 @@ interface GlobalEvent {
     id: string;
     type: string;
     asset: string;
+    projectId?: string | null;
     quantity: number;
     from: string;
     to: string;
+    buyer?: string | null;
     hash: string;
     timestamp: string;
     status: string;
@@ -52,35 +53,61 @@ export default function PublicExplorer() {
     const navigate = useNavigate();
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [projectTerm, setProjectTerm] = useState('');
+    const [buyerTerm, setBuyerTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [events, setEvents] = useState<GlobalEvent[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
+        let active = true;
         const loadEvents = async () => {
             setLoading(true);
-            const transactions = await database.getTransactions();
-            const allEvents = transactions.map((transaction) => {
-                const rawDate = parseTransactionDate(transaction);
-                return {
-                    id: transaction.id,
-                    type: eventTypeByTransaction[transaction.type] || transaction.type.toUpperCase(),
-                    asset: transaction.asset,
-                    quantity: parseTransactionAmount(transaction),
-                    from: transaction.entities.from,
-                    to: transaction.entities.to,
-                    hash: transaction.hash,
-                    timestamp: getTimeAgo(rawDate),
-                    status: transaction.status,
-                    rawDate
-                };
-            });
+            setError('');
+            try {
+                const transactions = await database.getTransactions({
+                    type: filter,
+                    hash: searchTerm,
+                    projectId: projectTerm,
+                    buyer: buyerTerm,
+                    status: statusFilter,
+                    limit: 250,
+                });
+                const allEvents = transactions.map((transaction) => {
+                    const rawDate = parseTransactionDate(transaction);
+                    return {
+                        id: transaction.id,
+                        type: eventTypeByTransaction[transaction.type] || transaction.type.toUpperCase(),
+                        asset: transaction.asset,
+                        projectId: transaction.projectId,
+                        quantity: parseTransactionAmount(transaction),
+                        from: transaction.entities.from,
+                        to: transaction.entities.to,
+                        buyer: transaction.buyer,
+                        hash: transaction.hash,
+                        timestamp: getTimeAgo(rawDate),
+                        status: transaction.status,
+                        rawDate
+                    };
+                });
 
-            allEvents.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
-            setEvents(allEvents);
-            setLoading(false);
+                allEvents.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+                if (active) setEvents(allEvents);
+            } catch (err) {
+                if (active) {
+                    setEvents([]);
+                    setError(err instanceof Error ? err.message : 'API pública indisponível');
+                }
+            } finally {
+                if (active) setLoading(false);
+            }
         };
         loadEvents();
-    }, []);
+        return () => {
+            active = false;
+        };
+    }, [filter, searchTerm, projectTerm, buyerTerm, statusFilter]);
 
     const getTimeAgo = (date: Date) => {
         const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -111,13 +138,7 @@ export default function PublicExplorer() {
         }
     };
 
-    const filteredEvents = events.filter(evt => {
-        const matchesFilter = filter === 'all' || evt.type === filter;
-        const matchesSearch = evt.asset.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            evt.hash.includes(searchTerm) ||
-            evt.from.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesFilter && matchesSearch;
-    });
+    const filteredEvents = events;
 
     if (loading) return <div className="min-h-screen bg-[#050a06] flex items-center justify-center text-sinarca-neon">Carregando Blockchain...</div>;
 
@@ -168,8 +189,8 @@ export default function PublicExplorer() {
             <div className="container mx-auto max-w-6xl px-4 py-8 flex-1">
 
                 {/* Search & Filter Bar */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-[#0a140d] p-4 rounded-xl border border-sinarca-border mb-6">
-                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                <div className="flex flex-col gap-4 bg-[#0a140d] p-4 rounded-xl border border-sinarca-border mb-6">
+                    <div className="flex gap-2 w-full overflow-x-auto pb-2 no-scrollbar">
                         {['all', 'REGISTER', 'AUDIT', 'MINT', 'BURN', 'TRANSFER'].map(f => (
                             <button
                                 key={f}
@@ -181,18 +202,49 @@ export default function PublicExplorer() {
                             </button>
                         ))}
                     </div>
-                    <div className="w-full md:w-96 relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-4 w-4 text-text-muted" />
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Search className="h-4 w-4 text-text-muted" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Hash da transação"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="block w-full pl-10 pr-3 py-2 border border-sinarca-border rounded-lg leading-5 bg-[#121f16] text-white placeholder-text-muted focus:outline-none focus:border-sinarca-neon focus:ring-1 focus:ring-sinarca-neon sm:text-sm font-mono transition-colors"
+                            />
                         </div>
                         <input
                             type="text"
-                            placeholder="Buscar por Hash, Bloco ou Endereço..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-2 border border-sinarca-border rounded-lg leading-5 bg-[#121f16] text-white placeholder-text-muted focus:outline-none focus:border-sinarca-neon focus:ring-1 focus:ring-sinarca-neon sm:text-sm font-mono transition-colors"
+                            placeholder="Projeto"
+                            value={projectTerm}
+                            onChange={(e) => setProjectTerm(e.target.value)}
+                            className="block w-full px-3 py-2 border border-sinarca-border rounded-lg leading-5 bg-[#121f16] text-white placeholder-text-muted focus:outline-none focus:border-sinarca-neon focus:ring-1 focus:ring-sinarca-neon sm:text-sm font-mono transition-colors"
                         />
+                        <input
+                            type="text"
+                            placeholder="Comprador"
+                            value={buyerTerm}
+                            onChange={(e) => setBuyerTerm(e.target.value)}
+                            className="block w-full px-3 py-2 border border-sinarca-border rounded-lg leading-5 bg-[#121f16] text-white placeholder-text-muted focus:outline-none focus:border-sinarca-neon focus:ring-1 focus:ring-sinarca-neon sm:text-sm font-mono transition-colors"
+                        />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="block w-full px-3 py-2 border border-sinarca-border rounded-lg leading-5 bg-[#121f16] text-white focus:outline-none focus:border-sinarca-neon focus:ring-1 focus:ring-sinarca-neon sm:text-sm font-mono transition-colors"
+                        >
+                            <option value="all">Todos os status</option>
+                            <option value="completed">Concluídas</option>
+                            <option value="pending">Pendentes</option>
+                            <option value="failed">Falhas</option>
+                        </select>
                     </div>
+                    {error && (
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-red-400">
+                            {error}
+                        </div>
+                    )}
                 </div>
 
                 {/* Ledger Table */}
@@ -226,7 +278,7 @@ export default function PublicExplorer() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div>
-                                                    <p className="font-bold text-white text-sm hover:text-sinarca-neon cursor-pointer transition-colors" onClick={() => navigate('/projetos')}>
+                                                    <p className="font-bold text-white text-sm hover:text-sinarca-neon cursor-pointer transition-colors" onClick={() => navigate(evt.projectId ? `/projeto/${evt.projectId}` : '/consulta')}>
                                                         {evt.asset}
                                                     </p>
                                                     <div className="flex items-center gap-1 mt-0.5">

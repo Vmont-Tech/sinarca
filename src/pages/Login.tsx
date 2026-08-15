@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Logo from '../assets/logo.png';
 import HeroBg from '../assets/login_hero.png';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, type UserRole } from '../contexts/AuthContext';
+import { database } from '../services/database';
 
 // Componente para seleção de Role
 const RoleBtn = ({ active, onClick, label, icon }: { active: boolean, onClick: () => void, label: string, icon: string }) => (
@@ -16,6 +17,78 @@ const RoleBtn = ({ active, onClick, label, icon }: { active: boolean, onClick: (
     </button>
 );
 
+const REGISTRATION_PROFILE_CONFIG: Record<Exclude<UserRole, 'admin'>, {
+    title: string;
+    summary: string;
+    nameLabel: string;
+    documentLabel: string;
+    organizationLabel: string;
+    emailLabel: string;
+    phoneLabel: string;
+    namePlaceholder: string;
+    documentPlaceholder: string;
+    organizationPlaceholder: string;
+    emailPlaceholder: string;
+    phonePlaceholder: string;
+}> = {
+    producer: {
+        title: 'Produtor',
+        summary: 'Informe o responsável, a propriedade ou organização produtora e os contatos para originar projetos ambientais.',
+        nameLabel: 'Responsável',
+        documentLabel: 'CPF/CNPJ rural',
+        organizationLabel: 'Propriedade / organização produtora',
+        emailLabel: 'E-mail do produtor',
+        phoneLabel: 'Telefone do responsável',
+        namePlaceholder: 'Nome do responsável',
+        documentPlaceholder: 'CPF, CNPJ ou CAF',
+        organizationPlaceholder: 'Fazenda, associação ou cooperativa',
+        emailPlaceholder: 'produtor@organizacao.com',
+        phonePlaceholder: '+55 63 99999-0000',
+    },
+    auditor: {
+        title: 'Auditor',
+        summary: 'Cadastre o auditor responsável pela verificação técnica, laudos e evidências de campo.',
+        nameLabel: 'Nome do auditor',
+        documentLabel: 'CPF ou registro profissional',
+        organizationLabel: 'Empresa de auditoria',
+        emailLabel: 'E-mail profissional',
+        phoneLabel: 'Telefone profissional',
+        namePlaceholder: 'Nome completo',
+        documentPlaceholder: 'CPF ou registro',
+        organizationPlaceholder: 'Consultoria ou auditoria independente',
+        emailPlaceholder: 'auditor@empresa.com',
+        phonePlaceholder: '+55 11 99999-0000',
+    },
+    company: {
+        title: 'Empresa',
+        summary: 'Informe os dados da empresa compradora para inventário, compra e compensação de créditos.',
+        nameLabel: 'Responsável corporativo',
+        documentLabel: 'CNPJ',
+        organizationLabel: 'Razão social',
+        emailLabel: 'E-mail corporativo',
+        phoneLabel: 'Telefone corporativo',
+        namePlaceholder: 'Nome do responsável',
+        documentPlaceholder: '00.000.000/0001-00',
+        organizationPlaceholder: 'Empresa Compradora Ltda',
+        emailPlaceholder: 'compras@empresa.com',
+        phonePlaceholder: '+55 11 99999-0000',
+    },
+    certifier: {
+        title: 'Certificadora',
+        summary: 'Cadastre a certificadora responsável por metodologia, aprovação técnica e emissão do ativo.',
+        nameLabel: 'Responsável técnico',
+        documentLabel: 'CNPJ da certificadora',
+        organizationLabel: 'Certificadora',
+        emailLabel: 'E-mail institucional',
+        phoneLabel: 'Telefone institucional',
+        namePlaceholder: 'Nome do responsável',
+        documentPlaceholder: '00.000.000/0001-00',
+        organizationPlaceholder: 'Certificadora Ambiental Ltda',
+        emailPlaceholder: 'certificacao@empresa.com',
+        phonePlaceholder: '+55 11 99999-0000',
+    },
+};
+
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -23,6 +96,7 @@ const Login = () => {
     const from = location.state?.from || '/painel';
 
     const [scrolled, setScrolled] = useState(false);
+    const [publicStats, setPublicStats] = useState<{ registered: number; projects: number } | null>(null);
     const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -30,6 +104,8 @@ const Login = () => {
     // Registration State
     const [regName, setRegName] = useState('');
     const [regDoc, setRegDoc] = useState(''); // CPF/CNPJ
+    const [regOrganization, setRegOrganization] = useState('');
+    const [regPhone, setRegPhone] = useState('');
     const [regCorpEmail, setRegCorpEmail] = useState('');
     const [regPass, setRegPass] = useState('');
     const [regConfirmPass, setRegConfirmPass] = useState('');
@@ -38,12 +114,33 @@ const Login = () => {
     // UI State
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [role, setRole] = useState<'producer' | 'auditor' | 'company' | 'admin'>('producer');
+    const [role, setRole] = useState<Exclude<UserRole, 'admin'>>('producer');
+    const registrationProfile = REGISTRATION_PROFILE_CONFIG[role];
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        const loadPublicStats = async () => {
+            try {
+                const projects = await database.getRawMarketProjects();
+                if (!active) return;
+                setPublicStats({
+                    registered: projects.reduce((sum, project) => sum + Number(project.metrics?.carbonStock || 0), 0),
+                    projects: projects.length,
+                });
+            } catch {
+                if (active) setPublicStats(null);
+            }
+        };
+        loadPublicStats();
+        return () => {
+            active = false;
+        };
     }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -68,6 +165,18 @@ const Login = () => {
             setError('As senhas digitadas não conferem.');
             return;
         }
+        if (!regName.trim() || !regDoc.trim() || !regOrganization.trim() || !regPhone.trim() || !regCorpEmail.trim()) {
+            setError(`Complete os dados obrigatórios do perfil ${registrationProfile.title}.`);
+            return;
+        }
+        if (!regCorpEmail.includes('@')) {
+            setError('Informe um e-mail válido para o cadastro.');
+            return;
+        }
+        if (regPass.length < 8) {
+            setError('A senha deve ter no mínimo 8 caracteres.');
+            return;
+        }
         if (!termsAccepted) {
             setError('É necessário aceitar os Termos de Uso.');
             return;
@@ -78,6 +187,8 @@ const Login = () => {
             await register({
                 name: regName,
                 document: regDoc,
+                organization: regOrganization,
+                phone: regPhone,
                 email: regCorpEmail,
                 password: regPass,
                 role: role
@@ -90,9 +201,9 @@ const Login = () => {
         }
     };
 
-    const openStaticNotice = (msg: string) => (e: React.MouseEvent) => {
+    const goToPublicPage = (path: string) => (e: React.MouseEvent) => {
         e.preventDefault();
-        alert(msg);
+        navigate(path);
     };
 
     return (
@@ -139,11 +250,11 @@ const Login = () => {
 
                         <div className="grid grid-cols-2 gap-8 py-12 border-y border-white/5">
                             <div>
-                                <span className="block text-4xl font-bold text-white font-display">1.2M</span>
+                                <span className="block text-4xl font-bold text-white font-display">{publicStats ? Math.round(publicStats.registered).toLocaleString('pt-BR') : '...'}</span>
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">tCO2e Registrados</span>
                             </div>
                             <div>
-                                <span className="block text-4xl font-bold text-white font-display">12.5k</span>
+                                <span className="block text-4xl font-bold text-white font-display">{publicStats ? publicStats.projects.toLocaleString('pt-BR') : '...'}</span>
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Projetos Ativos</span>
                             </div>
                         </div>
@@ -157,7 +268,7 @@ const Login = () => {
                         {/* Role Selector Card */}
                         <div className="space-y-4">
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Selecione seu Perfil de Acesso</p>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <RoleBtn 
                                     active={role === 'producer'} 
                                     onClick={() => setRole('producer')} 
@@ -175,6 +286,12 @@ const Login = () => {
                                     onClick={() => setRole('company')} 
                                     label="Empresa" 
                                     icon="business"
+                                />
+                                <RoleBtn
+                                    active={role === 'certifier'}
+                                    onClick={() => setRole('certifier')}
+                                    label="Certificadora"
+                                    icon="verified"
                                 />
                             </div>
                         </div>
@@ -201,7 +318,7 @@ const Login = () => {
 
                             {/* Error Message */}
                             {error && (
-                                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-[10px] font-bold text-red-500 uppercase tracking-widest">
+                                <div role="alert" aria-live="polite" className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-[10px] font-bold text-red-500 uppercase tracking-widest">
                                     {error}
                                 </div>
                             )}
@@ -215,6 +332,7 @@ const Login = () => {
                                             type="text" 
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
+                                            autoComplete="username"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white text-sm focus:outline-none focus:border-emerald-500/30 transition-all" 
                                             placeholder="E-mail ou Documento" 
                                             disabled={loading}
@@ -228,6 +346,7 @@ const Login = () => {
                                             type="password" 
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
+                                            autoComplete="current-password"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white text-sm focus:outline-none focus:border-emerald-500/30 transition-all" 
                                             placeholder="••••••••" 
                                             disabled={loading}
@@ -248,36 +367,71 @@ const Login = () => {
                             {/* Register Form */}
                             {activeTab === 'register' && (
                                 <form className="space-y-6" onSubmit={handleRegister}>
+                                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                                            Dados do perfil {registrationProfile.title}
+                                        </p>
+                                        <p className="mt-2 text-xs leading-relaxed text-gray-400">
+                                            {registrationProfile.summary}
+                                        </p>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nome</label>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.nameLabel}</label>
                                             <input 
-                                                type="text" 
-                                                value={regName}
-                                                onChange={(e) => setRegName(e.target.value)}
-                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                                placeholder="Seu nome"
+                                            type="text" 
+                                            value={regName}
+                                            onChange={(e) => setRegName(e.target.value)}
+                                            autoComplete="name"
+                                            className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
+                                            placeholder={registrationProfile.namePlaceholder}
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">CPF/CNPJ</label>
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.documentLabel}</label>
                                             <input 
-                                                type="text" 
-                                                value={regDoc}
-                                                onChange={(e) => setRegDoc(e.target.value)}
-                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                                placeholder="Documento"
+                                            type="text" 
+                                            value={regDoc}
+                                            onChange={(e) => setRegDoc(e.target.value)}
+                                            autoComplete="off"
+                                            className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
+                                            placeholder={registrationProfile.documentPlaceholder}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.organizationLabel}</label>
+                                            <input
+                                                type="text"
+                                                value={regOrganization}
+                                                onChange={(e) => setRegOrganization(e.target.value)}
+                                                autoComplete="organization"
+                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none"
+                                                placeholder={registrationProfile.organizationPlaceholder}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.phoneLabel}</label>
+                                            <input
+                                                type="tel"
+                                                value={regPhone}
+                                                onChange={(e) => setRegPhone(e.target.value)}
+                                                autoComplete="tel"
+                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none"
+                                                placeholder={registrationProfile.phonePlaceholder}
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">E-mail Corporativo</label>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{registrationProfile.emailLabel}</label>
                                         <input 
                                             type="email" 
                                             value={regCorpEmail}
                                             onChange={(e) => setRegCorpEmail(e.target.value)}
+                                            autoComplete="email"
                                             className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
-                                            placeholder="nome@empresa.com"
+                                            placeholder={registrationProfile.emailPlaceholder}
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -287,6 +441,7 @@ const Login = () => {
                                                 type="password" 
                                                 value={regPass}
                                                 onChange={(e) => setRegPass(e.target.value)}
+                                                autoComplete="new-password"
                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
                                                 placeholder="Mín 8 chars"
                                             />
@@ -297,6 +452,7 @@ const Login = () => {
                                                 type="password" 
                                                 value={regConfirmPass}
                                                 onChange={(e) => setRegConfirmPass(e.target.value)}
+                                                autoComplete="new-password"
                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none" 
                                                 placeholder="Mín 8 chars"
                                             />
@@ -311,7 +467,7 @@ const Login = () => {
                                             className="mt-1 bg-white/5 border-white/5"
                                         />
                                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
-                                            Li e concordo com os <button type="button" onClick={openStaticNotice('Exibindo Termos de Uso...')} className="text-emerald-500 hover:underline">Termos</button> e <button type="button" onClick={openStaticNotice('Exibindo Política de Privacidade...')} className="text-emerald-500 hover:underline">Políticas</button> do SINARCA.
+                                            Li e concordo com os <button type="button" onClick={goToPublicPage('/termos')} className="text-emerald-500 hover:underline">Termos</button> e <button type="button" onClick={goToPublicPage('/privacidade')} className="text-emerald-500 hover:underline">Políticas</button> do SINARCA.
                                         </p>
                                     </div>
 
@@ -328,9 +484,9 @@ const Login = () => {
                         {/* Natural Footer */}
                         <div className="text-[#9cba9c]/60 text-[10px] text-center uppercase tracking-widest">
                              <div className="flex items-center justify-center gap-6 mb-4">
-                                <button onClick={openStaticNotice('Termos de Uso')} className="hover:text-white transition-colors">Termos de Uso</button>
+                                <button onClick={() => navigate('/termos')} className="hover:text-white transition-colors">Termos de Uso</button>
                                 <span className="size-1 rounded-full bg-[#3b543b]"></span>
-                                <button onClick={openStaticNotice('Política de Privacidade')} className="hover:text-white transition-colors">Política de Privacidade</button>
+                                <button onClick={() => navigate('/privacidade')} className="hover:text-white transition-colors">Política de Privacidade</button>
                             </div>
                              <p>© {new Date().getFullYear()} SINARCA. Todos os direitos reservados.</p>
                         </div>

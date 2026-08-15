@@ -1,4 +1,5 @@
 import { LegalPage } from '../../components/legal/LegalPage';
+import { PUBLIC_CONTACT_EMAIL, PUBLIC_SUPPORT_EMAIL } from '../../constants/publicContact';
 
 export default function Terms() {
   return (
@@ -90,7 +91,14 @@ export default function Terms() {
       <section className="space-y-6">
         <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">9. Resolução de Disputas</h2>
         <p>
-          Quaisquer disputas serão regidas pelas leis da República Federativa do Brasil. Você concorda com a jurisdição exclusiva dos tribunais localizados na cidade de São Paulo - SP para a resolução de conflitos.
+          Quaisquer disputas serão regidas pelas leis da República Federativa do Brasil. A resolução observará o foro competente definido pela legislação aplicável e pelos instrumentos contratuais vigentes.
+        </p>
+      </section>
+
+      <section className="space-y-6">
+        <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wider">10. Contato</h2>
+        <p>
+          Para dúvidas gerais sobre estes Termos de Uso, use <a className="text-primary font-bold hover:underline" href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>. Para suporte jurídico relacionado à plataforma, use <a className="text-primary font-bold hover:underline" href={`mailto:${PUBLIC_SUPPORT_EMAIL}`}>{PUBLIC_SUPPORT_EMAIL}</a>.
         </p>
       </section>
     </LegalPage>

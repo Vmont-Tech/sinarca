@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.security import decode_token
@@ -162,10 +162,43 @@ class MarketplaceService:
         await self.session.commit()
         return certificate
 
-    async def transactions(self, authorization: str | None) -> list[dict[str, Any]]:
+    async def transactions(
+        self,
+        authorization: str | None,
+        *,
+        project_id: str | None = None,
+        hash_filter: str | None = None,
+        type_filter: str | None = None,
+        buyer: str | None = None,
+        status_filter: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
         user_scope = await self._transaction_scope(authorization)
         statement = select(LedgerEntry, LedgerAccount, Project, ChainEvent).join(LedgerAccount, LedgerAccount.id == LedgerEntry.account_id)
         statement = statement.outerjoin(Project, Project.id == LedgerEntry.project_id).outerjoin(ChainEvent, ChainEvent.id == LedgerEntry.chain_event_id)
+        if project_id:
+            filters = [Project.friendly_id == project_id, Project.source_hash == project_id]
+            try:
+                filters.append(Project.id == uuid.UUID(project_id))
+            except ValueError:
+                pass
+            statement = statement.where(or_(*filters))
+        if hash_filter:
+            normalized_hash = f"%{hash_filter.strip()}%"
+            statement = statement.where(
+                or_(
+                    LedgerEntry.idempotency_key.ilike(normalized_hash),
+                    LedgerEntry.metadata_["hash"].astext.ilike(normalized_hash),
+                    ChainEvent.transaction_hash.ilike(normalized_hash),
+                    ChainEvent.source_tx_hash.ilike(normalized_hash),
+                )
+            )
+        if type_filter and type_filter.lower() != "all":
+            type_values = ledger_entry_types_for_filter(type_filter)
+            statement = statement.where(func.upper(cast(LedgerEntry.entry_type, String)).in_(type_values))
+        if buyer:
+            normalized_buyer = f"%{buyer.strip()}%"
+            statement = statement.where(LedgerAccount.external_id.ilike(normalized_buyer))
         if user_scope and user_scope["role"] != "admin":
             account_filters = []
             if user_scope.get("profile_id") is not None:
@@ -174,9 +207,26 @@ class MarketplaceService:
                 account_filters.append(LedgerAccount.owner_organization_id == user_scope["organization_id"])
             if account_filters:
                 statement = statement.where(or_(*account_filters))
-        statement = statement.order_by(LedgerEntry.created_at.desc())
+        statement = statement.order_by(LedgerEntry.created_at.desc()).limit(limit)
         rows = (await self.session.execute(statement)).all()
-        return [format_transaction(entry, account, project, event) for entry, account, project, event in rows]
+        transactions = [format_transaction(entry, account, project, event) for entry, account, project, event in rows]
+        if status_filter and status_filter.lower() != "all":
+            normalized_status = status_filter.strip().lower()
+            transactions = [
+                transaction
+                for transaction in transactions
+                if normalized_status in str(transaction.get("status", "")).lower()
+            ]
+        return transactions
+
+    async def transaction_detail(self, hash_or_id: str, authorization: str | None) -> dict[str, Any]:
+        transactions = await self.transactions(authorization, hash_filter=hash_or_id, limit=1000)
+        for transaction in transactions:
+            if hash_or_id in {transaction["id"], transaction["hash"]}:
+                return transaction
+        if transactions:
+            return transactions[0]
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transação não encontrada")
 
     async def _available_credit(self, project: Project) -> EnvironmentalCredit | None:
         result = await self.session.execute(
@@ -269,9 +319,26 @@ def format_transaction(entry: LedgerEntry, account: LedgerAccount, project: Proj
         "createdAt": entry.created_at.isoformat(),
         "status": metadata.get("status") or ("pending" if event is not None and event.status == "PENDING" else "completed"),
         "hash": metadata.get("hash") or (event.transaction_hash if event is not None else entry.idempotency_key),
+        "projectId": project.friendly_id if project is not None else None,
+        "buyer": account.external_id,
         "entities": {
             "from": entry.counterparty or "Protocolo",
             "to": "Minha Conta" if float(entry.amount) >= 0 else "Aposentadoria",
         },
         "ledgerAccount": account.external_id,
     }
+
+
+def ledger_entry_types_for_filter(value: str) -> list[str]:
+    normalized = value.strip().upper()
+    aliases = {
+        "RECEIVED": ["PURCHASE", "RECEIVED", "CREDIT_ISSUED"],
+        "TRANSFER": ["PURCHASE", "RECEIVED", "TRANSFER_SENT"],
+        "PURCHASE": ["PURCHASE"],
+        "SENT": ["TRANSFER_SENT"],
+        "RETIRED": ["RETIREMENT", "BURN"],
+        "BURN": ["RETIREMENT", "BURN"],
+        "MINTED": ["MINT"],
+        "MINT": ["MINT"],
+    }
+    return aliases.get(normalized, [normalized])
