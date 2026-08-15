@@ -351,7 +351,7 @@ values
   ((select id from projects where friendly_id = 'PRC-2024-002'), true, '04A224C8D91C91', 'cmac-prc-002-b', -10.182500, -48.317800, 'B', 'ACTIVE', '2024-02-10T08:10:00Z', '2024-02-25T09:34:00Z', jsonb_build_object('source', 'NFC 424 DNA seed')),
   ((select id from projects where friendly_id = 'PRC-2024-002'), true, '04A224C8D91C92', 'cmac-prc-002-c', -10.198900, -48.334200, 'C', 'ACTIVE', '2024-02-10T08:20:00Z', '2024-02-25T09:38:00Z', jsonb_build_object('source', 'NFC 424 DNA seed')),
   ((select id from projects where friendly_id = 'PRC-2024-002'), true, '04A224C8D91C93', 'cmac-prc-002-d', -10.184100, -48.352000, 'D', 'ACTIVE', '2024-02-10T08:30:00Z', '2024-02-25T09:42:00Z', jsonb_build_object('source', 'NFC 424 DNA seed'))
-on conflict (tag_uid) do update set
+on conflict (tag_uid) where tag_uid is not null do update set
   project_id = excluded.project_id,
   has_qtag = excluded.has_qtag,
   cmac = excluded.cmac,
@@ -377,19 +377,16 @@ on conflict (baseline_hash) do update set
   captured_at = excluded.captured_at,
   evidence_uri = excluded.evidence_uri;
 
+delete from certifications
+where project_id in (
+  select id from projects where friendly_id in ('PRC-2024-002', 'PRC-2026-010', 'PRC-2026-011')
+);
+
 insert into certifications (project_id, certifier_organization_id, certifier_profile_id, methodology, credit_potential, decision, notes, signed_document_hash, signed_at)
 values
   ((select id from projects where friendly_id = 'PRC-2024-002'), (select id from organizations where external_id = 'std-002'), (select id from profiles where external_id = 'std-001-user'), 'AR-ACM0003', 85000, 'APPROVED', 'Certificação inicial consolidada do Carbono Cerrado.', 'sha256-cert-prc-2024-002', '2024-02-25T10:00:00Z'),
   ((select id from projects where friendly_id = 'PRC-2026-010'), (select id from organizations where external_id = 'std-001'), (select id from profiles where external_id = 'std-001-user'), 'AR-ACM0003', 18000, 'PENDING', 'Fila inicial da certificadora para validação de UI.', null, null),
-  ((select id from projects where friendly_id = 'PRC-2026-011'), (select id from organizations where external_id = 'std-001'), (select id from profiles where external_id = 'std-001-user'), 'VM0015 (Verra)', 32000, 'APPROVED', 'Certificação aprovada; aguardando auditoria.', 'sha256-cert-prc-2026-011', '2026-05-22T10:00:00Z')
-on conflict (project_id, decision) do update set
-  certifier_organization_id = excluded.certifier_organization_id,
-  certifier_profile_id = excluded.certifier_profile_id,
-  methodology = excluded.methodology,
-  credit_potential = excluded.credit_potential,
-  notes = excluded.notes,
-  signed_document_hash = excluded.signed_document_hash,
-  signed_at = excluded.signed_at;
+  ((select id from projects where friendly_id = 'PRC-2026-011'), (select id from organizations where external_id = 'std-001'), (select id from profiles where external_id = 'std-001-user'), 'VM0015 (Verra)', 32000, 'APPROVED', 'Certificação aprovada; aguardando auditoria.', 'sha256-cert-prc-2026-011', '2026-05-22T10:00:00Z');
 
 insert into audits (project_id, auditor_organization_id, auditor_profile_id, status, report_text, latitude, longitude, evidence_urls, digital_signature, audited_at)
 values
@@ -540,8 +537,12 @@ on conflict (source_tx_hash) do update set
 insert into documents (owner_organization_id, project_id, document_type, storage_path, sha256_hash, mime_type, size_bytes, metadata)
 values
   ((select id from organizations where external_id = 'std-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'CERTIFICATION_REPORT', 's3://sinarca-seed/documents/prc-2024-002-certification.pdf', 'sha256-cert-prc-2024-002', 'application/pdf', 204800, jsonb_build_object('source', 'certification seed')),
-  ((select id from organizations where external_id = 'aud-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'AUDIT_REPORT', 's3://sinarca-seed/documents/prc-2024-002-audit.pdf', 'sha256-audit-prc-2024-002', 'application/pdf', 307200, jsonb_build_object('source', 'audit seed'))
-on conflict (sha256_hash) do update set
+  ((select id from organizations where external_id = 'aud-002'), (select id from projects where friendly_id = 'PRC-2024-002'), 'AUDIT_REPORT', 's3://sinarca-seed/documents/prc-2024-002-audit.pdf', 'sha256-audit-prc-2024-002', 'application/pdf', 307200, jsonb_build_object('source', 'audit seed')),
+  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-010'), 'LEGAL_OWNERSHIP', 's3://sinarca-seed/documents/prc-2026-010-legal.pdf', 'sha256-legal-prc-2026-010', 'application/pdf', 102400, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'matricula.pdf')),
+  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-010'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-010-inventario.pdf', 'sha256-inventario-prc-2026-010', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf')),
+  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'LEGAL_OWNERSHIP', 's3://sinarca-seed/documents/prc-2026-011-legal.pdf', 'sha256-legal-prc-2026-011', 'application/pdf', 102400, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'matricula.pdf')),
+  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-011-inventario.pdf', 'sha256-inventario-prc-2026-011', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf'))
+on conflict (project_id, sha256_hash) do update set
   owner_organization_id = excluded.owner_organization_id,
   project_id = excluded.project_id,
   document_type = excluded.document_type,
