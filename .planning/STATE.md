@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-08-15T12:51:19.839Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-08-15T13:03:42.759Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 23
-  completed_plans: 18
-  percent: 78
+  completed_plans: 19
+  percent: 83
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04 (certification-workbench) — IN PROGRESS
-Plan: 2 of 7 complete
+Plan: 3 of 7 complete
 Status: Ready to execute
 Last activity: 2026-08-15
 
@@ -53,6 +53,7 @@ Progress: [███████░░░] 74%
 | Phase 01-backend-rebuild P01-06 | 13min | 5 tasks | 14 files |
 | Phase 04 P01 | 25min | 3 tasks | 6 files |
 | Phase 04-certification-workbench P02 | 20min | 3 tasks | 6 files |
+| Phase 04-certification-workbench P03 | 30min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,8 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: Dossie publico minimizado: public_certification_item/public_document_item excluem notas internas e documentos nao PUBLIC_DOCUMENT_TYPES; certificate/certificationHistory expostos sem metadata/beforeData/afterData.
 - [Phase 04-certification-workbench]: assert_certification_dossier_complete usa HTTP 400 para propagar o detail exato do 04-UI-SPEC.md via src/services/api.ts.
 - [Phase 04-certification-workbench]: GET /certifier/projects/{id}/review entrega o dossie tecnico completo e registra CERTIFICATION_REVIEW_OPENED uma vez por ator.
+- [Phase 04-certification-workbench]: project.timeline nunca recebe as notes internas do certificador (nenhuma das tres decisoes); usa sempre uma descricao publica fixa, ja que project.timeline e serializado tanto no dossie publico quanto na revisao interna pelo mesmo project_to_mrca().
+- [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history e GET /projects/{id}/pendencies foram adicionados no plano 04-03 como funcionalidade critica ausente (Rule 2): nenhuma task os declarava, mas os proprios testes de aceite do plano exigem ambos.
 
 ### Roadmap Evolution
 
@@ -146,6 +149,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T12:51:19.836Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-08-15T13:03:42.754Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None

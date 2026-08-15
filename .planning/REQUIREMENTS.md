@@ -38,8 +38,8 @@ Requisitos do milestone v1.0. Cada um mapeia para exatamente uma fase do roadmap
 ### Bancada da Certificadora (Phase 4 — certification-workbench)
 
 - [x] **CERT-01**: A certificadora abre revisão detalhada com baseline, documentos, QTAGs e cálculo de potencial.
-- [ ] **CERT-02**: Aprovação/reprovação permite notas, metodologia, potencial de crédito e motivo estruturado.
-- [ ] **CERT-03**: Certificado digital ou referência documental é registrado e exibido no projeto.
+- [x] **CERT-02**: Aprovação/reprovação permite notas, metodologia, potencial de crédito e motivo estruturado.
+- [x] **CERT-03**: Certificado digital ou referência documental é registrado e exibido no projeto.
 - [ ] **CERT-04**: Aprovação aciona ou prepara explicitamente o fluxo de lastro/mint bloqueado com status visível.
 - [x] **CERT-05**: Histórico de decisões por projeto fica disponível para certificadora e dossiê público quando aplicável.
 

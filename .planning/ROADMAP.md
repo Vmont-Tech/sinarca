@@ -127,7 +127,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Fundação de dados (migration, modelos de pendência/tesouraria) e contrato de testes CERT-01..05.
 - [x] 04-02-PLAN.md — Dossiê técnico da certificadora e minimização do dossiê público (serializadores público/interno).
-- [ ] 04-03-PLAN.md — Decisão multipart append-only com gate de dossiê mínimo e certificado PDF obrigatório.
+- [x] 04-03-PLAN.md — Decisão multipart append-only com gate de dossiê mínimo e certificado PDF obrigatório.
 - [ ] 04-04-PLAN.md — Autorização atômica de lastro/mint bloqueado para a fila da tesouraria.
 - [ ] 04-05-PLAN.md — Filas com escopo e contador, linha do tempo filtrável e ciclo de resposta do produtor.
 - [ ] 04-06-PLAN.md — Bancada da certificadora no frontend: card expansível, seis abas e upload real do certificado.
