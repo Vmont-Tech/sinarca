@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-08-15T13:08:54.090Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-08-15T13:19:21.549Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 23
-  completed_plans: 20
-  percent: 87
+  completed_plans: 21
+  percent: 91
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04 (certification-workbench) — IN PROGRESS
-Plan: 4 of 7 complete
+Plan: 5 of 7 complete
 Status: Ready to execute
 Last activity: 2026-08-15
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 74%
 | Phase 04-certification-workbench P02 | 20min | 3 tasks | 6 files |
 | Phase 04-certification-workbench P03 | 30min | 3 tasks | 6 files |
 | Phase 04-certification-workbench P04 | 20min | 2 tasks | 2 files |
+| Phase 04-certification-workbench P05 | 35min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history e GET /projects/{id}/pendencies foram adicionados no plano 04-03 como funcionalidade critica ausente (Rule 2): nenhuma task os declarava, mas os proprios testes de aceite do plano exigem ambos.
 - [Phase 04-certification-workbench]: GET /treasury/authorizations retorna uma lista JSON no nivel raiz (nao o envelope success/total/authorizations), porque os testes de aceite pre-existentes ja esperam um array.
 - [Phase 04-certification-workbench]: TREASURY_QUEUE_CREATED e MINT_AUTHORIZED sao gravados com entity_type=projects/entity_id=project.id, para aparecerem na timeline de auditoria do projeto e no dossie publico, que filtram estritamente por entity_type==projects.
+- [Phase 04-certification-workbench]: CertifierQueueResponse usa items (chave exigida pelo teste imutável de 04-01) com projects como alias de compatibilidade com CertifierReview.tsx
+- [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history manteve formato de lista JSON no nível raiz com filtros event_type/actor_role, sem o envelope CertificationHistoryResponse descrito na prosa do plano, porque testes imutáveis de 04-01 consomem a rota como array
 
 ### Roadmap Evolution
 
@@ -152,6 +155,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T13:08:54.087Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-08-15T13:19:21.544Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
