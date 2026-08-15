@@ -177,12 +177,34 @@ async def certifier_project_review(
 @router.get("/certifier/projects/{project_id}/history")
 async def certifier_project_history(
     project_id: str,
+    event_type: str | None = Query(default=None),
+    actor_role: str | None = Query(default=None),
     _: AuthenticatedUser = Depends(require_role("certifier", "admin")),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, object]]:
+    """Linha do tempo de certificação do projeto, em ordem cronológica crescente.
+
+    Filtros opcionais `event_type` (compara com `action`) e `actor_role` (delegado para
+    `ProjectsService.certification_history`, já suportado desde o plano 04-02).
+
+    NOTA (desvio documentado no 04-05-SUMMARY.md): o formato de resposta permanece uma
+    lista JSON no nível raiz — não o envelope `CertificationHistoryResponse` com
+    `availableEventTypes`/`availableActorRoles` descrito na prosa do plano 04-05 — porque
+    esta rota é consumida por `tests/test_certifier_workbench.py` (contrato imutável criado
+    no plano 04-01, Wave 0) via `for item in history_response.json()`, o que quebraria se a
+    raiz virasse um objeto. O frontend pode derivar os tipos/atores disponíveis a partir da
+    própria lista (chamada sem filtro), sem necessidade de um campo adicional no servidor.
+    """
     service = ProjectsService(session)
     project = await service._get_project_model(project_id)
-    return await service.certification_history(project)
+    events = await service.certification_history(
+        project,
+        actor_role=actor_role.strip().lower() if actor_role else None,
+    )
+    if event_type:
+        normalized_event_type = event_type.strip().upper()
+        events = [event for event in events if event["action"] == normalized_event_type]
+    return events
 
 
 def pendency_item(pendency: CertificationPendency) -> dict[str, object]:
