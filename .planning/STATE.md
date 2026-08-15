@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 04 UI-SPEC approved
-last_updated: "2026-08-15T04:25:41.696Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-08-15T12:39:48.168Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 13
   completed_phases: 3
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
+  total_plans: 23
+  completed_plans: 17
+  percent: 74
 ---
 
 # Project State
@@ -25,18 +25,18 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 ## Current Position
 
-Phase: 04 (certification-workbench) — READY TO PLAN
-Plan: No Phase 04 plans yet
-Status: Phases 1, 2 e 3 concluídas e verificadas (Nyquist + UAT + segurança); próxima ação é planejar a Phase 4 (ou 4.1, se a fundação geoespacial for priorizada primeiro)
+Phase: 04 (certification-workbench) — IN PROGRESS
+Plan: 01 of 7 complete
+Status: Plan 04-01 (fundação de dados) executado e commitado; migration, modelos SQLAlchemy e contrato de testes RED (9 testes) prontos. Próxima ação é executar o plano 04-02.
 Last activity: 2026-08-15
 
-Progress: [███-------] 30%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: tracked in per-plan summaries where available
 - Total execution time: tracked in phase summaries where available
 
@@ -51,6 +51,7 @@ Progress: [███-------] 30%
 | Phase 01-backend-rebuild P01-04 | 12min | 4 tasks | 26 files |
 | Phase 01-backend-rebuild P01-05 | 11min | 5 tasks | 17 files |
 | Phase 01-backend-rebuild P01-06 | 13min | 5 tasks | 14 files |
+| Phase 04 P01 | 25min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Progress: [███-------] 30%
 - [Phase 03]: Captura de campo web/PWA falha fechado para NFC/SUN sem credenciais, permite geolocalização com fallback manual e renderiza geofence SVG a partir das mesmas QTAGs enviadas no submit.
 - [Phase 03]: Documentos obrigatórios são selecionados no wizard, enviados via `FormData` após criação do projeto e só liberam sucesso final quando os uploads obrigatórios terminam.
 - [Phase 03]: Dossiê de projeto renderiza geofence a partir de `dossier.tags`, documentos reais de `dossier.documents`, timeline canônica da API e baseline rotulado como determinístico/Sentinel bloqueado quando aplicável.
+- [Phase 04]: Constraint unica (project_id, decision) de certifications removida; decisoes de certificacao passam a ser append-only (sempre INSERT, indice por project_id/created_at).
+- [Phase 04]: certification_pendencies e treasury_authorizations sao tabelas operacionais sem policy de SELECT no RLS; acesso exclusivo via backend_app com auth propria e guard de papel.
 
 ### Roadmap Evolution
 
@@ -139,6 +142,6 @@ Progress: [███-------] 30%
 
 ## Session Continuity
 
-Last session: 2026-08-15T04:25:41.692Z
-Stopped at: Phase 04 UI-SPEC approved
-Resume file: .planning/phases/04-certification-workbench/04-UI-SPEC.md
+Last session: 2026-08-15T12:39:48.165Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
