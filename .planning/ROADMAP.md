@@ -131,7 +131,7 @@ Plans:
 - [x] 04-04-PLAN.md — Autorização atômica de lastro/mint bloqueado para a fila da tesouraria.
 - [x] 04-05-PLAN.md — Filas com escopo e contador, linha do tempo filtrável e ciclo de resposta do produtor.
 - [x] 04-06-PLAN.md — Bancada da certificadora no frontend: card expansível, seis abas e upload real do certificado.
-- [ ] 04-07-PLAN.md — Certificado e histórico no dossiê público e trilha interna completa para o produtor (D-13/D-22).
+- [x] 04-07-PLAN.md — Certificado e histórico no dossiê público e trilha interna completa para o produtor (D-13/D-22).
 
 ### Phase 04.1: geospatial-foundation (INSERTED)
 **Goal**: Introduzir PostGIS e persistir o perímetro do projeto como `geometry` real (declared/field_verified/certified/active), com backfill dos QTAGs existentes a partir do algoritmo de ordenação/shoelace hoje usado em runtime e detecção interna de overlap via `ST_Intersects`/`ST_Area`. Pré-requisito comum para as Phases 04.2 (Integrity Layer) e 05 (Satellite Monitoring) — nenhuma das duas tem onde persistir geometria sem esta fase.

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-08-15T13:31:33.744Z"
-last_activity: 2026-08-15
+status: completed
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-08-15T13:43:27.862Z"
+last_activity: 2026-08-15 -- Phase 04 marked complete
 progress:
   total_phases: 13
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 22
-  percent: 96
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 ## Current Position
 
-Phase: 04 (certification-workbench) — IN PROGRESS
-Plan: 6 of 7 complete
-Status: Ready to execute
-Last activity: 2026-08-15
+Phase: 04 — COMPLETE
+Plan: 7 of 7 complete
+Status: Phase 04 complete
+Last activity: 2026-08-15 -- Phase 04 marked complete
 
 Progress: [███████░░░] 74%
 
@@ -57,6 +57,7 @@ Progress: [███████░░░] 74%
 | Phase 04-certification-workbench P04 | 20min | 2 tasks | 2 files |
 | Phase 04-certification-workbench P05 | 35min | 3 tasks | 3 files |
 | Phase 04-certification-workbench P06 | 25min | 3 tasks | 2 files |
+| Phase 04-certification-workbench P07 | 30min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history manteve formato de lista JSON no nível raiz com filtros event_type/actor_role, sem o envelope CertificationHistoryResponse descrito na prosa do plano, porque testes imutáveis de 04-01 consomem a rota como array
 - [Phase 04-certification-workbench]: fetchCertificationHistory monta o envelope events/availableEventTypes/availableActorRoles no cliente a partir da lista bruta retornada por GET /certifier/projects/{id}/history, ja que a rota manteve o formato de lista no nivel raiz (desvio ja documentado em 04-05-SUMMARY.md).
 - [Phase 04-certification-workbench]: A aba Documentos da bancada da certificadora usa document_item (sem filename/metadata) porque esse e o serializador interno realmente entregue pelo plano 04-02, distinto do public_document_item do dossie publico; o rotulo exibido usa o tipo do documento (documentTypeLabel).
+- [Phase 04-certification-workbench]: [Phase 04-certification-workbench]: GET /projects/{id}/certification-history entrega a trilha interna completa (com notes) para produtor dono, certificadora do projeto e admin, guardado por _assert_project_edit_permission org-scoped e nao apenas require_role.
+- [Phase 04-certification-workbench]: GET /projects/{id}/certificate usa optional_user (nao require_role) e converte 401/403 de _assert_project_edit_permission em 403 uniforme, para nao disparar clearAuthSession() no visitante anonimo do dossie publico.
+- [Phase 04-certification-workbench]: Dossie publico (MrcaDetails.tsx) exibe referencia/hash/download condicional do certificado e a linha do tempo publica de decisoes finais; codigo morto cert.notes removido, sem regressao de minimizacao (D-20).
 
 ### Roadmap Evolution
 
@@ -158,6 +162,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T13:31:33.738Z
-Stopped at: Completed 04-06-PLAN.md
+Last session: 2026-08-15T13:42:19.383Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None
