@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 status: planning
 stopped_at: Phase 4 context gathered
-last_updated: "2026-05-28T01:51:45.310Z"
-last_activity: 2026-05-27 -- Phase 03 completion reconciled
+last_updated: "2026-08-15T04:13:29.679Z"
+last_activity: 2026-08-15
 progress:
-  total_phases: 10
+  total_phases: 13
   completed_phases: 3
   total_plans: 16
   completed_plans: 16
@@ -27,8 +27,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 Phase: 04 (certification-workbench) — READY TO PLAN
 Plan: No Phase 04 plans yet
-Status: Phases 2 and 3 complete on branch `feat/fase-3-originacao-documentos`; next action is planning Phase 4
-Last activity: 2026-05-27 -- Phase 03 completion reconciled
+Status: Phases 1, 2 e 3 concluídas e verificadas (Nyquist + UAT + segurança); próxima ação é planejar a Phase 4 (ou 4.1, se a fundação geoespacial for priorizada primeiro)
+Last activity: 2026-08-15
 
 Progress: [███-------] 30%
 
