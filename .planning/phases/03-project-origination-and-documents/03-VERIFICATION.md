@@ -1,11 +1,19 @@
 ---
 phase: "03"
 slug: "project-origination-and-documents"
-status: executed
-date: 2026-05-26
+status: passed
+date: 2026-08-15
 ---
 
 # Phase 03 — Verificação e UAT
+
+## Fechamento (2026-08-15)
+
+1. **Nyquist (`03-VALIDATION.md`)** — 9/9 tasks auditadas contra o código atual, zero gaps.
+2. **UAT (`03-UAT.md`)** — 7/8 testes passados via API contra o container reconstruído (criação de projeto com 4 QTAGs, rejeição de vértices duplicados/geometria inválida, timeline canônica de 5 eventos, geofence, NFC fail-closed). 1 bloqueado por infraestrutura local (Kong do Supabase Storage não exposto no host) — não é bug de código.
+3. **Segurança (`03-SECURITY.md`)** — 16 ameaças verificadas: 15 já fechadas, 1 corrigida nesta rodada (dossiê público expunha `storageBucket`/`storageObjectPath`/`storagePath`/hash completo de documentos, incluindo `LEGAL_OWNERSHIP`; corrigido para retornar só metadados mínimos com hash mascarado, igual ao padrão já usado no CMAC). `threats_open: 0`.
+
+Durante a verificação, foi descoberto e corrigido que o container Docker local estava rodando código de 2026-05-27 (~2,5 meses desatualizado) — ver nota em `02-UAT.md` e `03-UAT.md`.
 
 ## Cobertura do checklist
 
