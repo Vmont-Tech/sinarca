@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
@@ -21,7 +21,7 @@ from backend_app.db.models import (
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
 from backend_app.modules.certifier.service import CertifierService
-from backend_app.modules.projects.schemas import CertifierReviewResponse, QueueResponse
+from backend_app.modules.projects.schemas import CertifierQueueResponse, CertifierReviewResponse
 from backend_app.modules.projects.service import (
     ProjectsService,
     baseline_item,
@@ -32,20 +32,59 @@ from backend_app.modules.projects.service import (
 
 router = APIRouter(tags=["certifier"])
 
+# Status elegíveis para a fila da certificadora, independentemente do escopo.
+CERTIFIER_QUEUE_STATUSES = ("CREATED", "REGISTERED", "AWAITING_CERTIFICATION")
 
-@router.get("/certifier/queue", response_model=QueueResponse)
+
+def _open_pendency_exists():
+    """Subquery EXISTS: projeto tem ao menos uma CertificationPendency com status OPEN.
+
+    A separação de filas é derivada de `certification_pendencies.status = 'OPEN'`, não de um
+    valor novo em `project_status`. Adicionar um valor ao enum obrigaria a tocar
+    `PROJECT_STATUS_TO_LIFECYCLE_CODE`, `MARKETPLACE_READY_PROJECT_STATUSES`,
+    `PROJECT_STATUS_PRESENTATION` e as policies de RLS, com risco desproporcional ao ganho.
+    """
+    return (
+        select(CertificationPendency.id)
+        .where(
+            CertificationPendency.project_id == Project.id,
+            CertificationPendency.status == "OPEN",
+        )
+        .exists()
+    )
+
+
+@router.get("/certifier/queue", response_model=CertifierQueueResponse)
 async def certifier_queue(
+    scope: Literal["main", "corrections"] = Query(default="main"),
     _: AuthenticatedUser = Depends(require_role("certifier", "admin")),
     session: AsyncSession = Depends(get_session),
-) -> QueueResponse:
+) -> CertifierQueueResponse:
     service = ProjectsService(session)
-    statement = (
-        select(Project)
-        .where(Project.status.in_(["CREATED", "REGISTERED", "AWAITING_CERTIFICATION"]))
-        .order_by(Project.created_at.asc())
-    )
+    base = select(Project).where(Project.status.in_(CERTIFIER_QUEUE_STATUSES))
+    has_open = _open_pendency_exists()
+
+    statement = base.where(has_open if scope == "corrections" else ~has_open).order_by(Project.created_at.asc())
     projects = [await service.project_to_mrca(project) for project in (await session.execute(statement)).scalars().all()]
-    return QueueResponse(total=len(projects), projects=projects)
+
+    main_count = (
+        await session.execute(
+            select(func.count()).select_from(Project).where(Project.status.in_(CERTIFIER_QUEUE_STATUSES), ~has_open)
+        )
+    ).scalar_one()
+    corrections_count = (
+        await session.execute(
+            select(func.count()).select_from(Project).where(Project.status.in_(CERTIFIER_QUEUE_STATUSES), has_open)
+        )
+    ).scalar_one()
+
+    return CertifierQueueResponse(
+        total=len(projects),
+        items=projects,
+        projects=projects,
+        scope=scope,
+        counts={"main": int(main_count), "corrections": int(corrections_count)},
+    )
 
 
 @router.get("/certifier/projects/{project_id}/review", response_model=CertifierReviewResponse)
