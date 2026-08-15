@@ -74,10 +74,14 @@ def create_project(prefix: str | None = None) -> dict[str, object]:
 def upload_minimum_documents(friendly_id: str) -> None:
     """Sobe LEGAL_OWNERSHIP e FOREST_INVENTORY para satisfazer o dossie minimo (D-03)."""
     for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
+        # sha256 precisa ser distinto por documento: upload_project_document deduplica por
+        # (project_id, sha256_hash) e devolveria o mesmo documento para os dois tipos se o
+        # conteudo fosse identico.
+        content = PDF_BYTES + f"% {document_type}\n".encode()
         response = client.post(
             f"/api/v1/projects/{friendly_id}/documents",
             data={"document_type": document_type},
-            files={"file": (filename, PDF_BYTES, "application/pdf")},
+            files={"file": (filename, content, "application/pdf")},
             headers=auth_headers(*PRODUCER),
         )
         assert response.status_code == 201, response.text
