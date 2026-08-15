@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-08-15T13:19:21.549Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-08-15T13:31:33.744Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 23
-  completed_plans: 21
-  percent: 91
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04 (certification-workbench) — IN PROGRESS
-Plan: 5 of 7 complete
+Plan: 6 of 7 complete
 Status: Ready to execute
 Last activity: 2026-08-15
 
@@ -56,6 +56,7 @@ Progress: [███████░░░] 74%
 | Phase 04-certification-workbench P03 | 30min | 3 tasks | 6 files |
 | Phase 04-certification-workbench P04 | 20min | 2 tasks | 2 files |
 | Phase 04-certification-workbench P05 | 35min | 3 tasks | 3 files |
+| Phase 04-certification-workbench P06 | 25min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,8 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: TREASURY_QUEUE_CREATED e MINT_AUTHORIZED sao gravados com entity_type=projects/entity_id=project.id, para aparecerem na timeline de auditoria do projeto e no dossie publico, que filtram estritamente por entity_type==projects.
 - [Phase 04-certification-workbench]: CertifierQueueResponse usa items (chave exigida pelo teste imutável de 04-01) com projects como alias de compatibilidade com CertifierReview.tsx
 - [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history manteve formato de lista JSON no nível raiz com filtros event_type/actor_role, sem o envelope CertificationHistoryResponse descrito na prosa do plano, porque testes imutáveis de 04-01 consomem a rota como array
+- [Phase 04-certification-workbench]: fetchCertificationHistory monta o envelope events/availableEventTypes/availableActorRoles no cliente a partir da lista bruta retornada por GET /certifier/projects/{id}/history, ja que a rota manteve o formato de lista no nivel raiz (desvio ja documentado em 04-05-SUMMARY.md).
+- [Phase 04-certification-workbench]: A aba Documentos da bancada da certificadora usa document_item (sem filename/metadata) porque esse e o serializador interno realmente entregue pelo plano 04-02, distinto do public_document_item do dossie publico; o rotulo exibido usa o tipo do documento (documentTypeLabel).
 
 ### Roadmap Evolution
 
@@ -155,6 +158,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T13:19:21.544Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-08-15T13:31:33.738Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None

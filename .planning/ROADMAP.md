@@ -130,7 +130,7 @@ Plans:
 - [x] 04-03-PLAN.md — Decisão multipart append-only com gate de dossiê mínimo e certificado PDF obrigatório.
 - [x] 04-04-PLAN.md — Autorização atômica de lastro/mint bloqueado para a fila da tesouraria.
 - [x] 04-05-PLAN.md — Filas com escopo e contador, linha do tempo filtrável e ciclo de resposta do produtor.
-- [ ] 04-06-PLAN.md — Bancada da certificadora no frontend: card expansível, seis abas e upload real do certificado.
+- [x] 04-06-PLAN.md — Bancada da certificadora no frontend: card expansível, seis abas e upload real do certificado.
 - [ ] 04-07-PLAN.md — Certificado e histórico no dossiê público e trilha interna completa para o produtor (D-13/D-22).
 
 ### Phase 04.1: geospatial-foundation (INSERTED)
