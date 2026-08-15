@@ -125,27 +125,32 @@ export default function UserProfile() {
                     return;
                 }
 
-                if (user && mounted) {
-                    setProfile({
-                        id: user.id,
-                        name: user.name || 'Usuário SINARCA',
-                        role: normalizeRole(user.role),
-                        document: user.document,
-                        logo: user.avatar,
-                        organization: {
-                            name: user.organization || user.name,
-                            document: user.document,
-                            logo: user.avatar,
-                            verified: true,
-                        },
-                        metrics: {
-                            projects: 0,
-                            totalImpact: 0,
-                            transactions: 0,
-                        },
-                        projects: [],
-                        activity: [],
-                    });
+                if (user) {
+                    const ownProfile = await database.getPublicProfile(user.id);
+                    if (mounted) {
+                        setProfile(ownProfile
+                            ? { ...ownProfile, role: normalizeRole(ownProfile.role) } as PublicProfile
+                            : {
+                                id: user.id,
+                                name: user.name || 'Usuário SINARCA',
+                                role: normalizeRole(user.role),
+                                document: user.document,
+                                logo: user.avatar,
+                                organization: {
+                                    name: user.organization || user.name,
+                                    document: user.document,
+                                    logo: user.avatar,
+                                    verified: true,
+                                },
+                                metrics: {
+                                    projects: 0,
+                                    totalImpact: 0,
+                                    transactions: 0,
+                                },
+                                projects: [],
+                                activity: [],
+                            });
+                    }
                     return;
                 }
 

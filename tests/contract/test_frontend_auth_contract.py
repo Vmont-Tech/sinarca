@@ -86,6 +86,15 @@ def test_frontend_auth_does_not_keep_local_user_database_fallback() -> None:
     assert "based on hash" not in transaction_details
 
 
+def test_own_profile_route_fetches_real_metrics_instead_of_hardcoded_zeros() -> None:
+    user_profile = read("src/pages/Dashboard/UserProfile.tsx")
+
+    own_profile_block = user_profile.split("if (user) {", 1)[1].split("if (mounted) setProfile(null);", 1)[0]
+
+    assert "database.getPublicProfile(user.id)" in own_profile_block
+    assert own_profile_block.index("database.getPublicProfile(user.id)") < own_profile_block.index("projects: [],\n                                activity: [],")
+
+
 def test_certifier_navigation_keeps_single_traceability_item() -> None:
     dashboard_layout = read("src/layouts/DashboardLayout.tsx")
     certifier_block = dashboard_layout.split("{isCertifier && (", 1)[1].split("{isAuditor && (", 1)[0]
