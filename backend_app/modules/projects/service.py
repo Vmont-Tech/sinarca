@@ -1617,17 +1617,17 @@ def audit_item(audit: Audit) -> dict[str, Any]:
 
 
 def document_item(document: Document) -> dict[str, Any]:
+    # Dossiê público: nunca expor bucket/caminho de storage, hash completo ou
+    # metadata bruta (pode conter filename original) — só o suficiente para
+    # a UI listar o documento. Caminho/hash reais ficam restritos a rotas
+    # autenticadas que já os retornam via draft_document_item().
     return {
         "id": str(document.id),
         "type": document.document_type,
-        "storageBucket": document.storage_bucket,
-        "storageObjectPath": document.storage_object_path,
-        "storagePath": document.storage_path,
-        "sha256Hash": document.sha256_hash,
+        "sha256Hash": mask_token(document.sha256_hash),
         "mimeType": document.mime_type,
         "sizeBytes": document.size_bytes,
         "uploadedAt": document.uploaded_at.isoformat(),
-        "metadata": document.metadata_ or {},
     }
 
 

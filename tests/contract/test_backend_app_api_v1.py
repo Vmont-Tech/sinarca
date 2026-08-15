@@ -627,14 +627,13 @@ def test_project_document_upload_persists_project_link_and_audit_event() -> None
     dossier_response = client.get(f"/api/v1/projects/{project['friendlyId']}/public-dossier")
     assert dossier_response.status_code == 200
     documents = dossier_response.json()["documents"]
-    assert any(
-        item["type"] == "LEGAL_OWNERSHIP"
-        and item["sha256Hash"] == upload["sha256"]
-        and item["storagePath"] == upload["storage_path"]
-        and item["storageBucket"] == "projects"
-        and item["storageObjectPath"] == upload["storage_object_path"]
-        for item in documents
-    )
+    # Dossiê público não expõe bucket/caminho de storage nem hash completo (02-04/03-04-T3);
+    # a vinculação real (path/hash exatos) já foi verificada acima direto no banco.
+    legal_ownership_item = next(item for item in documents if item["type"] == "LEGAL_OWNERSHIP")
+    assert legal_ownership_item["sha256Hash"] != upload["sha256"]
+    assert legal_ownership_item["sha256Hash"].startswith(upload["sha256"][:4])
+    for key in ("storagePath", "storageBucket", "storageObjectPath", "metadata"):
+        assert key not in legal_ownership_item
 
 
 def test_project_document_upload_is_idempotent_for_same_project_file() -> None:
@@ -972,6 +971,20 @@ def test_project_drafts_save_upload_submit_and_link_documents() -> None:
             )
             return persisted_draft, draft_documents
 
+    async def persisted_project_documents() -> list[Document]:
+        async with get_sessionmaker()() as session:
+            return list(
+                (
+                    await session.execute(
+                        select(Document).where(
+                            Document.project_id.in_(select(Project.id).where(Project.friendly_id == project["friendlyId"]))
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
     persisted_draft, draft_documents = asyncio.run(persisted_draft_and_documents())
     assert persisted_draft is not None
     assert persisted_draft.status == "SUBMITTED"
@@ -980,11 +993,24 @@ def test_project_drafts_save_upload_submit_and_link_documents() -> None:
     assert len(draft_documents) == 2
     assert {document.storage_bucket for document in draft_documents} == {"projects"}
 
+    project_documents = asyncio.run(persisted_project_documents())
+    assert len(project_documents) == 2
+    legal_ownership_doc = next(d for d in project_documents if d.document_type == "LEGAL_OWNERSHIP")
+    forest_inventory_doc = next(d for d in project_documents if d.document_type == "FOREST_INVENTORY")
+    assert legal_ownership_doc.storage_object_path.startswith(f"projects/{project['friendlyId']}/documents/legal_ownership/")
+    assert forest_inventory_doc.storage_object_path.startswith(f"projects/{project['friendlyId']}/documents/forest_inventory/")
+
     dossier_response = client.get(f"/api/v1/projects/{project['friendlyId']}/public-dossier")
     assert dossier_response.status_code == 200
     dossier_documents = dossier_response.json()["documents"]
-    assert any(item["type"] == "LEGAL_OWNERSHIP" and item["storageObjectPath"].startswith(f"projects/{project['friendlyId']}/documents/legal_ownership/") for item in dossier_documents)
-    assert any(item["type"] == "FOREST_INVENTORY" and item["storageObjectPath"].startswith(f"projects/{project['friendlyId']}/documents/forest_inventory/") for item in dossier_documents)
+    # Dossiê público não deve expor bucket/caminho de storage nem hash completo (02-04/03-04-T3);
+    # essa verificação (real, autenticada) já foi feita acima direto no banco.
+    assert {"LEGAL_OWNERSHIP", "FOREST_INVENTORY"} <= {item["type"] for item in dossier_documents}
+    for item in dossier_documents:
+        assert "storageBucket" not in item
+        assert "storageObjectPath" not in item
+        assert "storagePath" not in item
+        assert "metadata" not in item
 
 
 def test_project_draft_document_upload_is_idempotent_for_same_draft_file() -> None:

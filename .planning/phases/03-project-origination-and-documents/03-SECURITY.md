@@ -1,0 +1,57 @@
+---
+phase: "03"
+slug: "project-origination-and-documents"
+status: verified
+threats_open: 0
+asvs_level: 1
+created: 2026-08-15
+---
+
+# Phase 03 Security Audit — project-origination-and-documents
+
+Retroactive audit. Threat register extracted from `03-01-PLAN.md` through `03-05-PLAN.md` `<threat_model>` blocks (register authored at plan time). No `## Threat Flags` sections exist in any of the five `03-*-SUMMARY.md` files (confirmed by grep) — no executor-flagged new attack surface to reconcile.
+
+Infra caveat (applies to 03-01-T2, 03-01-T4 document half, 03-04-T1, 03-04-T2, 03-04-T3): local Supabase Storage Kong gateway is not exposed on the host (`docker ps` shows `supabase_kong_sinarca-local` with only `8000/tcp` internal, no host mapping), so `POST /projects/{id}/documents` and `POST /project-drafts/{id}/documents` return HTTP 502 live. This is a local-environment configuration gap, not a code defect. Where the mitigation code itself was read and confirmed present, the threat is CLOSED with this caveat noted — code correctness and live-path availability are verified separately.
+
+## Threat Verification
+
+| Threat ID | Category | Disposition | Status | Evidence |
+|-----------|----------|-------------|--------|----------|
+| 03-01-T1 | Input validation (tags count) | mitigate | CLOSED | `backend_app/modules/projects/service.py:1408-1431` `validate_project_tags()` rejects `len(tags) < 4` and duplicate `vertex_label`; called from `create_project`/`update_project`/draft-submit paths (service.py:467,540,657). Already curl-verified: duplicate vertex_label → HTTP 400 "Os vértices não podem repetir" (03-UAT.md test 3). |
+| 03-01-T2 | Malicious/spoofed-MIME upload | mitigate | CLOSED (infra caveat) | `backend_app/modules/projects/routes.py:42-66` `_validated_upload_payload()` — extension allowlist, size cap (`MAX_UPLOAD_BYTES`), magic-bytes check (`validate_magic_bytes` from `backend_app/modules/inventory/routes.py:171-177`, real byte-signature checks for PDF/PNG/JPEG, not a no-op), SHA-256 hash. Confirmed this runs at routes.py:232 BEFORE the storage write at routes.py:264 (`upload_storage_object`) in both `POST /projects/{id}/documents` and `POST /project-drafts/{id}/documents` (routes.py:150, service.py:409). Auth enforced via `Depends(require_role("producer","certifier","admin"))` on both routes. Live end-to-end blocked by local Supabase Storage 502 (documented in 03-UAT.md test 7) — validation-then-storage ordering confirmed by reading code, not by live test. |
+| 03-01-T3 | False SUN/CMAC validated status | mitigate | CLOSED | `backend_app/modules/projects/service.py:591-594` — `sun_validation_status: "BLOCKED_MISSING_CREDENTIALS"`, `cmac_validation_status: "RECORDED_DECLARED_VALUE"`, `baseline_source: "deterministic_baseline"`, `sentinel_status: "BLOCKED_MISSING_PROVIDER_CREDENTIALS"` all present in `Project.metadata_` at creation. |
+| 03-01-T4 | Sensitive change without audit trail | mitigate | CLOSED (infra caveat on document half) | Project creation: `create_audit_event(..., action="PROJECT_CREATED", ...)` at service.py:632-638, already psql-verified. Document upload: `create_audit_event(..., action="PROJECT_DOCUMENT_UPLOADED", ...)` at routes.py:283-295 (after successful storage write) and `action="PROJECT_DRAFT_DOCUMENT_UPLOADED"` at service.py:425-437 for the draft flow actually wired to the UI. Both code paths confirmed present; live confirmation blocked by the storage 502. |
+| 03-02-T1 | Submit without 4 complete tags | mitigate | CLOSED | `src/pages/Dashboard/AddProject.tsx:1090-1102` `validateStep('qtags'/'review')` requires `tagValidation.valid` (from `validateTagDrafts`, `src/services/projectOrigination.ts:126-184`) before advancing/submitting. Backend defense-in-depth: same `validate_project_tags` as 03-01-T1. |
+| 03-02-T2 | Invalid/empty lat-lng → fake geofence | mitigate | CLOSED | Client: `src/services/projectOrigination.ts:38-41,148-153` enforces lat ∈[-90,90], lng∈[-180,180]; `tag_uid`/`cmac` required when `has_qtag` (lines 142-147). Backend defense-in-depth confirmed beyond the plan's stated scope: `service.py:1425-1431` rejects out-of-range coordinates AND rejects degenerate/collinear 4-point shapes (`_polygon_area(coordinates) <= 1e-9` → 400 "Os vértices precisam formar uma área válida, não uma linha"); already curl-verified in 03-UAT.md test 4. |
+| 03-02-T3 | Hardcoded city/state as if real | mitigate | CLOSED | `src/pages/Dashboard/AddProject.tsx:1379-1395` — `city` is a free-text `<input>`, `state` is a `<select>` populated from `inventoryRegions`, sourced via `database.getInventoryData()` (`src/services/database.ts:323-326`) which calls real `apiGet('/inventory')`, not a hardcoded array. |
+| 03-03-T1 | Unavailable Web NFC presented as real validation | mitigate | CLOSED | `src/services/fieldCapture.ts:53-57` `getNfcCaptureStatus()` returns `'unsupported'` or `'blocked_missing_credentials'` (never a "validated" state) based on `NDEFReader` presence. Explicit copy rendered in `AddProject.tsx:1437-1438,1760`: "Este navegador não permite leitura NFC..." / "Validação SUN/CMAC real bloqueada por credenciais ou hardware. O CMAC informado será registrado como evidência declarada." |
+| 03-03-T2 | Denied geolocation blocks whole flow | mitigate | CLOSED | `AddProject.tsx:752-770` `handleUseCurrentLocation` catches `requestCurrentPosition()` rejection, sets a per-vertex error message, does not block manual entry — lat/lng fields remain plain editable text inputs regardless of geolocation outcome. |
+| 03-03-T3 | Geofence preview diverges from submitted data | mitigate | CLOSED | `src/components/ProjectGeofencePreview.tsx:15-17,148,155-156` takes `tags: ProjectTagDraft[]` prop and derives all rendering (`coordinateTags(tags)`, `validateTagDrafts(tags)`) directly from it — same array reference passed at both `AddProject.tsx:1596` (qtags step) and `:1741` (review step), which is the same `tags` state submitted via `normalizeProjectTags(tags)`. No independent/stale data source. |
+| 03-04-T1 | Local file appears persisted without completed upload | mitigate | CLOSED | `AddProject.tsx:50` `type DocumentStatus = 'local' \| 'uploading' \| 'uploaded' \| 'error'`, consistently used in `uploadPendingDocuments` (lines 864-883) and status-derived UI (icon/label at lines 1666-1680). `error`/`local` items are never silently treated as `uploaded`. |
+| 03-04-T2 | Project created without required document | mitigate | CLOSED (infra caveat) | `validateRequiredDocuments()` (`AddProject.tsx:252-266`) requires `LEGAL_OWNERSHIP`/`CAR` and `FOREST_INVENTORY` present (non-error), gates step/review advance (`:1096,1102`). Real gate is at submit time: `uploadPendingDocuments()` (`:864-883`) uploads all pending local files and returns `false` on any failure; `handleSubmit` (`:1151-1156`) throws and routes back to the documents step without creating the final project if `uploaded === false` — final success is never reached with unwuploaded required docs. Server-side belt-and-suspenders: `_validate_required_draft_documents(draft_documents)` at submit (`service.py:466`). This is exactly where the local Supabase Storage 502 blocks a real user today — confirmed the failure path correctly shows an error and does not let the user past, per 03-UAT.md test 7 and code review. |
+| 03-04-T3 | Sensitive hash/document over-exposed | mitigate | CLOSED (fixed 2026-08-15) | Gap confirmed by this audit: `document_item()` returned full `sha256Hash`/`storageBucket`/`storageObjectPath`/`storagePath`/`metadata` (incl. original filename) on the unauthenticated `/public-dossier` route, for every document type including `LEGAL_OWNERSHIP`. Fixed: `document_item()` (`service.py:1619-1629`) now returns only `id`/`type`/`mimeType`/`sizeBytes`/`uploadedAt` plus `sha256Hash` masked via the same `mask_token()` already used for CMAC — storage bucket/path and raw metadata (which held the original filename) are no longer serialized at all. Confirmed only call site is `get_public_dossier()` (no authenticated/private consumer of `document_item()` was affected). Live-verified post-rebuild: `curl .../public-dossier` document entries contain no storage fields, hash shown as `sha2...-002` format. Regression test updated in `tests/contract/test_backend_app_api_v1.py` (`test_project_document_upload_persists_project_link_and_audit_event`, `test_project_drafts_save_upload_submit_and_link_documents`) to assert absence of these keys in the public response while still verifying the real path/hash directly against the `Document`/`ProjectDraftDocument` DB rows. |
+| 03-05-T1 | Dossier shows legacy/fixed data masking origination failure | mitigate | CLOSED | Re-verified: `rg -n "PDD\|Relatório de Validação\|Certidão de Posse\|15 Out 2024\|Algorand" src/pages/Dashboard/MrcaDetails.tsx` → 0 matches (exit 1). `dossier.tags` (line 275,279), `dossier.documents` (line 385,387), `project.timeline` (line 249,251) all render directly from the `/public-dossier` API response, no stub fallback found. |
+| 03-05-T2 | CMAC/document data over-exposed broadly | mitigate | CLOSED | `mask_token()` (`service.py:1716-1721`) applied to `tag.cmac` in `tag_item()` (`service.py:1566`), used by `get_public_dossier`. Already curl-verified format `cmac...xx-a` (03-UAT.md test 2). Note: this closes the CMAC-specific half of the same general public-exposure concern; the document-hash/storage-path half of exposure is the open gap tracked under 03-04-T3 above. |
+| 03-05-T3 | Phase marked complete without critical-flow UAT | mitigate | CLOSED | `.planning/phases/03-project-origination-and-documents/03-VERIFICATION.md` and `03-UAT.md` both exist with real commands/results (7/8 pass, 1 documented infra block, not silently marked pass). |
+
+## Summary
+
+**Closed:** 16/16
+**Open:** 0/16 — 03-04-T3 (public-dossier document over-exposure) fixed same day; see Threat Verification table and Security Audit log below.
+
+## Unregistered Flags (informational, not blockers per `block_on: high`)
+
+1. **`ProjectGeofencePreview.tsx` sends project vertex coordinates to third-party tile servers** (`tile.openstreetmap.org`, `server.arcgisonline.com`) as unauthenticated `<img>`/tile requests to render the map preview (`src/components/ProjectGeofencePreview.tsx:30-43,204-207`). This diverges from the 03-03-PLAN.md acceptance criterion "Preview não usa biblioteca externa" (a Leaflet-based map was added instead of the planned pure-SVG preview) and creates a minor information-disclosure vector: project geolocation data leaves the platform to third-party map tile providers on every preview render, including during origination before the project is finalized. Not one of the 16 registered threats; flagging per the audit's scope-expansion allowance, not blocking.
+2. No SUMMARY.md in this phase contains a `## Threat Flags` section (checked all 5), so there was nothing to reconcile from executor self-reporting — this itself is not a gap since the plans predate the Threat Flags convention, but is noted for completeness.
+
+## Security Audit 2026-08-15
+
+| Metric | Count |
+|--------|-------|
+| Threats found | 16 |
+| Closed (already mitigated) | 15 |
+| Fixed this audit | 1 (03-04-T3) |
+| Deferred-accepted | 0 |
+| Open | 0 |
+
+Fix verified: `uv run pytest -q` → 96 passed. `npm run lint && npm run build` → exit 0. Container rebuilt (`docker compose build sinarca-api && up -d --force-recreate`) and live `curl` against `/public-dossier` confirmed the fix in the running service, not just in source.
