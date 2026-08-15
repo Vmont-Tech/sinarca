@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-08-15T13:03:42.759Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-08-15T13:08:54.090Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 23
-  completed_plans: 19
-  percent: 83
+  completed_plans: 20
+  percent: 87
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04 (certification-workbench) — IN PROGRESS
-Plan: 3 of 7 complete
+Plan: 4 of 7 complete
 Status: Ready to execute
 Last activity: 2026-08-15
 
@@ -54,6 +54,7 @@ Progress: [███████░░░] 74%
 | Phase 04 P01 | 25min | 3 tasks | 6 files |
 | Phase 04-certification-workbench P02 | 20min | 3 tasks | 6 files |
 | Phase 04-certification-workbench P03 | 30min | 3 tasks | 6 files |
+| Phase 04-certification-workbench P04 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: GET /certifier/projects/{id}/review entrega o dossie tecnico completo e registra CERTIFICATION_REVIEW_OPENED uma vez por ator.
 - [Phase 04-certification-workbench]: project.timeline nunca recebe as notes internas do certificador (nenhuma das tres decisoes); usa sempre uma descricao publica fixa, ja que project.timeline e serializado tanto no dossie publico quanto na revisao interna pelo mesmo project_to_mrca().
 - [Phase 04-certification-workbench]: GET /certifier/projects/{id}/history e GET /projects/{id}/pendencies foram adicionados no plano 04-03 como funcionalidade critica ausente (Rule 2): nenhuma task os declarava, mas os proprios testes de aceite do plano exigem ambos.
+- [Phase 04-certification-workbench]: GET /treasury/authorizations retorna uma lista JSON no nivel raiz (nao o envelope success/total/authorizations), porque os testes de aceite pre-existentes ja esperam um array.
+- [Phase 04-certification-workbench]: TREASURY_QUEUE_CREATED e MINT_AUTHORIZED sao gravados com entity_type=projects/entity_id=project.id, para aparecerem na timeline de auditoria do projeto e no dossie publico, que filtram estritamente por entity_type==projects.
 
 ### Roadmap Evolution
 
@@ -149,6 +152,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T13:03:42.754Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-08-15T13:08:54.087Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None

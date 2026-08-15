@@ -40,7 +40,7 @@ Requisitos do milestone v1.0. Cada um mapeia para exatamente uma fase do roadmap
 - [x] **CERT-01**: A certificadora abre revisão detalhada com baseline, documentos, QTAGs e cálculo de potencial.
 - [x] **CERT-02**: Aprovação/reprovação permite notas, metodologia, potencial de crédito e motivo estruturado.
 - [x] **CERT-03**: Certificado digital ou referência documental é registrado e exibido no projeto.
-- [ ] **CERT-04**: Aprovação aciona ou prepara explicitamente o fluxo de lastro/mint bloqueado com status visível.
+- [x] **CERT-04**: Aprovação aciona ou prepara explicitamente o fluxo de lastro/mint bloqueado com status visível.
 - [x] **CERT-05**: Histórico de decisões por projeto fica disponível para certificadora e dossiê público quando aplicável.
 
 ### Fundação Geoespacial (Phase 4.1 — geospatial-foundation) *(inserida 2026-08-14)*
