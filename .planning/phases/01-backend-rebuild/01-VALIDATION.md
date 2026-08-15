@@ -35,7 +35,7 @@ created: 2026-05-22
 | 01-01-T1 | 01-01 | 1 | CTX-D03 | API contract drift | Legacy API shape frozen before rebuild | contract | `uv run --with pytest --with httpx pytest -q tests/contract/test_api_v1_contract.py` | no | pending |
 | 01-01-T2 | 01-01 | 1 | CTX-D03 | stale test false positive | Removed expectations for nonexistent `financials` and `/monetization` | integration | `uv run --with pytest --with httpx pytest -q tests/test_api_integration.py` | yes | pending |
 | 01-01-T3 | 01-01 | 1 | CTX-D09 | frontend API bypass | `RetireCredits` uses `apiPost` and bearer/base URL | frontend | `npm run lint && npm run build` | yes | pending |
-| 01-02-T1 | 01-02 | 2 | CTX-D01 | missing package/deps | `backend_app` package installed explicitly | import | `uv pip install --system . --dry-run` | no | pending |
+| 01-02-T1 | 01-02 | 2 | CTX-D01 | missing package/deps | `backend_app` package installed explicitly | import | `uv pip install --dry-run .` | no | covered |
 | 01-02-T2 | 01-02 | 2 | CTX-D10 | unsafe config | production settings require secrets | import | `uv run python -c "from backend_app.main import app; print(app.title)"` | no | pending |
 | 01-02-T3 | 01-02 | 2 | CTX-D04 | weak auth | Argon2 + JWT + admin registration block | contract | `uv run --with pytest --with httpx pytest -q tests/contract/test_backend_app_auth.py` | no | pending |
 | 01-03-T1 | 01-03 | 3 | DOCX-LEDGER-OFFCHAIN | missing persistence | SQL schema includes ledger, treasury, cross-chain | static/sql | `rg -n "create table ledger_entries|create table treasury_positions|create table external_chain_projects" supabase/migrations/202605220001_initial_schema.sql` | no | pending |
@@ -47,7 +47,7 @@ created: 2026-05-22
 | 01-04-T3 | 01-04 | 4 | DOCX-LEDGER-OFFCHAIN | credit ownership bypass / transaction mocks | Purchases/retirements use ledger entries and transactions page uses API data | contract/frontend | `uv run --with pytest --with httpx pytest -q tests/contract/test_backend_app_api_v1.py -k "marketplace or ledger or compensate or transactions" && ! rg -n "MOCK_TRANSACTIONS" src/pages/Dashboard/Transactions.tsx` | no | pending |
 | 01-04-T4 | 01-04 | 4 | CTX-D08 | unsafe upload | Upload validates auth, size, extension, magic bytes and hash | contract | `uv run --with pytest --with httpx pytest -q tests/contract/test_backend_app_api_v1.py -k "inventory or upload"` | no | pending |
 | 01-05-T1 | 01-05 | 5 | DOCX-SPONSORED-RESERVES | XLM reserve waste | Sponsored reserves modeled explicitly | unit | `uv run --with pytest pytest -q tests/adapters/test_blockchain_financial_adapters.py -k "stellar or soroban"` | no | pending |
-| 01-05-T2 | 01-05 | 5 | DOC-PDF-7 | missing on-chain events | Soroban emits lifecycle events and preserves locks | rust | `cargo test --manifest-path soroban-contract/Cargo.toml` | yes | pending |
+| 01-05-T2 | 01-05 | 5 | DOC-PDF-7 | missing on-chain events | Soroban emits lifecycle events and preserves locks | rust | `cargo test --manifest-path soroban-contract/Cargo.toml` | yes | covered |
 | 01-05-T3 | 01-05 | 5 | DOCX-YIELD-SOCIAL | yield split wrong | Yield split is exactly 90/10 | unit | `uv run --with pytest pytest -q tests/adapters/test_blockchain_financial_adapters.py -k "etherfuse or transfero or yield"` | no | pending |
 | 01-05-T4 | 01-05 | 5 | DOCX-LOCK-AND-MINT | fake external asset | Polygon lock event validates vault/token/tx hash | unit | `uv run --with pytest pytest -q tests/adapters/test_blockchain_financial_adapters.py -k "polygon or lock_and_mint or stellar_status"` | no | pending |
 | 01-05-T5 | 01-05 | 5 | PHASE-LIVE-PROVIDERS | provider mocks accepted as live | Soroban testnet deploy/invoke/status required; Etherfuse/Polygon real attempt or blocker | external | `[BLOCKING] stellar/soroban CLI deploy+invoke+status em testnet` | no | pending |
@@ -86,3 +86,50 @@ created: 2026-05-22
 - [x] `nyquist_compliant: true` set in frontmatter.
 
 **Approval:** pending execution
+
+## Validation Audit 2026-08-14
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 2 |
+| Resolved | 2 |
+| Escalated | 0 |
+
+### Gap 1 — 01-02-T1 (CTX-D01, missing package/deps)
+
+`uv pip install --system . --dry-run` fails in this environment with a PEP 668
+"externally managed environment" error from Homebrew's system Python — an
+environment/tooling artifact, not a code defect. Replaced the Automated
+Command with `uv pip install --dry-run .` (no `--system`), which resolves
+`backend_app`'s packaging config and reports it would install `sinarcaapi`
+cleanly. Verified deterministic (exit 0) across repeated runs.
+
+### Gap 2 — 01-05-T2 (DOC-PDF-7, missing on-chain events)
+
+`cargo test --manifest-path soroban-contract/Cargo.toml` previously reported
+"running 0 tests" — a genuine coverage gap. Added
+`soroban-contract/tests/lifecycle_events.rs` (Cargo integration test
+convention) with 4 tests using `soroban_sdk::testutils::Events` to assert
+`mint_locked`, `unlock`, `transfer` and `burn` each publish the expected
+event, and to assert locked/available balances are preserved exactly across
+calls (including a rejected transfer while `BLOQUEADO`). Tests call the
+contract through `Env::invoke_contract` (not the generated
+`SinarcaTokenClient`, which `lib.rs` does not re-export, and `lib.rs`/
+`contract.rs` were out of scope to edit).
+
+To enable this, `soroban-contract/Cargo.toml` was modified (not on the
+restricted implementation-file list) to add `crate-type = ["cdylib", "rlib"]`
+(rlib needed so `tests/` can link the crate) and a `[dev-dependencies]` entry
+enabling the `soroban-sdk` `testutils` feature. Verified the wasm release
+build (`cargo build --release --target wasm32v1-none`) still succeeds with
+this crate-type change, so the on-chain artifact is unaffected.
+
+Discovered during debugging: `env.events().all()` only holds events from the
+single most recent top-level `invoke_contract` call — any further contract
+call (including read-only views) clears the prior event log. Assertions were
+restructured to check events immediately after the mutating call they verify.
+Confirmed each test can genuinely fail (temporarily corrupted an expected
+value and observed the assertion fail, then reverted).
+
+`cargo test --manifest-path soroban-contract/Cargo.toml` now runs 4 tests,
+all passing (was 0 tests before).
