@@ -32,6 +32,11 @@ export default function AuditorProfile() {
     if (loading) return <div className="p-10 text-center text-white">Carregando perfil...</div>;
     if (!auditor) return <div className="p-10 text-center text-white">Auditor não encontrado.</div>;
 
+    const approvedProjectsCount = projects.filter((p: any) => p.type !== 'bloqueado').length;
+    const approvalRateLabel = projects.length > 0
+        ? `${Math.round((approvedProjectsCount / projects.length) * 100)}%`
+        : '—';
+
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-[1440px]">
             <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-text-muted hover:text-white mb-6 transition-colors">
@@ -64,7 +69,7 @@ export default function AuditorProfile() {
                         <p className="text-[10px] uppercase text-text-muted font-bold tracking-wider">Projetos Auditados</p>
                     </div>
                     <div>
-                        <p className="text-3xl font-bold text-white mb-1">100%</p>
+                        <p className="text-3xl font-bold text-white mb-1">{approvalRateLabel}</p>
                         <p className="text-[10px] uppercase text-text-muted font-bold tracking-wider">Taxa de Aprovação</p>
                     </div>
                 </div>

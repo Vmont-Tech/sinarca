@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { apiPost, apiGet, apiPatch } from '../services/api';
+import { apiPost, apiGet, apiPatch, SESSION_EXPIRED_EVENT } from '../services/api';
 
 export type UserRole = 'producer' | 'auditor' | 'company' | 'certifier' | 'admin';
 
@@ -112,6 +112,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsLoading(false);
         };
         initAuth();
+
+        const handleSessionExpired = () => setUser(null);
+        window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+        return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
     }, []);
 
     const persistUser = (userData: User, token?: string, expiresAt?: string) => {

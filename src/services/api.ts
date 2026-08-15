@@ -6,11 +6,14 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
     body?: unknown;
 };
 
+export const SESSION_EXPIRED_EVENT = 'sinarca:session-expired';
+
 const clearAuthSession = () => {
     localStorage.removeItem('sinarca_user');
     localStorage.removeItem('sinarca_token');
     localStorage.removeItem('sinarca_token_expires_at');
     localStorage.removeItem('sinarca.localAuthUser');
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
 };
 
 const friendlyError = (status: number, fallback: string) => {
