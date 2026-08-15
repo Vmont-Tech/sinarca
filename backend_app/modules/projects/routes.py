@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
+from datetime import datetime, timezone
 from pathlib import PurePath
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
@@ -21,6 +23,7 @@ from backend_app.modules.inventory.routes import (
 )
 from backend_app.modules.projects.schemas import (
     CatalogResponse,
+    PendencyRespondRequest,
     ProjectCreate,
     ProjectDraftCreate,
     ProjectDraftResponse,
@@ -239,6 +242,102 @@ async def list_project_pendencies(
         )
     ).scalars().all()
     return [pendency_item(item) for item in pendencies]
+
+
+@router.post("/projects/{project_id}/pendencies/{pendency_id}/respond")
+async def respond_project_pendency(
+    project_id: str,
+    pendency_id: str,
+    payload: PendencyRespondRequest,
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    # T-04-17/T-04-18: guard org-scoped (nao apenas require_role) impede leitura/resposta
+    # por ID adivinhado de outra organizacao.
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+
+    try:
+        pendency_uuid = uuid.UUID(pendency_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pendência não encontrada") from exc
+
+    pendency = (
+        await session.execute(
+            select(CertificationPendency).where(
+                CertificationPendency.id == pendency_uuid,
+                CertificationPendency.project_id == project.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if pendency is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pendência não encontrada")
+    # T-04-19: pendencia resolvida e imutavel (D-09 por analogia) -- 409 nao 200 silencioso.
+    if pendency.status != "OPEN":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Esta pendência já foi respondida")
+
+    text_response = payload.response.strip()
+    if not text_response:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A resposta à pendência é obrigatória")
+
+    now = datetime.now(timezone.utc)
+    pendency.producer_response = text_response
+    pendency.responded_at = now
+    pendency.resolved_at = now
+    pendency.status = "RESOLVED"
+    try:
+        profile = await service._actor_profile(current_user.id)
+        pendency.responded_by_profile_id = profile.id
+    except HTTPException:
+        pendency.responded_by_profile_id = None
+
+    project.timeline = [
+        *(project.timeline or []),
+        {
+            "title": "Produtor respondeu à pendência",
+            "date": now.date().isoformat(),
+            "status": "completed",
+            "desc": text_response,
+        },
+    ]
+
+    # T-04-20: resposta do produtor rastreada com actor_external_id + pendency_id (repudiation).
+    await create_audit_event(
+        session,
+        action="CERTIFICATION_PENDENCY_ANSWERED",
+        entity_type="projects",
+        entity_id=project.id,
+        actor_role=current_user.role,
+        before_data={"pendency_status": "OPEN"},
+        after_data={"pendency_status": pendency.status},
+        metadata={
+            "actor_external_id": current_user.id,
+            "friendly_id": project.friendly_id,
+            "pendency_id": str(pendency.id),
+            "category": pendency.category,
+            "response": text_response,
+        },
+    )
+    await session.commit()
+
+    open_remaining = (
+        await session.execute(
+            select(func.count()).select_from(CertificationPendency).where(
+                CertificationPendency.project_id == project.id,
+                CertificationPendency.status == "OPEN",
+            )
+        )
+    ).scalar_one()
+
+    return {
+        "success": True,
+        "project_id": project.friendly_id,
+        "pendency_id": str(pendency.id),
+        "status": pendency.status,
+        "open_pendencies": int(open_remaining),
+        "back_to_main_queue": int(open_remaining) == 0,
+    }
 
 
 @router.post("/projects/{project_id}/documents", status_code=status.HTTP_201_CREATED)

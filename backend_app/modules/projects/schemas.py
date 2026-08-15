@@ -206,6 +206,10 @@ class CertifierQueueResponse(BaseModel):
     counts: dict[str, int] = Field(default_factory=dict)
 
 
+class PendencyRespondRequest(BaseModel):
+    response: str
+
+
 class ProjectTagInput(BaseModel):
     has_qtag: bool | None = None
     tag_uid: str | None = None
