@@ -152,10 +152,10 @@ def test_audit_report_evidence_uses_local_file_picker_instead_of_url_textarea() 
     assert "Arquivos selecionados" in auditor_review
     assert "Tamanho:" in auditor_review
     assert auditor_review.index("Checklist de campo") < auditor_review.index("Fotos/documentos da vistoria") < auditor_review.index("Relatório de auditoria")
-    assert "addLocalEvidenceFiles" in auditor_review
-    assert "removeLocalEvidenceFile" in auditor_review
+    assert "addEvidenceFiles" in auditor_review
+    assert "removeEvidenceFile" in auditor_review
     assert "local://auditoria/${projectKey}/${encodeURIComponent(file.name)}" in auditor_review
-    assert "draft.evidenceFiles.map((file) => file.localUri)" in auditor_review
+    assert "draft.evidenceFiles.map((file) => file.localUrl)" in auditor_review
     assert "URLs de fotos/documentos" not in auditor_review
 
 

@@ -16,12 +16,28 @@ interface User {
     govLevel?: 'prata' | 'ouro';
 }
 
+interface UserDocumentUpload {
+    success: boolean;
+    id: string;
+    filename: string;
+    document_type: string;
+    mime_type: string;
+    size_bytes: number;
+    sha256: string;
+    storage_path: string;
+    bucket: string;
+    object_path: string;
+    status: string;
+}
+
 interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     login: (email: string, password: string, role?: UserRole) => Promise<void>;
     register: (data: Partial<User> & { password: string }) => Promise<void>;
     updateProfile: (data: Partial<User>) => Promise<void>;
+    uploadAvatar: (file: File) => Promise<void>;
+    uploadUserDocument: (file: File, documentType: string) => Promise<UserDocumentUpload | null>;
     logout: () => void;
     isLoading: boolean;
 }
@@ -29,11 +45,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SESSION_TTL_MS = Number(import.meta.env.VITE_SESSION_TTL_MS || 6 * 60 * 60 * 1000);
 const PUBLIC_ROLES: UserRole[] = ['producer', 'auditor', 'company', 'certifier'];
+const AUTH_ROLES: UserRole[] = [...PUBLIC_ROLES, 'admin'];
 
 const normalizeRole = (role?: string, defaultRole?: UserRole): UserRole => {
     const normalized = (role || defaultRole || 'company') as UserRole;
-    if (normalized === 'admin') return 'company';
-    return PUBLIC_ROLES.includes(normalized) ? normalized : 'company';
+    return AUTH_ROLES.includes(normalized) ? normalized : 'company';
+};
+
+const normalizePublicRegistrationRole = (role?: string): Exclude<UserRole, 'admin'> => {
+    const normalized = (role || 'company') as UserRole;
+    return PUBLIC_ROLES.includes(normalized) ? normalized as Exclude<UserRole, 'admin'> : 'company';
 };
 
 const normalizeUser = (raw: any, requestedRole?: UserRole): User => ({
@@ -117,8 +138,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const uploadAvatar = async (file: File): Promise<void> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await apiPost<any>('/auth/me/avatar', formData);
+        if (response) {
+            const normalized = normalizeUser(response);
+            setUser(normalized);
+            localStorage.setItem('sinarca_user', JSON.stringify(normalized));
+        }
+    };
+
+    const uploadUserDocument = async (file: File, documentType: string): Promise<UserDocumentUpload | null> => {
+        const formData = new FormData();
+        formData.append('document_type', documentType);
+        formData.append('file', file);
+        return apiPost<UserDocumentUpload>('/auth/me/documents', formData);
+    };
+
     const register = async (data: Partial<User> & { password: string }): Promise<void> => {
-        const safeData = { ...data, role: normalizeRole(data.role) };
+        const safeData = { ...data, role: normalizePublicRegistrationRole(data.role) };
         const response = await apiPost<any>('/auth/register', safeData);
         if (response?.user) {
             persistUser(normalizeUser(response.user, safeData.role), response.token || response.access_token, response.expires_at);
@@ -133,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, updateProfile, logout, isLoading }}>
+        <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, updateProfile, uploadAvatar, uploadUserDocument, logout, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

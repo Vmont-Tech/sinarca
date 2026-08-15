@@ -95,6 +95,16 @@ def test_backend_app_auth_has_no_in_memory_profile_fallback() -> None:
     assert "get_profile_repository()" not in service
 
 
+def test_compose_passes_supabase_storage_env_to_backend_app() -> None:
+    for compose_file in ["docker-compose.yml", "docker-compose.dokploy.yml"]:
+        compose = read(compose_file)
+
+        assert "SUPABASE_URL: ${SUPABASE_URL:-}" in compose
+        assert "SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-}" in compose
+        assert "SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}" in compose
+        assert "SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}" in compose
+
+
 def test_application_runtime_contains_no_mock_contracts() -> None:
     offenders = []
     for path in application_files():
