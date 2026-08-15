@@ -14,7 +14,7 @@ from backend_app.core.security import decode_token
 from backend_app.db.models import ChainEvent, EnvironmentalCredit, LedgerAccount, LedgerEntry, Organization, Profile, Project, Purchase, Retirement
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.ledger.service import LedgerService
-from backend_app.modules.projects.service import ProjectsService
+from backend_app.modules.projects.service import MARKETPLACE_READY_PROJECT_STATUSES, ProjectsService
 from backend_app.modules.retirements.service import RetirementService
 
 
@@ -27,7 +27,12 @@ class MarketplaceService:
         statement = (
             select(Project)
             .join(EnvironmentalCredit, EnvironmentalCredit.project_id == Project.id)
-            .where(Project.status.in_(["ACTIVE", "AVAILABLE"]), EnvironmentalCredit.status == "AVAILABLE", EnvironmentalCredit.quantity_available > 0)
+            .where(
+                Project.public_marketplace.is_(True),
+                Project.status.in_(MARKETPLACE_READY_PROJECT_STATUSES),
+                EnvironmentalCredit.status == "AVAILABLE",
+                EnvironmentalCredit.quantity_available > 0,
+            )
             .order_by(Project.blockchain_timestamp.desc().nullslast(), Project.created_at.desc())
         )
         projects = []
@@ -45,6 +50,8 @@ class MarketplaceService:
         unit_price = Decimal(str(payload["unit_price_brl"]))
         idempotency_key = payload.get("idempotency_key") or f"buy-{uuid.uuid4()}"
         project = await ProjectsService(self.session)._get_project_model(str(payload["project_id"]))
+        if not project.public_marketplace or project.status not in MARKETPLACE_READY_PROJECT_STATUSES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Projeto não disponível no marketplace")
         credit = await self._available_credit(project)
         if credit is None or credit.quantity_available < quantidade:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Quantidade maior que o estoque disponível")

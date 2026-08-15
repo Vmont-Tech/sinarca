@@ -1,5 +1,6 @@
-import { ArrowUpRight, Leaf, ShieldCheck, UserCheck, Calendar, MapPin } from 'lucide-react';
+import { ArrowUpRight, ShieldCheck, UserCheck, MapPin } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { ProjectLifecycleTimeline } from './ProjectLifecycleTimeline';
 
 interface ProjectCardMRCAProps {
     data: any;
@@ -10,7 +11,8 @@ export function ProjectCardMRCA({ data, compact = false }: ProjectCardMRCAProps)
     const location = useLocation();
     const isPublic = !location.pathname.startsWith('/painel');
     const projectPath = isPublic ? '/projeto' : '/painel/mrca';
-    
+    const lifecycle = data.lifecycle || data.project?.lifecycle || data.raw?.lifecycle || [];
+    const currentLifecycleStage = data.currentLifecycleStage || data.project?.currentLifecycleStage || data.raw?.currentLifecycleStage;
     const isAvailable = data.status.includes('Ativo') || data.status.includes('Disponível');
     
     return (
@@ -51,6 +53,8 @@ export function ProjectCardMRCA({ data, compact = false }: ProjectCardMRCAProps)
                         <span className="text-sm font-bold text-black">{data.period}</span>
                     </div>
                 </div>
+
+                <ProjectLifecycleTimeline stages={lifecycle} currentStage={currentLifecycleStage} variant="compact" />
 
                 {/* Chain Entities */}
                 {!compact && (

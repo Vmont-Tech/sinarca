@@ -16,6 +16,7 @@ services:
       SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
     ports:
       - "${API_PORT:-5680}:5680"
     healthcheck:
@@ -39,7 +40,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     ports:
-      - "${WEB_PORT:-80}:80"
+      - "${WEB_PORT:-5173}:80"
     depends_on:
       sinarca-api:
         condition: service_healthy

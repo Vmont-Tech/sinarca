@@ -134,6 +134,8 @@ function App() {
               <Route path="monitoramento" element={<MonitoringNDVI />} />
 
               {/* Visualização Interna (Restored for Dashboard Functionality) */}
+              <Route path="mrca/:id/editar" element={<AddProject mode="edit" />} />
+              <Route path="projetos/:id/editar" element={<AddProject mode="edit" />} />
               <Route path="mrca/:id" element={<MrcaDetails />} />
               <Route path="meu-perfil" element={<UserProfile />} />
               <Route path="perfil/:id" element={<UserProfile />} />
@@ -144,6 +146,7 @@ function App() {
               <Route path="mapa-projetos" element={<GlobalMap />} />
               <Route path="mapa-nacional" element={<NationalMap />} />
               <Route path="lideres" element={<ImpactLeaders />} />
+              <Route path="relatorios" element={<Reports />} />
 
               {/* PUBLIC ECOSYSTEM LISTS (Within Dashboard) */}
               <Route path="auditores" element={<Auditors />} />

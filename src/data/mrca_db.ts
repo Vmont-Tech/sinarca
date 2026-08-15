@@ -3,7 +3,35 @@
 
 // 1. PROJECT (Mercado Voluntário)
 // Entidade privada, auditada, gera CRÉDITOS.
-export type ProjectStatus = 'CREATED' | 'AUDITED' | 'AVAILABLE' | 'RESERVED' | 'TRANSFERRED' | 'RETIRED' | 'SUSPENDED';
+export type ProjectStatus =
+    | 'DRAFT'
+    | 'CREATED'
+    | 'REGISTERED'
+    | 'BASELINE_PENDING'
+    | 'AWAITING_CERTIFICATION'
+    | 'CERTIFIED_AWAITING_TREASURY'
+    | 'TOKENIZED_LOCKED'
+    | 'AWAITING_AUDIT'
+    | 'AUDITED'
+    | 'ACTIVE'
+    | 'AVAILABLE'
+    | 'RESERVED'
+    | 'TRANSFERRED'
+    | 'BLOCKED_AUDIT_REQUIRED'
+    | 'RECALCULATION_REQUIRED'
+    | 'SUSPENDED'
+    | 'RETIRED';
+
+export interface ProjectLifecycleStage {
+    code: string;
+    label: string;
+    description: string;
+    index: number;
+    total: number;
+    state: 'completed' | 'current' | 'pending' | 'blocked';
+    isCurrent: boolean;
+    projectStatus?: ProjectStatus | string;
+}
 
 export interface ParticipatingEntity {
     id: string;
@@ -45,6 +73,7 @@ export interface ProjectMRCA {
         coordinates: Coordinates;
     };
     status: ProjectStatus;
+    publicMarketplace: boolean;
     metrics: {
         totalAreaHa: number;
         carbonStock: number; // Volume de Créditos Potenciais/Gerados
@@ -63,10 +92,13 @@ export interface ProjectMRCA {
         registry: ParticipatingEntity;
     };
     blockchain: BlockchainData;
+    lifecycle: ProjectLifecycleStage[];
+    currentLifecycleStage: ProjectLifecycleStage;
     timeline: Array<{
+        code?: string;
         title: string;
         date: string;
-        status: 'completed' | 'active' | 'pending';
+        status: 'complete' | 'completed' | 'active' | 'pending';
         desc: string;
     }>;
 }

@@ -73,6 +73,19 @@ def test_runtime_artifacts_use_backend_app_only() -> None:
         assert "backend/main.py" not in text, f"{path} still references backend/main.py"
 
 
+def test_frontend_container_proxies_api_requests_to_backend_service() -> None:
+    dockerfile = read("Dockerfile.frontend")
+    compose = read("docker-compose.yml")
+    dokploy_compose = read("docker-compose.dokploy.yml")
+
+    assert "location /api/" in dockerfile
+    assert "proxy_pass http://sinarca-api:5680/api/" in dockerfile
+    assert "proxy_set_header Authorization $http_authorization" in dockerfile
+    assert "client_max_body_size 10m" in dockerfile
+    assert '${WEB_PORT:-5173}:80' in compose
+    assert '${WEB_PORT:-80}:80' in dokploy_compose
+
+
 def test_backend_app_auth_has_no_in_memory_profile_fallback() -> None:
     repository = read("backend_app/modules/profiles/repository.py")
     service = read("backend_app/modules/auth/service.py")

@@ -11,6 +11,11 @@
       "preserve_external_product_names": true,
       "avoid_unaccented_portuguese": true
     },
+    "phase_ui_workflow": {
+      "use_ui_ux_pro_max_when_phase_has_ui": true,
+      "required_skill": "ui-ux-pro-max",
+      "notes": "Em fases GSD com UI, invocar ui-ux-pro-max junto com gsd-ui-phase antes de fechar UI-SPEC ou PLAN.md."
+    },
     "copyright_notice": {
       "preferred_format": "© <ano> <titular>. Todos os direitos reservados.",
       "notes": "Textos autorais, avisos de direitos, rodapés e documentos internos devem ser escritos em português do Brasil com acentuação correta. Licenças e textos legais de terceiros devem preservar o idioma original quando forem citação ou obrigação da licença."

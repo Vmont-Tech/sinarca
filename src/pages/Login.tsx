@@ -127,7 +127,7 @@ const Login = () => {
         let active = true;
         const loadPublicStats = async () => {
             try {
-                const projects = await database.getRawMarketProjects();
+                const projects = await database.getRawMarketProjects({ publicMarketplaceOnly: true });
                 if (!active) return;
                 setPublicStats({
                     registered: projects.reduce((sum, project) => sum + Number(project.metrics?.carbonStock || 0), 0),

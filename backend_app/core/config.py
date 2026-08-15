@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     supabase_public_url: str | None = None
     supabase_anon_key: str | None = None
     supabase_service_role_key: str | None = None
+    supabase_jwt_secret: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

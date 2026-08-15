@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: phase-2-implemented
-stopped_at: Phase 2 implemented locally; pending PR/merge because main is protected
-last_updated: "2026-05-26T00:00:00.000Z"
-last_activity: 2026-05-26
+status: phase-3-complete
+stopped_at: Phase 03 complete; next planning target is Phase 04
+last_updated: "2026-05-27T21:59:31-03:00"
+last_activity: 2026-05-27 -- Phase 03 completion reconciled
 progress:
   total_phases: 10
-  completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
-  percent: 20
+  completed_phases: 3
+  total_plans: 16
+  completed_plans: 16
+  percent: 30
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 02 — public-transparency-and-profiles
+**Current focus:** Phase 04 — certification-workbench
 
 ## Current Position
 
-Phase: 02 (public-transparency-and-profiles) — IMPLEMENTED LOCALLY
-Plan: 02-01 through 02-05 executed
-Status: Phase 2 implemented on branch `feat/fase-2-transparencia-perfis`; pending PR/merge because `main` is protected
-Last activity: 2026-05-26
+Phase: 04 (certification-workbench) — READY TO PLAN
+Plan: No Phase 04 plans yet
+Status: Phases 2 and 3 complete on branch `feat/fase-3-originacao-documentos`; next action is planning Phase 4
+Last activity: 2026-05-27 -- Phase 03 completion reconciled
 
-Progress: [██--------] 20%
+Progress: [███-------] 30%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6
-- Average duration: 12min
-- Total execution time: 1.18 hours
+- Total plans completed: 16
+- Average duration: tracked in per-plan summaries where available
+- Total execution time: tracked in phase summaries where available
 
 **By Phase:**
 
@@ -87,6 +87,11 @@ Progress: [██--------] 20%
 - [Phase 02]: Explorer público usa `/api/v1/transactions` com filtros por projeto, hash, tipo, comprador e status, além de `/api/v1/transactions/{hash_or_id}`.
 - [Phase 02]: Perfis públicos usam `/api/v1/profiles/{id}` com documento mascarado e dados minimizados.
 - [Phase 02]: Cadastro público aceita produtor, empresa, auditor e certificadora; admin segue bloqueado para provisionamento operacional futuro.
+- [Phase 03]: Originação backend registra quatro QTAGs A/B/C/D, bloqueia SUN/Sentinel como credenciais ausentes, persiste documentos por projeto e usa timeline inicial com códigos canônicos.
+- [Phase 03]: `AddProject` agora é wizard operacional; município/UF são campos livres, produtores/certificadoras vêm da API e `ProjectCreate.tags` é montado por `projectOrigination.ts`.
+- [Phase 03]: Captura de campo web/PWA falha fechado para NFC/SUN sem credenciais, permite geolocalização com fallback manual e renderiza geofence SVG a partir das mesmas QTAGs enviadas no submit.
+- [Phase 03]: Documentos obrigatórios são selecionados no wizard, enviados via `FormData` após criação do projeto e só liberam sucesso final quando os uploads obrigatórios terminam.
+- [Phase 03]: Dossiê de projeto renderiza geofence a partir de `dossier.tags`, documentos reais de `dossier.documents`, timeline canônica da API e baseline rotulado como determinístico/Sentinel bloqueado quando aplicável.
 
 ### Roadmap Evolution
 
@@ -102,8 +107,8 @@ Progress: [██--------] 20%
 
 ### Pending Todos
 
-- Abrir PR para `docs/planejamento-fase-2` ou incluir os artefatos de planejamento no PR da branch `feat/fase-2-transparencia-perfis`, porque `main` está protegida contra push direto.
-- Planejar e executar Phase 3 (`project-origination-and-documents`), sempre incluindo seção "Cobertura do checklist" em cada `PLAN.md`.
+- Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
+- Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
 
 ### Blockers/Concerns
 
@@ -114,6 +119,7 @@ Progress: [██--------] 20%
 - Staging Dokploy Phase 1 bloqueado: STAGING_API_URL, STAGING_WEB_URL, credenciais Dokploy e Supabase remoto ausentes; ver .planning/docs/deployment/PHASE1-STAGING-SMOKE.md.
 - Phase 2 execução deve usar canais provisórios distintos no domínio `@sinarca.com.br`: `contato@sinarca.com.br` para contato geral, `suporte@sinarca.com.br` para suporte e `dpo@sinarca.com.br` para DPO.
 - `npx tsc -b` segue bloqueado por dívida legada fora do escopo da Phase 2, principalmente imports não usados e tipos incompletos no impact-engine; `npm run build` passa.
+- Phase 3 Web NFC/SUN/Sentinel live permanecem bloqueados por hardware, chaves e credenciais externas; fluxo registra fallback manual e baseline determinístico.
 
 ## Deferred Items
 

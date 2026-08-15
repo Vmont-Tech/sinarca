@@ -68,7 +68,7 @@ const MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_AUDIT_EVIDENCE_FILE_LIMIT_TEXT = 'Limite máximo: 10 MB por arquivo';
 const MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX = 'Arquivos acima de 10 MB não foram anexados';
 const checkLabels: Record<AuditCheckKey, string> = {
-    tagsLocated: '4 tags NFC 424 DNA localizadas em campo',
+    tagsLocated: 'QTAGs NFC 424 DNA localizadas em campo',
     tagsIntact: 'Tags intactas e funcionais',
     coordinatesMatch: 'Coordenadas conferidas com o registro',
     areaPreserved: 'Área preservada conforme baseline',

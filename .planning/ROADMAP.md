@@ -19,7 +19,7 @@ A auditoria de checklist de 2026-05-26 identificou lacunas de fluxo, tela e oper
 
 - [x] **Phase 1: backend-rebuild** - Reconstruir o backend, cobrir os fluxos do frontend dependentes de dados e preparar validação local/staging.
 - [x] **Phase 2: public-transparency-and-profiles** - Fechar experiência pública, dossiê público de projeto, explorer, perfis públicos, cadastro por perfil e edição de perfil.
-- [ ] **Phase 3: project-origination-and-documents** - Completar originação do projeto com produtor, localização, metodologia, QTAGs/NFC, geofence, documentos e timeline canônica.
+- [x] **Phase 3: project-origination-and-documents** - Completar originação do projeto com produtor, localização, metodologia, QTAGs/NFC, geofence, documentos e timeline canônica.
 - [ ] **Phase 4: certification-workbench** - Completar revisão da certificadora, decisão técnica, certificado/documento, histórico e orquestração para lastro/mint bloqueado.
 - [ ] **Phase 5: audit-monitoring-and-anomalies** - Completar auditoria de campo, evidências, assinatura verificável, monitoramento NDVI, anomalias, bloqueio e desbloqueio auditável.
 - [ ] **Phase 6: marketplace-wallet-and-retirement** - Completar checkout, carteira off-chain, histórico/exportação, recibos, aposentadoria real e certificado de impacto.
@@ -87,7 +87,23 @@ Plans:
   4. Documentos legais e inventário florestal são enviados, listados e vinculados ao projeto.
   5. Validação de SUN/CMAC, hash inicial de área e pontos de referência Sentinel-2 ficam explicitados no contrato ou como bloqueio técnico documentado.
   6. A timeline do projeto cobre o ciclo canônico de `CREATED` até `AVAILABLE`.
-**Plans**: Not planned yet
+**Plans**: 5/5 plans executed
+
+Plans:
+**Wave 1**
+- [x] 03-01: Fechar contrato backend de originação, documentos e timeline.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 03-02: Transformar AddProject em wizard de originação com quatro QTAGs.
+- [x] 03-03: Adicionar captura de campo fail-closed e preview de geofence.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 03-04: Implementar upload e listagem de documentos reais no fluxo de projeto.
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 03-05: Fechar dossiê, timeline, cobertura e UAT da originação.
+
+**Execution evidence**: `.planning/phases/03-project-origination-and-documents/03-VERIFICATION.md`
 
 ### Phase 4: certification-workbench
 **Goal**: Completar a bancada da certificadora com dossiê técnico, decisão auditável, certificado/documento e preparação de lastro/mint bloqueado.
@@ -211,8 +227,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. backend-rebuild | 6/6 | Complete | 2026-05-22 |
-| 2. public-transparency-and-profiles | 0/5 | Planned | - |
-| 3. project-origination-and-documents | 0/0 | Not planned | - |
+| 2. public-transparency-and-profiles | 5/5 | Complete | 2026-05-26 |
+| 3. project-origination-and-documents | 5/5 | Complete | 2026-05-26 |
 | 4. certification-workbench | 0/0 | Not planned | - |
 | 5. audit-monitoring-and-anomalies | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |
