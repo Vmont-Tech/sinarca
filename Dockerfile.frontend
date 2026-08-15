@@ -22,8 +22,14 @@ server {
     index index.html;
     client_max_body_size 10m;
 
+    # Docker's embedded DNS. Resolve "sinarca-api" per-request instead of once
+    # at boot, so nginx doesn't fail to start (and take the whole site down)
+    # if the api container isn't resolvable yet when the web container starts.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
     location /api/ {
-        proxy_pass http://sinarca-api:5680/api/;
+        set $api_upstream http://sinarca-api:5680;
+        proxy_pass $api_upstream/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
