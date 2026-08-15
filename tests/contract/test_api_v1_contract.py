@@ -116,11 +116,18 @@ def test_public_dossier_contract_exposes_project_transparency_data() -> None:
     assert payload["tags"]
     assert payload["baseline"]["baselineHash"]
     assert payload["certifications"]
+    for certification in payload["certifications"]:
+        assert "notes" not in certification
     assert payload["audits"]
-    assert payload["documents"]
+    # Dossiê público minimizado (CERT-05/D-20/D-22): só documentos do tipo
+    # CERTIFICATION_CERTIFICATE aparecem aqui; PRC-2024-002 não tem um no seed.
+    assert "documents" in payload
+    assert {item["type"] for item in payload["documents"]} <= {"CERTIFICATION_CERTIFICATE"}
     assert payload["credits"]
     assert "transactions" in payload
     assert "chainEvents" in payload
+    assert "certificate" in payload
+    assert "certificationHistory" in payload
 
 
 def test_public_transactions_contract_supports_filters_and_detail() -> None:

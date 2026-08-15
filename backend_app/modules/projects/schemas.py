@@ -104,6 +104,22 @@ class ProjectPublicDossierResponse(BaseModel):
     credits: list[dict[str, Any]]
     transactions: list[dict[str, Any]]
     chainEvents: list[dict[str, Any]]
+    certificate: dict[str, Any] | None = None
+    certificationHistory: list[dict[str, Any]] = []
+
+
+class CertifierReviewResponse(BaseModel):
+    success: bool = True
+    project: ProjectMRCA
+    baseline: dict[str, Any] | None = None
+    tags: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
+    dossier: dict[str, Any]
+    calculation: dict[str, Any]
+    certifications: list[dict[str, Any]] = []
+    pendencies: list[dict[str, Any]] = []
+    treasuryAuthorization: dict[str, Any] | None = None
+    certificate: dict[str, Any] | None = None
 
 
 class PublicProfileResponse(BaseModel):

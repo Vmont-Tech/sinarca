@@ -303,16 +303,27 @@ class ProjectsService:
             )
         ).all()
 
+        certificate = await self.certification_certificate(project)
+        certification_history = await self.certification_history(
+            project,
+            actions=PUBLIC_CERTIFICATION_HISTORY_ACTIONS,
+            include_metadata=False,
+        )
+
         return ProjectPublicDossierResponse(
             project=project_dto,
             tags=[tag_item(tag) for tag in tags],
             baseline=baseline_item(baseline),
-            certifications=[certification_item(item) for item in certifications],
+            certifications=[public_certification_item(item) for item in certifications],
             audits=[audit_item(item) for item in audits],
-            documents=[document_item(item) for item in documents],
+            documents=[
+                public_document_item(item) for item in documents if item.document_type.upper() in PUBLIC_DOCUMENT_TYPES
+            ],
             credits=[credit_item(item) for item in credits],
             chainEvents=[chain_event_item(item) for item in chain_events],
             transactions=[ledger_transaction_item(entry, account, project, event) for entry, account, event in transaction_rows],
+            certificate=certificate,
+            certificationHistory=certification_history,
         )
 
     async def _latest_baseline_model(self, project: Project) -> ProjectBaseline | None:
@@ -1810,6 +1821,33 @@ def certification_item(certification: Certification) -> dict[str, Any]:
         "signedDocumentHash": certification.signed_document_hash,
         "signedAt": certification.signed_at.isoformat() if certification.signed_at else None,
         "createdAt": certification.created_at.isoformat(),
+    }
+
+
+def public_certification_item(certification: Certification) -> dict[str, Any]:
+    """Serializacao minimizada (D-20/D-22): sem notas internas."""
+    return {
+        "id": str(certification.id),
+        "methodology": certification.methodology,
+        "creditPotential": float(certification.credit_potential),
+        "decision": certification.decision,
+        "signedDocumentHash": certification.signed_document_hash,
+        "signedAt": certification.signed_at.isoformat() if certification.signed_at else None,
+        "createdAt": certification.created_at.isoformat(),
+    }
+
+
+def public_document_item(document: Document) -> dict[str, Any]:
+    """Documento publico: referencia e hash, sem metadados operacionais internos."""
+    return {
+        "id": str(document.id),
+        "type": document.document_type,
+        "sha256Hash": document.sha256_hash,
+        "mimeType": document.mime_type,
+        "sizeBytes": document.size_bytes,
+        "uploadedAt": document.uploaded_at.isoformat(),
+        "storagePath": document.storage_path,
+        "downloadAvailable": bool(document.storage_object_path),
     }
 
 

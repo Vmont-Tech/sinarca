@@ -627,13 +627,9 @@ def test_project_document_upload_persists_project_link_and_audit_event() -> None
     dossier_response = client.get(f"/api/v1/projects/{project['friendlyId']}/public-dossier")
     assert dossier_response.status_code == 200
     documents = dossier_response.json()["documents"]
-    # Dossiê público não expõe bucket/caminho de storage nem hash completo (02-04/03-04-T3);
-    # a vinculação real (path/hash exatos) já foi verificada acima direto no banco.
-    legal_ownership_item = next(item for item in documents if item["type"] == "LEGAL_OWNERSHIP")
-    assert legal_ownership_item["sha256Hash"] != upload["sha256"]
-    assert legal_ownership_item["sha256Hash"].startswith(upload["sha256"][:4])
-    for key in ("storagePath", "storageBucket", "storageObjectPath", "metadata"):
-        assert key not in legal_ownership_item
+    # Dossiê público minimizado (CERT-05/D-20/D-22): documentos internos como
+    # LEGAL_OWNERSHIP não são expostos; só CERTIFICATION_CERTIFICATE aparece aqui.
+    assert not any(item["type"] == "LEGAL_OWNERSHIP" for item in documents)
 
 
 def test_project_document_upload_is_idempotent_for_same_project_file() -> None:
@@ -1003,13 +999,13 @@ def test_project_drafts_save_upload_submit_and_link_documents() -> None:
     dossier_response = client.get(f"/api/v1/projects/{project['friendlyId']}/public-dossier")
     assert dossier_response.status_code == 200
     dossier_documents = dossier_response.json()["documents"]
-    # Dossiê público não deve expor bucket/caminho de storage nem hash completo (02-04/03-04-T3);
-    # essa verificação (real, autenticada) já foi feita acima direto no banco.
-    assert {"LEGAL_OWNERSHIP", "FOREST_INVENTORY"} <= {item["type"] for item in dossier_documents}
+    # Dossiê público minimizado (CERT-05/D-20/D-22): documentos internos como
+    # LEGAL_OWNERSHIP/FOREST_INVENTORY não são expostos publicamente; a vinculação
+    # real (path/hash exatos) já foi verificada acima direto no banco.
+    assert not ({"LEGAL_OWNERSHIP", "FOREST_INVENTORY"} & {item["type"] for item in dossier_documents})
     for item in dossier_documents:
         assert "storageBucket" not in item
         assert "storageObjectPath" not in item
-        assert "storagePath" not in item
         assert "metadata" not in item
 
 
