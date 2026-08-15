@@ -142,6 +142,42 @@ def create_project_for_workflow(prefix: str | None = None, *, public_marketplace
     return response.json()["project"]
 
 
+CERTIFIER_PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF\n"
+
+
+def upload_certification_minimum_documents(friendly_id: str) -> None:
+    for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
+        # sha256 precisa ser distinto por documento: upload_project_document deduplica por
+        # (project_id, sha256_hash) e devolveria o mesmo documento para os dois tipos se o
+        # conteudo fosse identico.
+        content = CERTIFIER_PDF_BYTES + document_type.encode()
+        response = client.post(
+            f"/api/v1/projects/{friendly_id}/documents",
+            data={"document_type": document_type},
+            files={"file": (filename, content, "application/pdf")},
+            headers=auth_headers(),
+        )
+        assert response.status_code == 201, response.text
+
+
+def certifier_approve(friendly_id: str, credit_potential: float, *, notes: str = "Certificação aprovada") -> dict[str, object]:
+    upload_certification_minimum_documents(friendly_id)
+    response = client.patch(
+        f"/api/v1/certifier/projects/{friendly_id}/decision",
+        data={
+            "decision": "APPROVE",
+            "methodology": "AR-ACM0003",
+            "credit_potential": str(credit_potential),
+            "credit_potential_adjustment_reason": "Potencial ajustado para o cenário de contrato.",
+            "notes": notes,
+        },
+        files={"certificate": ("certificado.pdf", CERTIFIER_PDF_BYTES, "application/pdf")},
+        headers=auth_headers("certificadora@sinarca.com.br", "certificadora"),
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
 def test_projects_collection_detail_catalogs_and_creation_use_persistent_api() -> None:
     collection_response = client.get("/api/v1/projects?limit=1000")
 
@@ -307,31 +343,21 @@ def test_certifier_queue_and_decision_apply_role_guard_and_status_transition() -
 
     forbidden = client.patch(
         f"/api/v1/certifier/projects/{project['friendlyId']}/decision",
-        json={"decision": "APPROVE", "notes": "tentativa indevida"},
+        data={"decision": "APPROVE", "notes": "tentativa indevida"},
         headers=auth_headers("empresa@sinarca.com.br", "empresa"),
     )
     assert forbidden.status_code == 403
 
-    approve_response = client.patch(
-        f"/api/v1/certifier/projects/{project['friendlyId']}/decision",
-        json={"decision": "APPROVE", "credit_potential": 1234, "notes": "Certificação aprovada"},
-        headers=auth_headers("certificadora@sinarca.com.br", "certificadora"),
-    )
-    assert approve_response.status_code == 200
-    data = approve_response.json()
+    data = certifier_approve(project["friendlyId"], 1234)
     assert data["success"] is True
-    assert data["new_status"] == "AWAITING_AUDIT"
+    assert data["new_status"] == "CERTIFIED_AWAITING_TREASURY"
     assert data["credit_potential"] == 1234
+    assert data["certificate"]["documentType"] == "CERTIFICATION_CERTIFICATE"
 
 
 def test_audit_queue_verify_and_monitoring_anomaly_block_project() -> None:
     project = create_project_for_workflow()
-    certifier_response = client.patch(
-        f"/api/v1/certifier/projects/{project['friendlyId']}/decision",
-        json={"decision": "APPROVE", "credit_potential": 900},
-        headers=auth_headers("certificadora@sinarca.com.br", "certificadora"),
-    )
-    assert certifier_response.status_code == 200
+    certifier_approve(project["friendlyId"], 900)
 
     queue_response = client.get("/api/v1/audit/queue", headers=auth_headers("auditor@sinarca.com.br", "auditor"))
     assert queue_response.status_code == 200
@@ -387,12 +413,7 @@ def activate_project_for_marketplace(
     public_marketplace: bool = True,
 ) -> dict[str, object]:
     project = create_project_for_workflow(prefix, public_marketplace=public_marketplace)
-    certifier_response = client.patch(
-        f"/api/v1/certifier/projects/{project['friendlyId']}/decision",
-        json={"decision": "APPROVE", "credit_potential": credit_potential},
-        headers=auth_headers("certificadora@sinarca.com.br", "certificadora"),
-    )
-    assert certifier_response.status_code == 200
+    certifier_approve(project["friendlyId"], credit_potential)
     audit_response = client.patch(
         f"/api/v1/audit/verify/{project['friendlyId']}",
         json={"status": "APPROVED", "laudo_texto": "Auditoria aprovada para marketplace"},
