@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: certification-workbench
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-15
+reviewed_at: 2026-08-15
 ---
 
 # Phase 4 — UI Design Contract
@@ -59,6 +60,8 @@ Exceptions:
 Declared weights: **400 (regular, body copy)** and **700 (bold, labels/headings/buttons/emphasis)** — exactly 2, per contract.
 
 Documented pre-existing exception (not a new weight introduced by this phase): `font-black` (900) is already used codebase-wide, without exception, for the page title (`h1`, Display role) and card/project title (`h2`, Heading role) in `CertifierReview.tsx:59/83`, `AuditorReview.tsx:353/409`, and `MrcaDetails.tsx:191/237`. Phase 4 must continue this exact convention for the workbench page title and each queue card's project title — do not downgrade existing headings to 700 to satisfy the 2-weight rule; the rule constrains *new* weight choices, not established headings. All *new* Phase 4 UI (tab labels, decision form labels, status badges, pendency copy, treasury package summary) must stick to 400/700 only — reserve 900 exclusively for the two pre-existing heading levels above.
+
+Additional documented pre-existing exception (carried over, not introduced by this phase): `text-[10px]`/`text-[11px]` micro-labels are already used codebase-wide for dense eyebrow/meta text — e.g. the integrity-tab micro-labels in `MrcaDetails.tsx` and the history-timeline code/date line (`text-[10px] font-bold uppercase tracking-[0.2em]`). This sub-`text-xs` size is scoped exclusively to eyebrow/meta text and must never be used for body copy, labels, or any primary reading content.
 
 ---
 
@@ -122,12 +125,14 @@ This third color is not a stylistic addition — it continues the exact amber-fo
 
 Prescriptive mapping from requirement to reused Tailwind pattern — executor should copy these classes verbatim, not invent new ones.
 
+**Visual anchor:** On the certifier queue screen, the expanded card's Decisão tab action buttons (Aprovar/Ajustes/Reprovar) are the primary visual anchor once a card is open; in the collapsed state, the focal point is the status badge + project title pairing at the card header. Icon-only remove buttons must carry explicit accessible labels — `aria-label="Remover arquivo"` for the remove-file button and `aria-label="Remover pendência"` for the remove-pendency button — never icon-only without a label.
+
 | Component | Source Pattern to Reuse | Notes |
 |-----------|-------------------------|-------|
 | Expandable queue card | `AuditorReview.tsx:402-624` (`activeProjectId` toggle + `article.rounded-3xl.border.border-gray-100.bg-white.p-6.shadow-sm`) | Do not build a new card primitive; extend this exact card, add the 6-tab nav inside the expanded region instead of `AuditorReview`'s flat sections |
 | Internal tab nav | `MrcaDetails.tsx:200-219` (`nav.flex.gap-6.border-b.border-gray-100` + active-tab underline `absolute bottom-0 left-0 w-full h-1 bg-primary`) — **but swap `bg-primary`/`text-primary` for `bg-emerald-600`/`text-emerald-600`** to stay inside this phase's internal-dashboard palette (see Color contract) rather than the public-site brand-green accent | `MrcaDetails.tsx` is the public dossier and legitimately uses the `primary` brand token; the certifier workbench is an internal ops screen and must use the emerald/amber/red palette declared above, not the marketing `primary` green |
 | Status/queue-position badge | `rounded-full bg-gray-100 px-3 py-1 text-xs font-bold uppercase text-gray-600` (`CertifierReview.tsx:80`) | Reuse unmodified for `project.status`; add a second badge variant with `bg-emerald-50 text-emerald-700` / `bg-amber-50 text-amber-700` / `bg-red-50 text-red-700` for decision-outcome chips |
-| Two-queue tabs + dashboard counter | New — compose from `MrcaDetails.tsx` tab-nav pattern (button row) with a numeric counter chip (`rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700`) next to the "Aguardando retorno do produtor" tab label | No existing precedent for the counter chip itself; keep it visually consistent with existing badge radius/weight conventions |
+| Two-queue tabs + dashboard counter | New — compose from `MrcaDetails.tsx` tab-nav pattern (button row) with a numeric counter chip (`rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700`) next to the "Aguardando retorno do produtor" tab label | No existing precedent for the counter chip itself; keep it visually consistent with existing badge radius/weight conventions |
 | Decision form (Aprovar/Ajustes/Reprovar) | Field patterns from `AuditorReview.tsx:564-587` (`label.space-y-1` + `input/textarea.rounded-xl.border.border-gray-200.px-3.py-2.text-sm` with `focus:border-blue-500` swapped to `focus:border-emerald-500`) | Reuse the exact field shell; swap the focus ring color to emerald to match this module's accent, not blue (blue is `AuditorReview`'s module color) |
 | Certificate PDF dropzone | `AuditorReview.tsx:517-531` (`label.cursor-pointer.rounded-xl.border-2.border-dashed.border-gray-200.bg-gray-50` dropzone shell) | **Do not reuse the file-handling logic** (`local://` blob URLs) — only the visual shell. Certificate must upload via real `FormData` to the backend per D-11, using the pattern from `projectDocuments.ts`, not `AuditorReview.tsx`'s client-only stub |
 | Decision action buttons | `inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white` with `bg-emerald-600 hover:bg-emerald-700` (Aprovar) / `bg-amber-500 hover:bg-amber-600` (Ajustes) / `bg-red-600 hover:bg-red-700` (Reprovar) | Identical to existing `CertifierReview.tsx:98-106` button set; only the "Rejeitar" label text changes to "Reprovar projeto" per Copywriting Contract |
