@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-08-15T12:39:48.168Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-08-15T12:51:19.839Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 23
-  completed_plans: 17
-  percent: 74
+  completed_plans: 18
+  percent: 78
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04 (certification-workbench) — IN PROGRESS
-Plan: 01 of 7 complete
-Status: Plan 04-01 (fundação de dados) executado e commitado; migration, modelos SQLAlchemy e contrato de testes RED (9 testes) prontos. Próxima ação é executar o plano 04-02.
+Plan: 2 of 7 complete
+Status: Ready to execute
 Last activity: 2026-08-15
 
 Progress: [███████░░░] 74%
@@ -52,6 +52,7 @@ Progress: [███████░░░] 74%
 | Phase 01-backend-rebuild P01-05 | 11min | 5 tasks | 17 files |
 | Phase 01-backend-rebuild P01-06 | 13min | 5 tasks | 14 files |
 | Phase 04 P01 | 25min | 3 tasks | 6 files |
+| Phase 04-certification-workbench P02 | 20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Progress: [███████░░░] 74%
 - [Phase 03]: Dossiê de projeto renderiza geofence a partir de `dossier.tags`, documentos reais de `dossier.documents`, timeline canônica da API e baseline rotulado como determinístico/Sentinel bloqueado quando aplicável.
 - [Phase 04]: Constraint unica (project_id, decision) de certifications removida; decisoes de certificacao passam a ser append-only (sempre INSERT, indice por project_id/created_at).
 - [Phase 04]: certification_pendencies e treasury_authorizations sao tabelas operacionais sem policy de SELECT no RLS; acesso exclusivo via backend_app com auth propria e guard de papel.
+- [Phase 04-certification-workbench]: Dossie publico minimizado: public_certification_item/public_document_item excluem notas internas e documentos nao PUBLIC_DOCUMENT_TYPES; certificate/certificationHistory expostos sem metadata/beforeData/afterData.
+- [Phase 04-certification-workbench]: assert_certification_dossier_complete usa HTTP 400 para propagar o detail exato do 04-UI-SPEC.md via src/services/api.ts.
+- [Phase 04-certification-workbench]: GET /certifier/projects/{id}/review entrega o dossie tecnico completo e registra CERTIFICATION_REVIEW_OPENED uma vez por ator.
 
 ### Roadmap Evolution
 
@@ -142,6 +146,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T12:39:48.165Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-08-15T12:51:19.836Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
