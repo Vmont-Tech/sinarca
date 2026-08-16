@@ -132,7 +132,27 @@ values
     'Caseara', 'Tocantins', 'to', 'Cerrado', -9.270000, -49.950000, 360, 260, 2400, 32000, 1600000, '2026',
     'https://images.pexels.com/photos/1770809/pexels-photo-1770809.jpeg?auto=compress&cs=tinysrgb&w=900', 'BR-2026-011-000001', 'BR-2026-011-032000', '0xAUD...QUEUE', '0xAUD...ROOT', null, '2026-05-22T10:00:00Z',
     '[{"title":"Certificação","date":"2026-05-22","status":"completed","desc":"Projeto aguardando auditoria."}]'::jsonb,
-    jsonb_build_object('source', 'frontend AuditorReview queue', 'queue', 'auditor'))
+    jsonb_build_object('source', 'frontend AuditorReview queue', 'queue', 'auditor')),
+  ('PRC-2026-077', 'infoterras-relatorio-mg-3126000-4a5f440a95394810a3531aeb447bcbab', 'v1.0', 'Projeto Florestal MG – Mata Atlântica',
+    'Projeto ambiental localizado no município de Florestal, Minas Gerais, em propriedade rural com área total de aproximadamente 186,5 hectares, inserida predominantemente no bioma Mata Atlântica. A área apresenta aproximadamente 79 hectares de formação florestal, além de áreas de pastagem e mosaico de usos, e possui cerca de 42 hectares destinados à Reserva Legal. O projeto tem como objetivo promover a conservação e o monitoramento da cobertura vegetal, garantindo rastreabilidade das informações ambientais e acompanhamento contínuo da área por dados geoespaciais.',
+    'Imóvel rural com 42% de cobertura de vegetação nativa (Formação Florestal), 38% de pastagem e 17% de mosaico de usos (MapBiomas 2024); sem desmatamento relevante recente e sem embargos ambientais. Reserva Legal proposta de 42 ha (22,8%) aguardando averbação no CAR.',
+    'ARR Florestal Nativa', null, 'CREATED', false,
+    (select id from organizations where external_id = 'prod-001'), (select id from organizations where external_id = 'aud-005'), (select id from organizations where external_id = 'std-001'), (select id from organizations where external_id = 'reg-001'),
+    'Florestal', 'Minas Gerais', 'mg', 'Mata Atlântica', -19.913490, -44.515100, 438.06, 392.73, 186.50, 35000.00, 1750000.00, '2026',
+    '/seed-images/prc-2026-077-florestal-mg.jpg', 'BR-2026-077-000001', 'BR-2026-077-035000', 'pending', 'pending', null, '2026-08-10T14:00:00Z',
+    '[{"title":"Diagnóstico territorial recebido","date":"2026-08-10","status":"completed","desc":"Relatório INFOTERRAS (Geoportal Rural MG) com análise territorial, ambiental, fundiária e logística do imóvel."},{"title":"Cadastro no SINARCA","date":"2026-08-16","status":"active","desc":"Projeto registrado para estruturação e futura quantificação de carbono."}]'::jsonb,
+    jsonb_build_object(
+      'source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB (emitido 10/08/2026)',
+      'frontendStatus', 'CREATED',
+      'car_code', 'MG-3126000-4A5F440A95394810A3531AEB447BCBAB',
+      'reserva_legal_ha', 42,
+      'formacao_florestal_ha', 79,
+      'pastagem_ha', 71,
+      'app_ha', 4.22,
+      'carbon_potential_note', 'Potencial inicial de 35.000 tCO2e é uma estimativa preliminar para fins de estruturação do projeto; deverá ser validado por metodologia de quantificação de carbono, inventário florestal e processo de certificação.',
+      'attention_flags', jsonb_build_array('minerarios_anm_3_processos'),
+      'image_note', 'Foto real do imóvel (plantio de eucalipto), servida como asset estático do frontend em public/seed-images/ para sobreviver a supabase db reset — não depende de upload no Supabase Storage.'
+    ))
 on conflict (friendly_id) do update set
   source_hash = excluded.source_hash,
   version = excluded.version,
@@ -362,6 +382,31 @@ on conflict (tag_uid) where tag_uid is not null do update set
   first_seen_at = excluded.first_seen_at,
   last_seen_at = excluded.last_seen_at,
   metadata = excluded.metadata;
+
+-- PRC-2026-077 (Projeto Florestal MG – Mata Atlântica) vertices come from the
+-- INFOTERRAS geoportal report, not physical NFC QTags, so there is no natural
+-- tag_uid to upsert on. Delete-then-insert keeps this idempotent across
+-- repeated seed runs, mirroring the certifications delete-then-insert below.
+delete from project_tags
+where project_id = (select id from projects where friendly_id = 'PRC-2026-077');
+
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.903226, -44.518613, 'A', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.906689, -44.519208, 'B', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.908847, -44.517904, 'C', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.913721, -44.520879, 'D', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.919421, -44.521757, 'E', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.921445, -44.523287, 'F', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.921871, -44.522550, 'G', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.920886, -44.520794, 'H', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.920833, -44.517026, 'I', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.919847, -44.513173, 'J', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.916917, -44.509660, 'K', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.912735, -44.506488, 'L', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.910977, -44.507337, 'M', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.908394, -44.511870, 'N', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
+  ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.907302, -44.511814, 'O', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB'));
 
 -- Phase 04.1 / GEOF-02: `npx supabase db reset` applies every migration in
 -- supabase/migrations/ BEFORE running this seed file, so the backfill
@@ -619,7 +664,8 @@ values
   ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-010'), 'LEGAL_OWNERSHIP', 's3://sinarca-seed/documents/prc-2026-010-legal.pdf', 'sha256-legal-prc-2026-010', 'application/pdf', 102400, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'matricula.pdf')),
   ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-010'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-010-inventario.pdf', 'sha256-inventario-prc-2026-010', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf')),
   ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'LEGAL_OWNERSHIP', 's3://sinarca-seed/documents/prc-2026-011-legal.pdf', 'sha256-legal-prc-2026-011', 'application/pdf', 102400, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'matricula.pdf')),
-  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-011-inventario.pdf', 'sha256-inventario-prc-2026-011', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf'))
+  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-011-inventario.pdf', 'sha256-inventario-prc-2026-011', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf')),
+  ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-077'), 'GEOSPATIAL_DIAGNOSTIC_REPORT', 's3://sinarca-seed/documents/prc-2026-077-infoterras-relatorio.pdf', 'sha256-infoterras-prc-2026-077', 'application/pdf', 5242880, jsonb_build_object('source', 'INFOTERRAS - Geoportal Rural MG', 'report_code', 'INF-0DRC7B9-20260810', 'issued_at', '2026-08-10', 'filename', 'relatorio_MG-3126000-4A5F440A95394810A3531AEB447BCBAB_2026-08-10.pdf'))
 on conflict (project_id, document_type, sha256_hash) do update set
   owner_organization_id = excluded.owner_organization_id,
   project_id = excluded.project_id,
