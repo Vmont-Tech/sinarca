@@ -143,12 +143,24 @@ export type ProjectBoundaryPayload = {
     certified?: PersistedBoundaryPolygon | null;
 };
 
+/** Phase 04.2 / INTG-05: visao publica minimizada do Integrity Layer.
+ *  publicStatus usa o vocabulario da Bible secao 40 (nunca "Certified" isolado). */
+export type ProjectIntegrityPayload = {
+    publicStatus: 'DECLARED' | 'VERIFIED' | 'UNDER_REVIEW' | 'ON_HOLD' | 'SUSPENDED' | 'REVOKED';
+    riskScore: number | null;
+    riskClass: string | null;
+    conflictCount: number;
+    assessedAt: string | null;
+    signals: Array<{ code: string; weight: number; reason: string }>;
+};
+
 export type ProjectPublicDossier = {
     success: boolean;
     project: ProjectMRCA;
     tags: Array<Record<string, any>>;
     baseline: Record<string, any> | null;
     boundary: ProjectBoundaryPayload | null;
+    integrity: ProjectIntegrityPayload | null;
     certifications: Array<Record<string, any>>;
     audits: Array<Record<string, any>>;
     documents: ProjectDossierDocument[];

@@ -44,6 +44,23 @@ const statusLabel = (status: string) => ({
     AWAITING_CERTIFICATION: 'Aguardando certificação',
 }[status] || status);
 
+const integrityStatusLabel = (status?: string | null) => ({
+    DECLARED: 'Declarado',
+    VERIFIED: 'Verificado',
+    UNDER_REVIEW: 'Em análise',
+    ON_HOLD: 'Em retenção',
+    SUSPENDED: 'Suspenso',
+    REVOKED: 'Revogado',
+}[status || ''] || 'Integridade não avaliada');
+
+const riskClassLabel = (value?: string | null) => ({
+    LOW: 'Risco baixo',
+    MODERATE: 'Risco moderado',
+    HIGH: 'Risco alto',
+    VERY_HIGH: 'Risco muito alto',
+    CRITICAL: 'Risco crítico',
+}[value || ''] || 'Risco ainda não avaliado');
+
 const timelineCodeLabel = (code?: string) => ({
     CREATED: 'Projeto criado',
     QTAGS_RECORDED: 'Vértices registrados',
@@ -212,6 +229,9 @@ export default function MrcaDetails() {
                                     <span className="px-4 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-[0.2em] border border-white/20">
                                         Vintage {project.metrics.vintage}
                                     </span>
+                                    <span className="px-4 py-1.5 bg-white/20 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-[0.2em] border border-white/20">
+                                        Integridade: {integrityStatusLabel(dossier.integrity?.publicStatus)}
+                                    </span>
                                 </div>
                                 <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none mb-4 uppercase">
                                     {project.name}
@@ -295,6 +315,48 @@ export default function MrcaDetails() {
 
                         {activeTab === 'integrity' && (
                             <section className="space-y-8">
+                                <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                                    <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Integridade e risco</h3>
+                                    {dossier.integrity ? (
+                                        <div className="space-y-5">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Status de integridade</p>
+                                                    <p className="font-black text-xl mt-1">{integrityStatusLabel(dossier.integrity.publicStatus)}</p>
+                                                </div>
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Score de risco</p>
+                                                    <p className="font-black text-xl mt-1">
+                                                        {dossier.integrity.riskScore ?? '—'}{dossier.integrity.riskScore !== null ? '/100' : ''}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-1">{riskClassLabel(dossier.integrity.riskClass)}</p>
+                                                </div>
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Sobreposições detectadas</p>
+                                                    <p className="font-black text-xl mt-1">{dossier.integrity.conflictCount}</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-gray-500">
+                                                O status de integridade descreve o que já foi verificado sobre este projeto. Ele é independente do
+                                                status operacional e não substitui auditoria independente, ainda não disponível nesta fase.
+                                            </p>
+                                            {dossier.integrity.signals.length > 0 ? (
+                                                <ul className="space-y-2">
+                                                    {dossier.integrity.signals.map((signal) => (
+                                                        <li key={signal.code} className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-sm text-amber-900">
+                                                            {signal.reason}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <EmptyState text="Nenhum sinal de risco registrado para este projeto." />
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <EmptyState text="Integridade ainda não avaliada para este projeto." />
+                                    )}
+                                </div>
+
                                 <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
                                     <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Vértices / Georreferenciamento</h3>
                                     {dossier.tags.length > 0 ? (
