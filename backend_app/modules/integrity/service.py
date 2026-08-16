@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend_app.db.models import Claim, Document, Evidence, Project
+from backend_app.core.config import Settings, get_settings
+from backend_app.db.models import Claim, Conflict, Document, Evidence, Project
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.integrity.constants import (
     CLAIM_CONFIDENCE_DECLARED,
@@ -15,12 +17,40 @@ from backend_app.modules.integrity.constants import (
     CLAIM_TYPE_LAND_OWNERSHIP,
     CLAIM_TYPE_LAND_POSSESSION,
     CLAIM_TYPE_RIGHT_TO_OPERATE,
+    CONFLICT_SEVERITIES,
 )
 
 # D-18: documentos que sustentam o Claim de terra. Qualquer outro tipo de
 # documento (inventario, KML/SHP, certificado, etc.) e evidencia do Claim
 # RIGHT_TO_OPERATE.
 LAND_DOCUMENT_TYPES: frozenset[str] = frozenset({"LEGAL_OWNERSHIP", "CAR"})
+
+# D-20: ordem de severidade para ordenar /conflicts com CRITICAL primeiro.
+_SEVERITY_RANK: dict[str, int] = {name: idx for idx, name in enumerate(CONFLICT_SEVERITIES)}
+
+
+def overlap_severity(percentage: float, settings: Settings | None = None) -> str:
+    """Severidade do overlap (D-10 / Bible secao 16), limiares configuraveis.
+
+    0%           -> CLEAR
+    >0% ate 1%   -> INFO
+    >1% ate 5%   -> LOW
+    >5% ate 20%  -> MEDIUM
+    >20% ate 50% -> HIGH
+    >50%         -> CRITICAL
+    """
+    config = settings or get_settings()
+    if percentage <= 0:
+        return "CLEAR"
+    if percentage <= config.integrity_overlap_severity_info_pct:
+        return "INFO"
+    if percentage <= config.integrity_overlap_severity_low_pct:
+        return "LOW"
+    if percentage <= config.integrity_overlap_severity_medium_pct:
+        return "MEDIUM"
+    if percentage <= config.integrity_overlap_severity_high_pct:
+        return "HIGH"
+    return "CRITICAL"
 
 
 def _evidence_item(evidence: Evidence) -> dict[str, Any]:
@@ -412,3 +442,241 @@ class IntegrityService:
             )
         ).scalars().all()
         return [_evidence_item(item) for item in evidence_rows]
+
+    # ------------------------------------------------------------------
+    # Conflict: interpretacao do overlap geoespacial (Phase 04.2 / INTG-03)
+    # ------------------------------------------------------------------
+
+    async def detect_and_persist_conflicts(
+        self,
+        project: Project,
+        *,
+        actor_id: str | None = None,
+        actor_role: str | None = None,
+    ) -> list[Project]:
+        """Interpreta o overlap geoespacial (Phase 04.1) como Conflict.
+
+        D-09/D-10: cada overlap vira uma linha GEOSPATIAL_OVERLAP com
+        severidade CLEAR->CRITICAL, nos dois sentidos. D-12: DOUBLE_CLAIM so
+        e avaliado entre pares JA sobrepostos (nunca varredura O(n^2)).
+        D-11/D-20/D-23: re-derivado a cada chamada, idempotente, nunca
+        deleta linha (RESOLVE ou atualiza severidade). Reusa
+        detect_boundary_overlaps sem reescrever a query espacial (RESEARCH
+        Pitfall 1). Retorna os projetos relacionados afetados (a Plan 04
+        usa isso para recalcular o risco deles).
+        """
+        from backend_app.modules.projects.service import ProjectsService
+
+        overlaps = await ProjectsService(self.session).detect_boundary_overlaps(str(project.id))
+
+        now = datetime.now(timezone.utc)
+        settings = get_settings()
+        project_id_str = str(project.id)
+
+        desired: dict[tuple[str, str, str], dict[str, Any]] = {}
+        related_projects: dict[str, Project] = {}
+
+        for item in overlaps:
+            related_id = item["relatedProjectId"]
+            pct_mine = float(item["overlapPercentage"])
+            pct_related = float(item["overlapPercentageOfRelated"])
+            area_ha = item["overlapAreaHa"]
+
+            desired[(project_id_str, related_id, "GEOSPATIAL_OVERLAP")] = {
+                "overlap_percentage": pct_mine,
+                "overlap_area_ha": area_ha,
+                "severity": overlap_severity(pct_mine, settings),
+                "metadata_": {
+                    "related_friendly_id": item["relatedProjectFriendlyId"],
+                    "overlap_percentage_of_related": pct_related,
+                },
+            }
+            desired[(related_id, project_id_str, "GEOSPATIAL_OVERLAP")] = {
+                "overlap_percentage": pct_related,
+                "overlap_area_ha": area_ha,
+                "severity": overlap_severity(pct_related, settings),
+                "metadata_": {
+                    "related_friendly_id": project.friendly_id,
+                    "overlap_percentage_of_related": pct_mine,
+                },
+            }
+
+            # D-12: DOUBLE_CLAIM restrito aos pares que JA estao no overlap
+            # geoespacial acima — nunca uma varredura global O(n^2).
+            related = related_projects.get(related_id)
+            if related is None:
+                related = await self.session.get(Project, uuid.UUID(related_id))
+                if related is not None:
+                    related_projects[related_id] = related
+            if (
+                related is not None
+                and related.methodology == project.methodology
+                and related.vintage == project.vintage
+            ):
+                dc_metadata = {
+                    "methodology": project.methodology,
+                    "vintage": project.vintage,
+                    "basis": "GEOSPATIAL_OVERLAP",
+                }
+                desired[(project_id_str, related_id, "DOUBLE_CLAIM")] = {
+                    "overlap_percentage": pct_mine,
+                    "overlap_area_ha": area_ha,
+                    "severity": overlap_severity(pct_mine, settings),
+                    "metadata_": dc_metadata,
+                }
+                desired[(related_id, project_id_str, "DOUBLE_CLAIM")] = {
+                    "overlap_percentage": pct_related,
+                    "overlap_area_ha": area_ha,
+                    "severity": overlap_severity(pct_related, settings),
+                    "metadata_": dc_metadata,
+                }
+
+        existing_rows = (
+            await self.session.execute(
+                select(Conflict).where(
+                    or_(Conflict.project_id == project.id, Conflict.related_project_id == project.id)
+                )
+            )
+        ).scalars().all()
+        existing_by_key: dict[tuple[str, str, str], Conflict] = {
+            (str(row.project_id), str(row.related_project_id), row.type): row for row in existing_rows
+        }
+
+        affected_ids: set[str] = set()
+
+        # Reconciliar (D-20): par existente que saiu do conjunto desejado e
+        # ainda OPEN -> RESOLVED. Nunca deletar (T-04.2-12).
+        for key, row in existing_by_key.items():
+            if key in desired or row.status != "OPEN":
+                continue
+            row.status = "RESOLVED"
+            row.resolved_at = now
+            row.updated_at = now
+            await self.session.flush()
+            await create_audit_event(
+                self.session,
+                action="CONFLICT_RESOLVED",
+                entity_type="conflicts",
+                entity_id=row.id,
+                actor_role=actor_role,
+                metadata={
+                    "actor_external_id": actor_id,
+                    "project_id": key[0],
+                    "related_project_id": key[1],
+                    "type": key[2],
+                    "severity": row.severity,
+                    "overlap_percentage": float(row.overlap_percentage) if row.overlap_percentage is not None else None,
+                },
+            )
+            if key[0] != project_id_str:
+                affected_ids.add(key[0])
+            if key[1] != project_id_str:
+                affected_ids.add(key[1])
+
+        # Criar ou atualizar cada linha do conjunto desejado.
+        for key, spec in desired.items():
+            row_project_id, row_related_id, row_type = key
+            row = existing_by_key.get(key)
+            if row is None:
+                row = Conflict(
+                    project_id=uuid.UUID(row_project_id),
+                    related_project_id=uuid.UUID(row_related_id),
+                    type=row_type,
+                    severity=spec["severity"],
+                    overlap_percentage=spec["overlap_percentage"],
+                    overlap_area_ha=spec["overlap_area_ha"],
+                    status="OPEN",
+                    detected_at=now,
+                    metadata_=spec["metadata_"],
+                )
+                self.session.add(row)
+                await self.session.flush()
+                await create_audit_event(
+                    self.session,
+                    action="CONFLICT_DETECTED",
+                    entity_type="conflicts",
+                    entity_id=row.id,
+                    actor_role=actor_role,
+                    metadata={
+                        "actor_external_id": actor_id,
+                        "project_id": row_project_id,
+                        "related_project_id": row_related_id,
+                        "type": row_type,
+                        "severity": row.severity,
+                        "overlap_percentage": spec["overlap_percentage"],
+                    },
+                )
+            else:
+                before_severity = row.severity
+                row.overlap_percentage = spec["overlap_percentage"]
+                row.overlap_area_ha = spec["overlap_area_ha"]
+                row.severity = spec["severity"]
+                row.status = "OPEN"
+                row.resolved_at = None
+                row.metadata_ = spec["metadata_"]
+                row.updated_at = now
+                await self.session.flush()
+                if before_severity != row.severity:
+                    await create_audit_event(
+                        self.session,
+                        action="CONFLICT_SEVERITY_CHANGED",
+                        entity_type="conflicts",
+                        entity_id=row.id,
+                        actor_role=actor_role,
+                        before_data={"severity": before_severity},
+                        after_data={"severity": row.severity},
+                        metadata={
+                            "actor_external_id": actor_id,
+                            "project_id": row_project_id,
+                            "related_project_id": row_related_id,
+                            "type": row_type,
+                            "severity": row.severity,
+                            "overlap_percentage": spec["overlap_percentage"],
+                        },
+                    )
+            if row_project_id != project_id_str:
+                affected_ids.add(row_project_id)
+            if row_related_id != project_id_str:
+                affected_ids.add(row_related_id)
+
+        await self.session.flush()
+
+        affected: list[Project] = []
+        for pid in affected_ids:
+            related = related_projects.get(pid)
+            if related is None:
+                related = await self.session.get(Project, uuid.UUID(pid))
+                if related is not None:
+                    related_projects[pid] = related
+            if related is not None:
+                affected.append(related)
+        return affected
+
+    async def list_conflicts(
+        self, project: Project, *, status_filter: str | None = None
+    ) -> list[dict[str, Any]]:
+        statement = select(Conflict).where(Conflict.project_id == project.id)
+        if status_filter is not None:
+            statement = statement.where(Conflict.status == status_filter)
+        rows = (await self.session.execute(statement)).scalars().all()
+
+        def _sort_key(row: Conflict) -> tuple[int, datetime]:
+            return (_SEVERITY_RANK.get(row.severity, 0), row.detected_at)
+
+        rows = sorted(rows, key=_sort_key, reverse=True)
+
+        return [
+            {
+                "id": str(row.id),
+                "type": row.type,
+                "severity": row.severity,
+                "status": row.status,
+                "overlapPercentage": float(row.overlap_percentage) if row.overlap_percentage is not None else None,
+                "overlapAreaHa": float(row.overlap_area_ha) if row.overlap_area_ha is not None else None,
+                "relatedProjectId": str(row.related_project_id) if row.related_project_id is not None else None,
+                "relatedProjectFriendlyId": (row.metadata_ or {}).get("related_friendly_id"),
+                "detectedAt": row.detected_at.isoformat() if row.detected_at else None,
+                "resolvedAt": row.resolved_at.isoformat() if row.resolved_at else None,
+            }
+            for row in rows
+        ]

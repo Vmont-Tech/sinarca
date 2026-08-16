@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
 from backend_app.core.security import AuthenticatedUser
 from backend_app.db.session import get_session
-from backend_app.modules.integrity.schemas import ProjectClaimsResponse, ProjectEvidenceResponse
+from backend_app.modules.integrity.constants import CONFLICT_STATUSES
+from backend_app.modules.integrity.schemas import (
+    ProjectClaimsResponse,
+    ProjectConflictsResponse,
+    ProjectEvidenceResponse,
+)
 from backend_app.modules.integrity.service import IntegrityService
 from backend_app.modules.projects.service import ProjectsService
 
@@ -50,3 +55,27 @@ async def get_project_evidence(
     await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
     evidence = await IntegrityService(session).list_evidence(project)
     return ProjectEvidenceResponse(project_id=str(project.id), total=len(evidence), evidence=evidence)
+
+
+@router.get("/projects/{project_id}/conflicts", response_model=ProjectConflictsResponse)
+async def get_project_conflicts(
+    project_id: str,
+    status_filter: str | None = Query(default=None, alias="status"),
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectConflictsResponse:
+    """Conflicts (overlap geoespacial + double claim) do projeto (T-04.2-11).
+
+    Uma linha de Conflict nomeia o projeto de terceiro (friendly_id) e o
+    quanto ele sobrepoe: informacao competitivamente sensivel, por isso usa
+    o mesmo guard org-scoped de /boundary-overlaps e /pendencies.
+    Somente leitura: Conflict e escrito exclusivamente por
+    detect_and_persist_conflicts, nunca por uma rota.
+    """
+    if status_filter is not None and status_filter not in CONFLICT_STATUSES:
+        raise HTTPException(status_code=400, detail="invalid status filter")
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+    conflicts = await IntegrityService(session).list_conflicts(project, status_filter=status_filter)
+    return ProjectConflictsResponse(project_id=str(project.id), total=len(conflicts), conflicts=conflicts)

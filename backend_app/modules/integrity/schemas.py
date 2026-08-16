@@ -17,3 +17,10 @@ class ProjectEvidenceResponse(BaseModel):
     project_id: str
     total: int
     evidence: list[dict[str, Any]] = []
+
+
+class ProjectConflictsResponse(BaseModel):
+    success: bool = True
+    project_id: str
+    total: int
+    conflicts: list[dict[str, Any]] = []
