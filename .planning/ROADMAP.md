@@ -174,7 +174,7 @@ Plans:
 - [x] 04.2-01-PLAN.md — Schema do Integrity Layer: migrations claims/evidence/conflicts/risk_assessments/risk_signals, colunas `projects.integrity_status`/`risk_score`, modelos, constantes e limiares configuráveis (INTG-01..04).
 - [x] 04.2-02-PLAN.md — `IntegrityService` de Claim/Evidence: Claims de originação `DECLARED`, Evidence a partir de `documents.sha256_hash`, 4 hooks de escrita e rotas org-scoped `/claims` e `/evidence` (INTG-01, INTG-02).
 - [x] 04.2-03-PLAN.md — Conflict com severidade `CLEAR→CRITICAL` sobre o overlap da Phase 04.1, re-derivação a cada mudança de geometria, DOUBLE_CLAIM restrito a pares sobrepostos e rota `/conflicts` (INTG-03).
-- [ ] 04.2-04-PLAN.md — Risk Engine puro e explicável, persistência append-only em `risk_assessments`/`risk_signals`, Auto Hold em `ON_HOLD` e rota `/integrity` (INTG-04).
+- [x] 04.2-04-PLAN.md — Risk Engine puro e explicável, persistência append-only em `risk_assessments`/`risk_signals`, Auto Hold em `ON_HOLD` e rota `/integrity` (INTG-04).
 - [ ] 04.2-05-PLAN.md — Bloco `integrity` minimizado no dossiê público e vocabulário D-16 em `MrcaDetails.tsx`, sem Trust Badge completo (INTG-05).
 
 ### Phase 5: satellite-monitoring-and-field-audit

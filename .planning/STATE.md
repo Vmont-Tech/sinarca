@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 04.2 plan 03 complete (Conflict / geospatial overlap interpretation)
-last_updated: "2026-08-16T14:07:12.598Z"
+stopped_at: "Phase 04.2 plan 04 complete (Risk Engine: score, signals, Auto Hold)"
+last_updated: "2026-08-16T14:23:51.791Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 13
   completed_phases: 5
   total_plans: 33
-  completed_plans: 31
-  percent: 94
+  completed_plans: 32
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04.2 (integrity-layer-foundation) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-08-16
 
@@ -66,6 +66,7 @@ Progress: [███████░░░] 74%
 | 04.1 | 5 | - | - |
 | Phase 04.2 P01 | 20min | 3 tasks | 8 files |
 | Phase 04.2 P03 | 25min | 3 tasks | 5 files |
+| Phase 04.2 P04 | 40min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,8 @@ Progress: [███████░░░] 74%
 - [Phase 04.2-01]: integrity_status/risk_score sao colunas aditivas em projects, totalmente paralelas a ProjectStatusEnum; nenhum tipo ENUM novo criado no Postgres (D-04).
 - [Phase 04.2-01]: claims/evidence/conflicts/risk_assessments/risk_signals sao tabelas operacionais internas: RLS habilitado, DML revogado de anon/authenticated, sem policy de select; leitura so via /api/v1 org-scoped nas plans seguintes.
 - [Phase 04.2-03]: Conflict e reconciliado sem deletar (RESOLVED + resolved_at); DOUBLE_CLAIM restrito a pares ja sobrepostos (D-12), com relatedProjectId (uuid) como chave confiavel entre tipos de Conflict, ja que relatedProjectFriendlyId so e populado para GEOSPATIAL_OVERLAP.
+- [Phase 04.2-04]: ProjectRiskAssessment.created_at e definido pelo relogio da aplicacao (datetime.now(timezone.utc)) em vez do server_default do Postgres, porque now() devolve o mesmo valor para toda a transacao e tornaria o 'ultimo assessment' nao-deterministico quando dois recalculos (EVIDENCE_CREATED + CERTIFICATION_DECISION) caem no mesmo commit.
+- [Phase 04.2-04]: O filtro -k 'integrity or risk' dos testes de contrato coleta 8 testes, nao 7, porque o teste pre-existente test_integrity_claims_endpoint_is_org_scoped (Plan 02) tambem casa com a palavra-chave; sem impacto de escopo, todos os 8 passam.
 
 ### Roadmap Evolution
 
@@ -184,6 +187,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T14:07:12.595Z
-Stopped at: Phase 04.2 plan 03 complete (Conflict / geospatial overlap interpretation)
-Resume file: .planning/phases/04.2-integrity-layer-foundation/04.2-03-SUMMARY.md
+Last session: 2026-08-16T14:23:51.788Z
+Stopped at: Phase 04.2 plan 04 complete (Risk Engine: score, signals, Auto Hold)
+Resume file: .planning/phases/04.2-integrity-layer-foundation/04.2-04-SUMMARY.md
