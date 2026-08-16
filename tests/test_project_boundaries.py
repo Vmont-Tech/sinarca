@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import random
 from pathlib import Path
 
 from sqlalchemy import text
@@ -465,3 +466,153 @@ def uuid_hex() -> str:
     import uuid
 
     return uuid.uuid4().hex[:10]
+
+
+# --- Plan 04.1-03: GEOF-04 overlap detection integration test ---
+
+
+def rectangle_tags(prefix: str, base_lat: float, base_lng: float, span: float = 0.02) -> list[dict[str, object]]:
+    """Retangulo axis-aligned: A(NO) B(NE) C(SE) D(SO). Coordenadas em (lat, lng)."""
+    points = [
+        ("A", base_lat, base_lng),
+        ("B", base_lat, base_lng + span),
+        ("C", base_lat - span, base_lng + span),
+        ("D", base_lat - span, base_lng),
+    ]
+    return [
+        {
+            "tag_uid": f"{prefix}-{index}",
+            "cmac": f"cmac-{prefix}-{index}",
+            "latitude": latitude,
+            "longitude": longitude,
+            "vertex_label": label,
+        }
+        for index, (label, latitude, longitude) in enumerate(points, start=1)
+    ]
+
+
+def test_boundary_overlap_detection() -> None:
+    """GEOF-04 acceptance: two projects shifted half a span in each axis overlap in
+    exactly one quarter of each rectangle's area (25%), computed over HTTP via
+    ST_Intersects (GiST pre-filter) + ST_Area(ST_Intersection(...)::geography).
+    """
+    base_lat = -10.0 - random.random()
+    base_lng = -48.0 - random.random()
+
+    prefix_a = f"overlap-a-{uuid_hex()}"
+    prefix_b = f"overlap-b-{uuid_hex()}"
+
+    tags_a = rectangle_tags(prefix_a, base_lat, base_lng, span=0.02)
+    # Shifted half a span (0.01) in each axis: the intersection is exactly one
+    # quarter of each rectangle's area (the overlapping sub-rectangle is
+    # span/2 x span/2 out of a span x span rectangle).
+    tags_b = rectangle_tags(prefix_b, base_lat - 0.01, base_lng + 0.01, span=0.02)
+
+    response_a = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix_a, tags=tags_a),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response_a.status_code == 201, response_a.text
+    friendly_id_a = response_a.json()["project"]["friendlyId"]
+
+    response_b = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix_b, tags=tags_b),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response_b.status_code == 201, response_b.text
+    friendly_id_b = response_b.json()["project"]["friendlyId"]
+
+    overlaps_response = client.get(
+        f"/api/v1/projects/{friendly_id_a}/boundary-overlaps",
+        headers=auth_headers(*PRODUCER),
+    )
+    assert overlaps_response.status_code == 200, overlaps_response.text
+    overlaps = overlaps_response.json()["overlaps"]
+
+    # Filter by id, never by list length: many prior test projects share
+    # tag_payload()'s fixed rectangle and overlap each other at 100%.
+    entry = next((item for item in overlaps if item["relatedProjectFriendlyId"] == friendly_id_b), None)
+    assert entry is not None, overlaps
+
+    assert 24.0 < entry["overlapPercentage"] < 26.0
+    assert 24.0 < entry["overlapPercentageOfRelated"] < 26.0
+    assert entry["overlapAreaHa"] > 0
+
+
+def test_boundary_overlap_excludes_disjoint_projects() -> None:
+    base_lat = -10.0 - random.random()
+    base_lng = -48.0 - random.random()
+
+    prefix_a = f"overlap-disjoint-a-{uuid_hex()}"
+    prefix_c = f"overlap-disjoint-c-{uuid_hex()}"
+
+    tags_a = rectangle_tags(prefix_a, base_lat, base_lng, span=0.02)
+    # ~550 km away: no possible intersection.
+    tags_c = rectangle_tags(prefix_c, base_lat + 5.0, base_lng + 5.0, span=0.02)
+
+    response_a = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix_a, tags=tags_a),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response_a.status_code == 201, response_a.text
+    friendly_id_a = response_a.json()["project"]["friendlyId"]
+
+    response_c = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix_c, tags=tags_c),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response_c.status_code == 201, response_c.text
+    friendly_id_c = response_c.json()["project"]["friendlyId"]
+
+    overlaps_response = client.get(
+        f"/api/v1/projects/{friendly_id_a}/boundary-overlaps",
+        headers=auth_headers(*PRODUCER),
+    )
+    assert overlaps_response.status_code == 200, overlaps_response.text
+    overlaps = overlaps_response.json()["overlaps"]
+
+    assert not any(item["relatedProjectFriendlyId"] == friendly_id_c for item in overlaps)
+    # A project never overlaps itself.
+    assert not any(item["relatedProjectFriendlyId"] == friendly_id_a for item in overlaps)
+
+
+def test_boundary_overlaps_requires_authentication() -> None:
+    prefix = f"overlap-auth-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    overlaps_response = client.get(f"/api/v1/projects/{friendly_id}/boundary-overlaps")
+    assert overlaps_response.status_code in (401, 403)
+    assert overlaps_response.status_code != 200
+
+
+def test_detect_boundary_overlaps_uses_gist_index() -> None:
+    async def evaluate() -> list[dict[str, object]]:
+        async with get_sessionmaker()() as session:
+            rows = (
+                await session.execute(
+                    text(
+                        """
+                        select indexdef from pg_indexes
+                        where tablename = 'project_boundaries'
+                          and indexname = 'project_boundaries_active_boundary_gix'
+                        """
+                    )
+                )
+            ).mappings().all()
+            return [dict(row) for row in rows]
+
+    rows = asyncio.run(evaluate())
+    assert len(rows) == 1
+    indexdef = rows[0]["indexdef"].lower()
+    assert "gist" in indexdef
+    assert "active_boundary" in indexdef
