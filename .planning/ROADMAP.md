@@ -313,7 +313,7 @@ Plans:
 | 3. project-origination-and-documents | 5/5 | Complete | 2026-05-26 |
 | 4. certification-workbench | 0/0 | Not planned | - |
 | 4.1. geospatial-foundation | 0/0 | Not planned | - |
-| 4.2. integrity-layer-foundation | 0/0 | Not planned | - |
+| 4.2. integrity-layer-foundation | 5/5 | Complete | 2026-08-16 |
 | 5. satellite-monitoring-and-field-audit | 0/0 | Not planned | - |
 | 5.1. integrity-review-and-external-registries | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |
