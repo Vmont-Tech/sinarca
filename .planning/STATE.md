@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 04.2 context gathered
-last_updated: "2026-08-16T12:26:32.167Z"
-last_activity: "2026-08-16 -- Phase 04.1 (geospatial-foundation) complete: PostGIS foundation, backfill, validation, overlap detection, persisted-geometry rendering. UAT 6/6 passed. Security 22/22 threats closed."
+status: executing
+stopped_at: Completed 04.2-01-PLAN.md
+last_updated: "2026-08-16T13:17:57.865Z"
+last_activity: 2026-08-16
 progress:
   total_phases: 13
   completed_phases: 5
-  total_plans: 28
-  completed_plans: 28
-  percent: 100
+  total_plans: 33
+  completed_plans: 29
+  percent: 88
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 ## Current Position
 
-Phase: 04.2
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-16 -- Phase 04.1 (geospatial-foundation) complete: PostGIS foundation, backfill, validation, overlap detection, persisted-geometry rendering. UAT 6/6 passed. Security 22/22 threats closed.
+Phase: 04.2 (integrity-layer-foundation) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-08-16
 
 Progress: [███████░░░] 74%
 
@@ -64,6 +64,7 @@ Progress: [███████░░░] 74%
 | Phase 04.1-geospatial-foundation P04 | 25min | 3 tasks | 4 files |
 | Phase 04.1 P05 | 10min | 3 tasks | 6 files |
 | 04.1 | 5 | - | - |
+| Phase 04.2 P01 | 20min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ Progress: [███████░░░] 74%
 - [Phase 04.1-03]: Endpoint boundary-overlaps guardado org-scoped pelo mesmo require_role + _assert_project_edit_permission de /projects/{id}/pendencies, porque overlap revela existencia e proximidade geometrica de projetos de terceiros (T-041-11)
 - [Phase 04.1-04]: boundary_item/public_boundary_item mirroram o padrao certification_item/document_item: dossie publico recebe geometria + declaredAreaHa + declaredVertexCount + activeTier; revisao do certificador recebe o objeto completo com declaredSource e ambos os campos de divergencia de area (D-GEO-02).
 - [Phase 04.1]: Frontend GEOF-05: ProjectGeofencePreview passa a renderizar boundary GeoJSON persistido (dossie publico e revisao do certificador), com fallback client-side quando boundary e null; wizard de originacao continua recalculando ao vivo, intencionalmente sem a prop boundary.
+- [Phase 04.2-01]: integrity_status/risk_score sao colunas aditivas em projects, totalmente paralelas a ProjectStatusEnum; nenhum tipo ENUM novo criado no Postgres (D-04).
+- [Phase 04.2-01]: claims/evidence/conflicts/risk_assessments/risk_signals sao tabelas operacionais internas: RLS habilitado, DML revogado de anon/authenticated, sem policy de select; leitura so via /api/v1 org-scoped nas plans seguintes.
 
 ### Roadmap Evolution
 
@@ -179,6 +182,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T12:26:32.162Z
-Stopped at: Phase 04.2 context gathered
-Resume file: .planning/phases/04.2-integrity-layer-foundation/04.2-CONTEXT.md
+Last session: 2026-08-16T13:17:57.863Z
+Stopped at: Completed 04.2-01-PLAN.md
+Resume file: None
