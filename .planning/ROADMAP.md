@@ -146,10 +146,14 @@ Plans:
   3. `ST_IsValid`, autointerseção, vértices duplicados e divergência entre área declarada e calculada são validados no backend antes de persistir.
   4. `ST_Intersects`/`ST_Area` detectam overlap entre dois projetos do próprio Sinarca e calculam `overlapPercentage`.
   5. `ProjectGeofencePreview` (frontend) passa a renderizar a partir da geometria persistida, não do recálculo client-side dos 4 pontos.
-**Plans**: Not planned yet
+**Plans**: 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 04.1 to break down)
+- [ ] 04.1-01-PLAN.md — PostGIS habilitado, tabela `project_boundaries` (4 colunas geometry(Polygon,4326)) e backfill idempotente dos QTAGs existentes, com push do schema para o Postgres local (GEOF-01, GEOF-02).
+- [ ] 04.1-02-PLAN.md — Construção server-side do polígono reusando a ordenação por ângulo polar, bateria de validação PostGIS antes de persistir e escrita de declared/active boundary em create/update (GEOF-03).
+- [ ] 04.1-03-PLAN.md — Detecção interna de overlap via `ST_Intersects`/`ST_Area` com `overlapPercentage` e endpoint autenticado de leitura (GEOF-04).
+- [ ] 04.1-04-PLAN.md — Serializador GeoJSON (`ST_AsGeoJSON`) e campo `boundary` no dossiê público (minimizado) e na revisão da certificadora (completo) (GEOF-05).
+- [ ] 04.1-05-PLAN.md — `ProjectGeofencePreview` renderiza a geometria persistida em MrcaDetails e CertifierReview; wizard de originação segue no recálculo client-side, documentado (GEOF-05).
 
 ### Phase 04.2: integrity-layer-foundation (INSERTED)
 **Goal**: Implementar o P0 do Sinarca Integrity Layer sobre a geometria real da Phase 04.1: entidades `Claim`/`Evidence`/`Conflict`, estados de confiança `DECLARED → IDENTITY_VERIFIED → EVIDENCE_VERIFIED → VERIFIED/ON_HOLD/SUSPENDED/REVOKED`, Risk Score 0-100 com sinais explicáveis e detecção de duplicidade/double claim internos ao Sinarca. Muda o princípio operacional do sistema de "dado enviado = fato" para "dado enviado = declaração até validação" — cross-cutting sobre Project (Phase 3), Certification (Phase 4) e Audit (Phase 5).
