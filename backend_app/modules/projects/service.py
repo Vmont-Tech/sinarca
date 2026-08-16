@@ -871,6 +871,9 @@ class ProjectsService:
                 )
             )
 
+        await self.session.flush()
+        await self.persist_project_boundary(project, payload.tags)
+
         await create_audit_event(
             self.session,
             action="PROJECT_CREATED",
@@ -960,6 +963,9 @@ class ProjectsService:
                     )
                 )
 
+            await self.session.flush()
+            await self.persist_project_boundary(project, payload.tags)
+
         await create_audit_event(
             self.session,
             action="PROJECT_UPDATED",
@@ -983,6 +989,80 @@ class ProjectsService:
         else:
             await self.session.flush()
         return await self.project_to_mrca(project)
+
+    async def persist_project_boundary(
+        self,
+        project: Project,
+        tags: list[Any] | None,
+        *,
+        source: str = BOUNDARY_SOURCE_API_WRITE,
+    ) -> dict[str, Any] | None:
+        """Constroi, valida e persiste a geometria declarada do projeto (GEOF-03).
+
+        Roda na MESMA transacao da escrita de project_tags: um poligono
+        reprovado levanta HTTPException 400 antes de qualquer commit, entao
+        nunca chega geometria ruim ao banco.
+
+        D-GEO-03: active_boundary espelha declared_boundary por codigo de
+        aplicacao (o repo nao usa trigger). DECLARED e o unico tier populado
+        nesta fase, logo e trivialmente o tier ativo pela regra de prioridade
+        CERTIFIED > FIELD_VERIFIED > DECLARED.
+        """
+        if not tags:
+            return None
+
+        coordinates = [(float(tag.latitude), float(tag.longitude)) for tag in tags]
+        _validate_ring_shape(coordinates)
+        wkt = _polygon_wkt(coordinates)
+        calculated_area_ha = await _validate_boundary_geometry(self.session, wkt)
+
+        declared_area_ha = float(project.area_hectares or 0.0)
+        divergence_pct = _area_divergence_pct(declared_area_ha, calculated_area_ha)
+        # D-GEO-02: sinaliza, nao bloqueia.
+        divergence_flagged = divergence_pct > BOUNDARY_AREA_DIVERGENCE_WARN_PCT
+
+        await self.session.execute(
+            text(
+                """
+                insert into project_boundaries (
+                  project_id, declared_boundary, declared_area_ha, declared_source,
+                  declared_vertex_count, declared_area_divergence_pct,
+                  declared_area_divergence_flagged, active_boundary, active_boundary_tier
+                )
+                values (
+                  :project_id, ST_GeomFromText(:wkt, 4326), :area_ha, :source,
+                  :vertex_count, :divergence_pct, :divergence_flagged,
+                  ST_GeomFromText(:wkt, 4326), 'DECLARED'
+                )
+                on conflict (project_id) do update set
+                  declared_boundary = excluded.declared_boundary,
+                  declared_area_ha = excluded.declared_area_ha,
+                  declared_source = excluded.declared_source,
+                  declared_vertex_count = excluded.declared_vertex_count,
+                  declared_area_divergence_pct = excluded.declared_area_divergence_pct,
+                  declared_area_divergence_flagged = excluded.declared_area_divergence_flagged,
+                  active_boundary = excluded.active_boundary,
+                  active_boundary_tier = excluded.active_boundary_tier,
+                  updated_at = now()
+                """
+            ),
+            {
+                "project_id": str(project.id),
+                "wkt": wkt,
+                "area_ha": round(calculated_area_ha, 4),
+                "source": source,
+                "vertex_count": len(coordinates),
+                "divergence_pct": divergence_pct,
+                "divergence_flagged": divergence_flagged,
+            },
+        )
+        return {
+            "calculatedAreaHa": round(calculated_area_ha, 4),
+            "declaredAreaHa": round(declared_area_ha, 4),
+            "areaDivergencePct": divergence_pct,
+            "areaDivergenceFlagged": divergence_flagged,
+            "vertexCount": len(coordinates),
+        }
 
     async def catalog(self, role: str) -> CatalogResponse:
         role_map = {
