@@ -212,6 +212,17 @@ DOSSIER_INCOMPLETE_DETAIL = (
 class ProjectsService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self._integrity: Any | None = None
+
+    @property
+    def integrity(self) -> "IntegrityService":
+        # Import local: IntegrityService.detect_and_persist_conflicts (Plan 03)
+        # importa ProjectsService de volta. Import no topo criaria ciclo.
+        from backend_app.modules.integrity.service import IntegrityService
+
+        if self._integrity is None:
+            self._integrity = IntegrityService(self.session)
+        return self._integrity
 
     async def list_projects(
         self,
@@ -713,6 +724,7 @@ class ProjectsService:
             project_dto = await self.create_project(project_payload, actor_id=actor_id, actor_role=actor_role, commit=False)
             project = await self._get_project_model(project_dto.friendlyId)
 
+        created_documents: list[Document] = []
         for draft_document in draft_documents:
             existing_project_document = (
                 await self.session.execute(
@@ -734,25 +746,35 @@ class ProjectsService:
                 extension,
             )
             await copy_storage_object(location.bucket, draft_document.storage_object_path, location.object_path)
-            self.session.add(
-                Document(
-                    owner_profile_id=draft_document.owner_profile_id,
-                    owner_organization_id=draft.producer_organization_id,
-                    project_id=project.id,
-                    document_type=draft_document.document_type,
-                    storage_bucket=location.bucket,
-                    storage_object_path=location.object_path,
-                    storage_path=location.uri,
-                    sha256_hash=draft_document.sha256_hash,
-                    mime_type=draft_document.mime_type,
-                    size_bytes=draft_document.size_bytes,
-                    metadata_={
-                        **(draft_document.metadata_ or {}),
-                        "draft_id": str(draft.id),
-                        "draft_document_id": str(draft_document.id),
-                    },
-                )
+            project_document = Document(
+                owner_profile_id=draft_document.owner_profile_id,
+                owner_organization_id=draft.producer_organization_id,
+                project_id=project.id,
+                document_type=draft_document.document_type,
+                storage_bucket=location.bucket,
+                storage_object_path=location.object_path,
+                storage_path=location.uri,
+                sha256_hash=draft_document.sha256_hash,
+                mime_type=draft_document.mime_type,
+                size_bytes=draft_document.size_bytes,
+                metadata_={
+                    **(draft_document.metadata_ or {}),
+                    "draft_id": str(draft.id),
+                    "draft_document_id": str(draft_document.id),
+                },
             )
+            self.session.add(project_document)
+            created_documents.append(project_document)
+
+        if created_documents:
+            await self.session.flush()
+            for created_document in created_documents:
+                await self.integrity.create_evidence_for_document(
+                    created_document,
+                    project=project,
+                    actor_id=actor_id,
+                    actor_role=actor_role,
+                )
 
         now = datetime.now(timezone.utc)
         draft.status = "SUBMITTED"
@@ -877,6 +899,11 @@ class ProjectsService:
 
         await self.session.flush()
         await self.persist_project_boundary(project, payload.tags)
+
+        # Phase 04.2 / INTG-01 (D-01): a submissao de originacao gera Claims
+        # DECLARED. Nao promove projects.status nem depende de nada do payload
+        # alem do que ja foi validado acima.
+        await self.integrity.create_origination_claims(project, actor_id=actor_id, actor_role=actor_role)
 
         await create_audit_event(
             self.session,

@@ -135,6 +135,14 @@ class CertifierService:
         )
         self.session.add(document)
         await self.session.flush()
+        # D-21: o certificado ganha Evidence pelo hook padrao de documento.
+        # NAO existe validationMethod "CERTIFIER_REVIEW" nesta fase (D-08).
+        await self.projects.integrity.create_evidence_for_document(
+            document,
+            project=project,
+            actor_id=None,
+            actor_role="certifier",
+        )
         return document
 
     async def _create_pendency(
