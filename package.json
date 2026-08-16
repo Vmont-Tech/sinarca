@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:reset": "npx supabase db reset && DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:54322/postgres .venv/bin/python scripts/backfill_project_integrity.py"
   },
   "dependencies": {
     "@svg-maps/brazil": "^2.0.0",
