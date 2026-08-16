@@ -80,12 +80,13 @@ def compute_signals(
         ]
         if matches:
             n = len(matches)
+            overlap_noun = "sobreposição geoespacial" if n == 1 else "sobreposições geoespaciais"
             signals.append(
                 RiskSignalDTO(
                     code=code,
                     weight=float(weight),
                     reason=(
-                        f"+{weight:.0f} {n} sobreposicao(oes) geoespacial(is) {faixa} da area do projeto"
+                        f"+{weight:.0f} {n} {overlap_noun} {faixa} da área do projeto"
                     ),
                     public_safe=code in PUBLIC_RISK_SIGNAL_CODES,
                     metadata={"count": n},
@@ -100,11 +101,12 @@ def compute_signals(
     if low_matches:
         n = len(low_matches)
         weight = config.integrity_risk_weight_overlap_low
+        overlap_noun = "sobreposição geoespacial" if n == 1 else "sobreposições geoespaciais"
         signals.append(
             RiskSignalDTO(
                 code="OVERLAP_LOW",
                 weight=float(weight),
-                reason=f"+{weight:.0f} {n} sobreposicao(oes) geoespacial(is) abaixo de 5% da area do projeto",
+                reason=f"+{weight:.0f} {n} {overlap_noun} abaixo de 5% da área do projeto",
                 public_safe="OVERLAP_LOW" in PUBLIC_RISK_SIGNAL_CODES,
                 metadata={"count": n},
             )
@@ -119,8 +121,13 @@ def compute_signals(
                 code="DOUBLE_CLAIM",
                 weight=float(weight),
                 reason=(
-                    f"+{weight:.0f} Mesmo atributo ambiental reivindicado por {n} outro(s) "
-                    "projeto(s) na area sobreposta"
+                    f"+{weight:.0f} Mesmo atributo ambiental reivindicado na área "
+                    "sobreposta por outro projeto"
+                    if n == 1
+                    else (
+                        f"+{weight:.0f} Mesmo atributo ambiental reivindicado na área "
+                        f"sobreposta por {n} outros projetos"
+                    )
                 ),
                 public_safe="DOUBLE_CLAIM" in PUBLIC_RISK_SIGNAL_CODES,
                 metadata={"count": n},
@@ -139,7 +146,7 @@ def compute_signals(
             RiskSignalDTO(
                 code="LAND_CLAIM_UNVERIFIED",
                 weight=float(weight),
-                reason=f"+{weight:.0f} Declaracao de {possession_word} da terra sem evidencia validada",
+                reason=f"+{weight:.0f} Declaração de {possession_word} da terra sem evidência validada",
                 public_safe="LAND_CLAIM_UNVERIFIED" in PUBLIC_RISK_SIGNAL_CODES,
                 metadata={"count": len(land_claims_unverified)},
             )
@@ -149,11 +156,16 @@ def compute_signals(
     if claims_evidence_pending:
         n = len(claims_evidence_pending)
         weight = config.integrity_risk_weight_claim_evidence_pending
+        declaration_phrase = (
+            "1 declaração ainda sem dossiê documental completo"
+            if n == 1
+            else f"{n} declarações ainda sem dossiê documental completo"
+        )
         signals.append(
             RiskSignalDTO(
                 code="CLAIM_EVIDENCE_PENDING",
                 weight=float(weight),
-                reason=f"+{weight:.0f} {n} declaracao(oes) ainda sem dossie documental completo",
+                reason=f"+{weight:.0f} {declaration_phrase}",
                 public_safe="CLAIM_EVIDENCE_PENDING" in PUBLIC_RISK_SIGNAL_CODES,
                 metadata={"count": n},
             )
