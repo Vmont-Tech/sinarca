@@ -17,3 +17,5 @@ supabase/.branches/
 supabase/.temp/
 soroban-contract/target/
 .playwright-mcp/
+.DS_Store
+scripts/seed-assets/

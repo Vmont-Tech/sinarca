@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Brazil from '@svg-maps/brazil';
 import {
     TreePine,
@@ -24,6 +24,13 @@ export default function GlobalMap() {
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Pan (drag-to-move) state. The wrapper already had cursor-move / cursor-grabbing
+    // styling promising this interaction, but no drag handlers actually backed it —
+    // zooming in just scaled the map in place with no way to move around it.
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const panOrigin = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 });
+
     // Data State
     const [projects, setProjects] = useState<ProjectMRCA[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,11 +48,38 @@ export default function GlobalMap() {
 
     const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 4));
     const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.8));
-    const handleResetZoom = () => setZoom(1);
+    const handleResetZoom = () => {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+    };
 
     const handleMouseMove = (e: React.MouseEvent) => {
         setTooltipPos({ x: e.clientX, y: e.clientY });
     };
+
+    const handlePanStart = (e: React.MouseEvent) => {
+        panOrigin.current = { mouseX: e.clientX, mouseY: e.clientY, panX: pan.x, panY: pan.y };
+        setIsPanning(true);
+    };
+
+    useEffect(() => {
+        if (!isPanning) return;
+
+        const onMouseMove = (e: MouseEvent) => {
+            setPan({
+                x: panOrigin.current.panX + (e.clientX - panOrigin.current.mouseX),
+                y: panOrigin.current.panY + (e.clientY - panOrigin.current.mouseY),
+            });
+        };
+        const onMouseUp = () => setIsPanning(false);
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [isPanning]);
 
     // Derived state for filtered projects
     const filteredProjects = useMemo(() => {
@@ -150,6 +184,7 @@ export default function GlobalMap() {
                                     key={project.id}
                                     onClick={() => navigate(`/painel/mrca/${project.friendlyId || project.id}`)}
                                     onMouseEnter={() => setHoveredProject(project)}
+                                    onMouseLeave={() => setHoveredProject(null)}
                                     className="p-3 rounded-lg bg-[#1d271b] hover:bg-[#2a3928] border border-transparent hover:border-sinarca-neon/30 transition-all cursor-pointer group"
                                 >
                                     <div className="flex justify-between items-start mb-2">
@@ -187,13 +222,19 @@ export default function GlobalMap() {
             </aside>
 
             {/* Main Map Area */}
-            <div className="flex-1 h-full w-full relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-[#0a120a] group flex items-center justify-center">
+            {/* The floating aside above is `absolute`, so it's out of flow and doesn't
+                reserve any width here — without this padding, the map is centered
+                across the FULL container width and its western states (Acre,
+                Amazonas...) render directly underneath the opaque, higher z-index
+                aside panel (left-4 + w-[380px] = 396px), i.e. hidden behind it. */}
+            <div className="flex-1 h-full w-full relative bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-[#0a120a] group flex items-center justify-center md:pl-[420px]">
                 {/* Grid Overlay */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(42,57,40,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(42,57,40,0.1)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
 
                 <div
-                    className="w-full max-w-4xl transition-transform duration-300 ease-out cursor-move active:cursor-grabbing"
-                    style={{ transform: `scale(${zoom})` }}
+                    onMouseDown={handlePanStart}
+                    className={`w-full max-w-4xl cursor-move active:cursor-grabbing ${isPanning ? '' : 'transition-transform duration-300 ease-out'}`}
+                    style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -223,6 +264,7 @@ export default function GlobalMap() {
                                     handleMouseMove(e as any);
                                 }}
                                 onMouseMove={(e) => handleMouseMove(e as any)}
+                                onMouseLeave={() => setHoveredProject(null)}
                             >
                                 {/* Marker Pulse Effect */}
                                 <circle
@@ -324,7 +366,7 @@ export default function GlobalMap() {
                 <div className="flex gap-4">
                     <a className="hover:text-white cursor-pointer">Termos de Uso</a>
                     <a className="hover:text-white cursor-pointer">Política de Privacidade</a>
-                    <span>© 2024 SINARCA</span>
+                    <span>© {new Date().getFullYear()} SINARCA</span>
                 </div>
             </footer>
         </div>

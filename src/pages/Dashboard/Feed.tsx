@@ -24,7 +24,9 @@ export const Feed: React.FC = () => {
                     type: 'all',
                     publicMarketplaceOnly: !isProducerAccount,
                     ownedOnly: isProducerAccount,
-                    portfolioOnly: isProducerAccount,
+                    // portfolio_only excludes pre-certification statuses (CREATED, REGISTERED, ...)
+                    // by API contract; producers need to see their own projects at every stage here.
+                    portfolioOnly: false,
                 });
                 const lifecycleStatus = (project: any) => project.project.lifecycleStatus || project.raw?.status || '';
                 const comp = allProjects.reduce((acc: number, curr: any) =>
@@ -49,10 +51,17 @@ export const Feed: React.FC = () => {
         setLoading(true);
         try {
             const data = await database.getMRCAs({
+                // getMarketProjects defaults to limit=20 and slices client-side after
+                // sorting by blockchain timestamp; without this, older/undated projects
+                // (e.g. seeded ones with no blockchain_timestamp, which sort as "now")
+                // push a producer's own recent projects off the visible grid entirely.
+                limit: 1000,
                 type: filter,
                 publicMarketplaceOnly: !isProducerAccount,
                 ownedOnly: isProducerAccount,
-                portfolioOnly: isProducerAccount,
+                // See comment above: producers should see all of their own projects here,
+                // not just the subset the API's portfolio_only filter considers "confirmed".
+                portfolioOnly: false,
             });
             setMrcas(data);
         } finally {
