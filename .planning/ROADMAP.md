@@ -153,7 +153,7 @@ Plans:
 - [x] 04.1-02-PLAN.md — Construção server-side do polígono reusando a ordenação por ângulo polar, bateria de validação PostGIS antes de persistir e escrita de declared/active boundary em create/update (GEOF-03).
 - [x] 04.1-03-PLAN.md — Detecção interna de overlap via `ST_Intersects`/`ST_Area` com `overlapPercentage` e endpoint autenticado de leitura (GEOF-04).
 - [x] 04.1-04-PLAN.md — Serializador GeoJSON (`ST_AsGeoJSON`) e campo `boundary` no dossiê público (minimizado) e na revisão da certificadora (completo) (GEOF-05).
-- [ ] 04.1-05-PLAN.md — `ProjectGeofencePreview` renderiza a geometria persistida em MrcaDetails e CertifierReview; wizard de originação segue no recálculo client-side, documentado (GEOF-05).
+- [x] 04.1-05-PLAN.md — `ProjectGeofencePreview` renderiza a geometria persistida em MrcaDetails e CertifierReview; wizard de originação segue no recálculo client-side, documentado (GEOF-05).
 
 ### Phase 04.2: integrity-layer-foundation (INSERTED)
 **Goal**: Implementar o P0 do Sinarca Integrity Layer sobre a geometria real da Phase 04.1: entidades `Claim`/`Evidence`/`Conflict`, estados de confiança `DECLARED → IDENTITY_VERIFIED → EVIDENCE_VERIFIED → VERIFIED/ON_HOLD/SUSPENDED/REVOKED`, Risk Score 0-100 com sinais explicáveis e detecção de duplicidade/double claim internos ao Sinarca. Muda o princípio operacional do sistema de "dado enviado = fato" para "dado enviado = declaração até validação" — cross-cutting sobre Project (Phase 3), Certification (Phase 4) e Audit (Phase 5).

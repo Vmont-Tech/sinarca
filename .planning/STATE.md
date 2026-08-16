@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04.1-04-PLAN.md
-last_updated: "2026-08-16T02:40:37.640Z"
+status: verifying
+stopped_at: Completed 04.1-05-PLAN.md
+last_updated: "2026-08-16T02:53:33.238Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 13
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 28
-  completed_plans: 27
-  percent: 96
+  completed_plans: 28
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 Phase: 04.1 (geospatial-foundation) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-16
 
 Progress: [███████░░░] 74%
@@ -62,6 +62,7 @@ Progress: [███████░░░] 74%
 | Phase 04.1 P02 | 15min | 3 tasks | 2 files |
 | Phase 04.1 P03 | 20min | 3 tasks | 4 files |
 | Phase 04.1-geospatial-foundation P04 | 25min | 3 tasks | 4 files |
+| Phase 04.1 P05 | 10min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ Progress: [███████░░░] 74%
 - [Phase 04.1-03]: GEOF-04: detect_boundary_overlaps e GET /projects/{id}/boundary-overlaps sao deteccao/medicao apenas via ST_Intersects (pre-filtro GiST) + ST_Area(ST_Intersection(...)::geography); nenhum Conflict, severidade ou threshold criado (Phase 04.2/INTG-03)
 - [Phase 04.1-03]: Endpoint boundary-overlaps guardado org-scoped pelo mesmo require_role + _assert_project_edit_permission de /projects/{id}/pendencies, porque overlap revela existencia e proximidade geometrica de projetos de terceiros (T-041-11)
 - [Phase 04.1-04]: boundary_item/public_boundary_item mirroram o padrao certification_item/document_item: dossie publico recebe geometria + declaredAreaHa + declaredVertexCount + activeTier; revisao do certificador recebe o objeto completo com declaredSource e ambos os campos de divergencia de area (D-GEO-02).
+- [Phase 04.1]: Frontend GEOF-05: ProjectGeofencePreview passa a renderizar boundary GeoJSON persistido (dossie publico e revisao do certificador), com fallback client-side quando boundary e null; wizard de originacao continua recalculando ao vivo, intencionalmente sem a prop boundary.
 
 ### Roadmap Evolution
 
@@ -176,6 +178,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T02:40:37.637Z
-Stopped at: Completed 04.1-04-PLAN.md
+Last session: 2026-08-16T02:53:33.233Z
+Stopped at: Completed 04.1-05-PLAN.md
 Resume file: None
