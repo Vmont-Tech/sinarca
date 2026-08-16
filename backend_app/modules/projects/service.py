@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
-from sqlalchemy import delete, false, func, or_, select
+from sqlalchemy import delete, false, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.db.models import (
@@ -136,6 +136,25 @@ PROJECT_STATUS_TO_LIFECYCLE_CODE = {
     "SUSPENDED": "AWAITING_CERTIFICATION",
 }
 BLOCKED_PROJECT_STATUSES = {"BLOCKED_AUDIT_REQUIRED", "RECALCULATION_REQUIRED", "SUSPENDED"}
+
+# Phase 04.1 / GEOF-03.
+# Limite tecnico de vertices para protecao da API e do banco. O produto nao
+# define maximo logico (Bible 15 §5), mas project_tags nao tem limite superior
+# em lugar nenhum hoje — sem teto, um payload com milhares de vertices vira DoS
+# na construcao do WKT e no GEOS.
+MAX_PROJECT_TAG_VERTICES = 500
+
+# D-GEO-02: limiar de DIVERGENCIA DE AREA. E limiar de SINALIZACAO, nunca de
+# bloqueio. projects.area_hectares vem de _area_from_tags() (heuristica de
+# bounding box: lat_span * lng_span * 12321 + 100) ou da area legal declarada
+# pelo usuario; nenhuma das duas e comparavel geodesicamente com
+# ST_Area(::geography). No retangulo dos fixtures de teste (0.02 x 0.02 grau em
+# lat -10.1) a heuristica devolve ~104.93 ha contra ~486 ha geodesicos: ~363% de
+# divergencia. Qualquer limiar bloqueante rejeitaria todo projeto existente.
+# Trocar _area_from_tags pela area geodesica esta fora do escopo desta fase.
+BOUNDARY_AREA_DIVERGENCE_WARN_PCT = 10.0
+
+BOUNDARY_SOURCE_API_WRITE = "api_v1_project_write"
 
 REQUIRED_CERTIFICATION_DOCUMENT_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("documento legal ou CAR", ("LEGAL_OWNERSHIP", "CAR")),
@@ -1670,6 +1689,87 @@ def _polygon_area(coordinates: list[tuple[float, float]]) -> float:
         next_lat, next_lng = ordered[(index + 1) % len(ordered)]
         area += lng * next_lat - next_lng * lat
     return abs(area) / 2
+
+
+def _ordered_ring(coordinates: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Mesma ordenacao de _polygon_area(): centroide + angulo polar via atan2.
+
+    Reaproveitar (e nao reinventar) e requisito de aceite do GEOF-02: qualquer
+    outra ordenacao mudaria a forma de poligonos nao convexos em relacao ao que
+    o usuario ve desde a Phase 3. Devolve (lat, lng) na ordem do poligono, ainda
+    NAO fechado.
+    """
+    center_lat = sum(lat for lat, _ in coordinates) / len(coordinates)
+    center_lng = sum(lng for _, lng in coordinates) / len(coordinates)
+    return sorted(coordinates, key=lambda item: math.atan2(item[0] - center_lat, item[1] - center_lng))
+
+
+def _polygon_wkt(coordinates: list[tuple[float, float]]) -> str:
+    """Constroi o WKT POLYGON a partir de tuplas (lat, lng).
+
+    ATENCAO ordem de coordenada: WKT/PostGIS/GeoJSON usam (X Y) =
+    (longitude latitude), o INVERSO da convencao (latitude, longitude) usada em
+    todo o resto deste repositorio (project_tags, tuplas Python, Leaflet).
+    Este e o unico ponto do backend que constroi WKT — nao duplicar em lugar
+    nenhum. O anel e fechado explicitamente repetindo o primeiro ponto.
+    """
+    ring = _ordered_ring(coordinates)
+    closed = ring + [ring[0]]
+    points = ", ".join(f"{lng} {lat}" for lat, lng in closed)  # lng primeiro
+    return f"POLYGON(({points}))"
+
+
+def _validate_ring_shape(coordinates: list[tuple[float, float]]) -> None:
+    """Checagens baratas em Python, antes de qualquer ida ao banco (GEOF-03)."""
+    if len(coordinates) < 4:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Polígono precisa de no mínimo 4 vértices")
+    if len(coordinates) > MAX_PROJECT_TAG_VERTICES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Polígono excede o limite técnico de {MAX_PROJECT_TAG_VERTICES} vértices",
+        )
+    if len(set(coordinates)) != len(coordinates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Vértices duplicados não são permitidos")
+    if any(lat < -90 or lat > 90 or lng < -180 or lng > 180 for lat, lng in coordinates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coordenadas fora do intervalo válido")
+
+
+def _area_divergence_pct(declared_area_ha: float, calculated_area_ha: float) -> float:
+    return round(abs(declared_area_ha - calculated_area_ha) / max(declared_area_ha, 1e-9) * 100, 4)
+
+
+async def _validate_boundary_geometry(session: AsyncSession, wkt: str) -> float:
+    """Bateria PostGIS do GEOF-03. Devolve a area geodesica em hectares.
+
+    Uma unica ida ao banco. O WKT viaja como PARAMETRO LIGADO (:wkt) — nunca
+    interpolar coordenada dentro do texto SQL entregue a session.execute().
+    ST_Area precisa do cast ::geography: em geometry(Polygon, 4326) o retorno
+    sai em graus quadrados, que nao viram hectare.
+    """
+    row = (
+        await session.execute(
+            text(
+                """
+                select
+                  ST_IsValid(g) as is_valid,
+                  ST_IsValidReason(g) as invalid_reason,
+                  ST_IsSimple(g) as is_simple,
+                  ST_Area(g::geography) / 10000.0 as area_ha
+                from (select ST_GeomFromText(:wkt, 4326) as g) t
+                """
+            ),
+            {"wkt": wkt},
+        )
+    ).mappings().one()
+
+    if not bool(row["is_valid"]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Geometria inválida: {row['invalid_reason'] or 'motivo não informado pelo PostGIS'}",
+        )
+    if not bool(row["is_simple"]):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Polígono possui autointerseção")
+    return float(row["area_ha"])
 
 
 def project_lifecycle_for_status(project_status: str | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
