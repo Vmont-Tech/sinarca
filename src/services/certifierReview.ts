@@ -1,4 +1,5 @@
 import { apiGet, apiPatch } from './api';
+import type { ProjectBoundaryPayload } from './database';
 
 export type CertifierQueueScope = 'main' | 'corrections';
 export type CertificationDecision = 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES';
@@ -87,6 +88,7 @@ export type CertifierReviewDossier = {
     success: boolean;
     project: any;
     baseline: Record<string, any> | null;
+    boundary: ProjectBoundaryPayload | null;
     tags: Array<Record<string, any>>;
     documents: Array<Record<string, any>>;
     dossier: CertificationDossierStatus;

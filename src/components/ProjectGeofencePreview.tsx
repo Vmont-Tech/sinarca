@@ -11,9 +11,15 @@ import {
     type ProjectTagDraft,
     type VertexLabel,
 } from '../services/projectOrigination';
+import type { PersistedBoundaryPolygon } from '../services/database';
 
 type ProjectGeofencePreviewProps = {
     tags: ProjectTagDraft[];
+    /** Geometria persistida (GeoJSON Polygon) vinda da API. Quando presente, o
+     *  poligono renderizado vem do servidor — nao do recalculo client-side dos
+     *  vertices. Quando ausente/null (wizard de originacao, ou projeto sem
+     *  geometria persistida), mantem exatamente o comportamento anterior. */
+    boundary?: PersistedBoundaryPolygon | null;
 };
 
 type CoordinateTag = {
@@ -145,7 +151,7 @@ const technicalPreview = (
     </div>
 );
 
-export default function ProjectGeofencePreview({ tags }: ProjectGeofencePreviewProps) {
+export default function ProjectGeofencePreview({ tags, boundary = null }: ProjectGeofencePreviewProps) {
     const [previewMapLayer, setPreviewMapLayer] = useState<PreviewMapLayer>('street');
     const [technicalPreviewLayer, setTechnicalPreviewLayer] = useState<TechnicalPreviewLayer>('grid');
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -153,17 +159,36 @@ export default function ProjectGeofencePreview({ tags }: ProjectGeofencePreviewP
     const baseLayerRef = useRef<L.TileLayer | null>(null);
     const layerRef = useRef<L.LayerGroup | null>(null);
     const validCoordinateTags = useMemo(() => coordinateTags(tags), [tags]);
+    // GEOF-05: quando a API entrega a geometria persistida, ela e a fonte da
+    // verdade. GeoJSON e [lng, lat]; Leaflet e [lat, lng] — inverter aqui.
+    // O anel vem fechado (primeiro ponto repetido no fim): slice(0, -1) remove
+    // a repeticao para nao duplicar marcador nem vertice.
+    const persistedPoints = useMemo<CoordinateTag[]>(() => {
+        const ring = boundary?.coordinates?.[0];
+        if (!ring || ring.length < 4) return [];
+        return ring.slice(0, -1).map(([lng, lat], index) => ({
+            vertex_label: String.fromCharCode(65 + (index % 26)) as VertexLabel,
+            latitude: lat,
+            longitude: lng,
+            displayLatitude: String(lat),
+            displayLongitude: String(lng),
+        }));
+    }, [boundary]);
+
+    const usesPersistedBoundary = persistedPoints.length >= MIN_PROJECT_TAGS;
     const validation = validateTagDrafts(tags);
     const polygonArea = calculatePolygonArea(validCoordinateTags);
-    const hasArea = validCoordinateTags.length >= MIN_PROJECT_TAGS && polygonArea > 0.000000001;
-    const shouldRenderMap = validCoordinateTags.length > 0;
+    const hasArea = usesPersistedBoundary
+        || (validCoordinateTags.length >= MIN_PROJECT_TAGS && polygonArea > 0.000000001);
+    const shouldRenderMap = usesPersistedBoundary || validCoordinateTags.length > 0;
     const orderedMapPoints = useMemo(
         () => (hasArea ? orderTagsForPolygon(validCoordinateTags) : []),
         [hasArea, validCoordinateTags],
     );
-    const mapPoints = hasArea ? orderedMapPoints : validCoordinateTags;
-    const bounds = hasArea ? paddedBounds(orderedMapPoints) : null;
-    const previewPoints = bounds ? orderedMapPoints.map((tag) => projectToPreview(tag, bounds)) : [];
+    const polygonPoints = usesPersistedBoundary ? persistedPoints : orderedMapPoints;
+    const mapPoints = usesPersistedBoundary ? persistedPoints : (hasArea ? orderedMapPoints : validCoordinateTags);
+    const bounds = polygonPoints.length > 0 ? paddedBounds(polygonPoints) : null;
+    const previewPoints = bounds ? polygonPoints.map((tag) => projectToPreview(tag, bounds)) : [];
     const points = previewPoints.map((tag) => `${tag.x},${tag.y}`).join(' ');
 
     useEffect(() => {

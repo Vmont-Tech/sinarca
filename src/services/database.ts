@@ -121,11 +121,34 @@ export type ProjectPublicCertificationEvent = {
     createdAt: string;
 };
 
+/** GeoJSON Polygon persistido pelo backend (Phase 04.1 / GEOF-05).
+ *  Coordenadas sao [longitude, latitude] — o INVERSO da convencao
+ *  [latitude, longitude] usada pelo Leaflet e pelo resto deste app. */
+export type PersistedBoundaryPolygon = {
+    type: 'Polygon';
+    coordinates: number[][][];
+};
+
+export type ProjectBoundaryPayload = {
+    declared: PersistedBoundaryPolygon | null;
+    active: PersistedBoundaryPolygon | null;
+    declaredAreaHa: number | null;
+    declaredVertexCount: number | null;
+    activeTier: string;
+    /** Presentes apenas na revisao interna da certificadora, nao no dossie publico. */
+    declaredSource?: string | null;
+    areaDivergencePct?: number | null;
+    areaDivergenceFlagged?: boolean;
+    fieldVerified?: PersistedBoundaryPolygon | null;
+    certified?: PersistedBoundaryPolygon | null;
+};
+
 export type ProjectPublicDossier = {
     success: boolean;
     project: ProjectMRCA;
     tags: Array<Record<string, any>>;
     baseline: Record<string, any> | null;
+    boundary: ProjectBoundaryPayload | null;
     certifications: Array<Record<string, any>>;
     audits: Array<Record<string, any>>;
     documents: ProjectDossierDocument[];
