@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-08-15T13:43:27.862Z"
-last_activity: 2026-08-15 -- Phase 04 marked complete
+status: executing
+stopped_at: Completed 04.1-01-PLAN.md
+last_updated: "2026-08-16T02:21:39.331Z"
+last_activity: 2026-08-16
 progress:
   total_phases: 13
   completed_phases: 4
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
+  total_plans: 28
+  completed_plans: 24
+  percent: 86
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 04 — certification-workbench
+**Current focus:** Phase 04.1 — geospatial-foundation
 
 ## Current Position
 
-Phase: 04 — COMPLETE
-Plan: 7 of 7 complete
-Status: Phase 04 complete
-Last activity: 2026-08-15 -- Phase 04 marked complete
+Phase: 04.1 (geospatial-foundation) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-08-16
 
 Progress: [███████░░░] 74%
 
@@ -58,6 +58,7 @@ Progress: [███████░░░] 74%
 | Phase 04-certification-workbench P05 | 35min | 3 tasks | 3 files |
 | Phase 04-certification-workbench P06 | 25min | 3 tasks | 2 files |
 | Phase 04-certification-workbench P07 | 30min | 3 tasks | 6 files |
+| Phase 04.1 P01 | 30min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,11 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: [Phase 04-certification-workbench]: GET /projects/{id}/certification-history entrega a trilha interna completa (com notes) para produtor dono, certificadora do projeto e admin, guardado por _assert_project_edit_permission org-scoped e nao apenas require_role.
 - [Phase 04-certification-workbench]: GET /projects/{id}/certificate usa optional_user (nao require_role) e converte 401/403 de _assert_project_edit_permission em 403 uniforme, para nao disparar clearAuthSession() no visitante anonimo do dossie publico.
 - [Phase 04-certification-workbench]: Dossie publico (MrcaDetails.tsx) exibe referencia/hash/download condicional do certificado e a linha do tempo publica de decisoes finais; codigo morto cert.notes removido, sem regressao de minimizacao (D-20).
+- [Phase 04.1-01]: PostGIS 3.3.7 enabled; project_boundaries e a fundacao geoespacial aditiva, sem tocar project_tags.
+- [Phase 04.1-01]: D-GEO-01 -- project_boundaries e tabela operacional interna: RLS habilitado, DML revogado de anon/authenticated, sem policy de select; geometria so chega ao cliente via backend_app (GeoJSON).
+- [Phase 04.1-01]: D-GEO-03 -- active_boundary espelha declared_boundary por codigo (migration/seed), nunca por trigger; active_boundary_tier = 'DECLARED' nesta fase.
+- [Phase 04.1-01]: Backfill do declared_boundary reusa exatamente o algoritmo centroide + atan2 de _polygon_area()/orderTagsForPolygon(); PRC-2024-002 backfilled com vertices/area identicos ao calculo shoelace anterior (1e-12).
+- [Phase 04.1-01]: npx supabase db reset aplica migrations antes de seed.sql; a logica idempotente de backfill foi replicada em supabase/seed.sql (apos inserir project_tags) para garantir PRC-2024-002 backfilled em todo reset local fresco.
 
 ### Roadmap Evolution
 
@@ -162,6 +168,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T13:42:19.383Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-08-16T02:21:39.328Z
+Stopped at: Completed 04.1-01-PLAN.md
 Resume file: None
