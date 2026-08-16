@@ -495,6 +495,7 @@ async def upload_project_document(
         await session.execute(
             select(Document).where(
                 Document.project_id == project.id,
+                Document.document_type == str(upload["document_type"]),
                 Document.sha256_hash == str(upload["sha256"]),
             )
         )

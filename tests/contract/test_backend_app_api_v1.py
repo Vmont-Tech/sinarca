@@ -147,9 +147,8 @@ CERTIFIER_PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer
 
 def upload_certification_minimum_documents(friendly_id: str) -> None:
     for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
-        # sha256 precisa ser distinto por documento: upload_project_document deduplica por
-        # (project_id, sha256_hash) e devolveria o mesmo documento para os dois tipos se o
-        # conteudo fosse identico.
+        # Mantem conteudo distinto para exercitar duas evidencias reais no dossie
+        # minimo; a deduplicacao idempotente agora tambem considera document_type.
         content = CERTIFIER_PDF_BYTES + document_type.encode()
         response = client.post(
             f"/api/v1/projects/{friendly_id}/documents",
@@ -681,6 +680,35 @@ def test_project_document_upload_is_idempotent_for_same_project_file() -> None:
     assert second["storage_path"] == first["storage_path"]
 
 
+def test_project_document_upload_allows_same_file_for_different_document_types() -> None:
+    project = create_project_for_workflow()
+    endpoint = f"/api/v1/projects/{project['friendlyId']}/documents"
+    pdf_content = b"%PDF-1.4\nproject shared document role evidence " + uuid.uuid4().hex.encode()
+    headers = auth_headers()
+
+    legal_upload = client.post(
+        endpoint,
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("dossie.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    inventory_upload = client.post(
+        endpoint,
+        data={"document_type": "FOREST_INVENTORY"},
+        files={"file": ("dossie.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert legal_upload.status_code == 201
+    assert inventory_upload.status_code == 201
+    legal = legal_upload.json()
+    inventory = inventory_upload.json()
+    assert inventory["id"] != legal["id"]
+    assert inventory["sha256"] == legal["sha256"]
+    assert inventory["document_type"] == "FOREST_INVENTORY"
+    assert inventory["storage_object_path"].startswith(f"projects/{project['friendlyId']}/documents/forest_inventory/")
+
+
 def test_project_document_upload_allows_same_file_in_different_projects() -> None:
     first_project = create_project_for_workflow()
     second_project = create_project_for_workflow()
@@ -1106,6 +1134,68 @@ def test_project_draft_document_upload_allows_same_file_in_different_drafts() ->
     assert second["sha256"] == first["sha256"]
     assert second["storage_path"] != first["storage_path"]
     assert second["storage_object_path"].startswith(f"projects/drafts/{draft_ids[1]}/documents/legal_ownership/")
+
+
+def test_project_draft_document_upload_allows_same_file_for_different_document_types_and_submit() -> None:
+    headers = auth_headers()
+    unique_prefix = f"draft-shared-types-{uuid.uuid4().hex[:10]}"
+    payload = project_payload(unique_prefix, tags=five_tag_payload(unique_prefix))
+    create_response = client.post(
+        "/api/v1/project-drafts",
+        json={"current_step": "review", "payload": payload},
+        headers=headers,
+    )
+    assert create_response.status_code == 201
+    draft_id = create_response.json()["draft"]["id"]
+    pdf_content = b"%PDF-1.4\nshared document used for legal and inventory " + uuid.uuid4().hex.encode()
+
+    legal_upload = client.post(
+        f"/api/v1/project-drafts/{draft_id}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("dossie.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+    inventory_upload = client.post(
+        f"/api/v1/project-drafts/{draft_id}/documents",
+        data={"document_type": "FOREST_INVENTORY"},
+        files={"file": ("dossie.pdf", pdf_content, "application/pdf")},
+        headers=headers,
+    )
+
+    assert legal_upload.status_code == 201
+    assert inventory_upload.status_code == 201
+    legal = legal_upload.json()
+    inventory = inventory_upload.json()
+    assert inventory["id"] != legal["id"]
+    assert inventory["sha256"] == legal["sha256"]
+    assert inventory["document_type"] == "FOREST_INVENTORY"
+    assert inventory["storage_object_path"].startswith(f"projects/drafts/{draft_id}/documents/forest_inventory/")
+
+    get_response = client.get(f"/api/v1/project-drafts/{draft_id}", headers=headers)
+    assert get_response.status_code == 200
+    draft_documents = get_response.json()["draft"]["documents"]
+    assert {item["documentType"] for item in draft_documents} == {"LEGAL_OWNERSHIP", "FOREST_INVENTORY"}
+
+    submit_response = client.post(f"/api/v1/project-drafts/{draft_id}/submit", headers=headers)
+    assert submit_response.status_code == 200, submit_response.text
+    project = submit_response.json()["project"]
+
+    async def persisted_project_document_types() -> list[str]:
+        async with get_sessionmaker()() as session:
+            return list(
+                (
+                    await session.execute(
+                        select(Document.document_type).where(
+                            Document.project_id.in_(select(Project.id).where(Project.friendly_id == project["friendlyId"])),
+                            Document.sha256_hash == legal["sha256"],
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+    assert sorted(asyncio.run(persisted_project_document_types())) == ["FOREST_INVENTORY", "LEGAL_OWNERSHIP"]
 
 
 def test_project_edit_draft_submits_into_existing_project_without_creating_new_record() -> None:

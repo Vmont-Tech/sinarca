@@ -184,6 +184,7 @@ def test_phase3_project_origination_uses_real_tags_documents_and_dossier_data() 
     assert "openDocumentPicker" in add_project
     assert "Selecionar arquivo" in add_project
     assert "multiple" in add_project
+    assert "documentType: uploaded.documentType as ProjectDocumentType" in add_project
     assert "removeProjectImage" in add_project
     assert "image_url: form.imageUrl || undefined" in add_project
     assert "imageUrl: ''" in add_project
