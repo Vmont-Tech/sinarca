@@ -1490,3 +1490,140 @@ def test_evidence_validation_method_is_capped() -> None:
     allowed = {"HASH_INTEGRITY", "STRUCTURAL_COMPLETENESS"}
     for item in evidence_response.json()["evidence"]:
         assert item["validationMethod"] in allowed
+
+
+# ----------------------------------------------------------------------
+# Phase 04.2 Plan 04: Risk Engine (INTG-04) -- persistencia, Auto Hold e
+# recalculo nos 5 eventos.
+# ----------------------------------------------------------------------
+
+RISK_CLASSES = {"LOW", "MODERATE", "HIGH", "VERY_HIGH", "CRITICAL"}
+
+
+def _get_integrity(friendly_id: str, headers: dict[str, str] | None = None) -> dict[str, object]:
+    response = client.get(f"/api/v1/projects/{friendly_id}/integrity", headers=headers or auth_headers())
+    assert response.status_code == 200, response.text
+    return response.json()["integrity"]
+
+
+def _create_identical_geometry_pair() -> tuple[dict[str, object], dict[str, object]]:
+    base_lat = -10.0 - random.random()
+    base_lng = -48.0 - random.random()
+    prefix_a = f"risk-identical-a-{uuid.uuid4().hex[:10]}"
+    prefix_b = f"risk-identical-b-{uuid.uuid4().hex[:10]}"
+    # Mesma geometria (base_lat/base_lng/span identicos), so os tag_uid/cmac
+    # diferem por prefixo -- garante overlap ~100% (OVERLAP_CRITICAL) e mesmo
+    # methodology/vintage (DOUBLE_CLAIM, D-12).
+    tags_a = rectangle_tags(prefix_a, base_lat, base_lng, span=0.02)
+    tags_b = rectangle_tags(prefix_b, base_lat, base_lng, span=0.02)
+
+    response_a = client.post(
+        "/api/v1/projects", json=project_payload(prefix_a, tags=tags_a), headers=auth_headers()
+    )
+    assert response_a.status_code == 201, response_a.text
+    project_a = response_a.json()["project"]
+
+    response_b = client.post(
+        "/api/v1/projects", json=project_payload(prefix_b, tags=tags_b), headers=auth_headers()
+    )
+    assert response_b.status_code == 201, response_b.text
+    project_b = response_b.json()["project"]
+    return project_a, project_b
+
+
+def test_project_create_produces_risk_assessment_with_signals() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_integrity(project["friendlyId"])
+
+    assert isinstance(integrity["riskScore"], int)
+    assert integrity["riskClass"] in RISK_CLASSES
+    signals = integrity["signals"]
+    assert signals, integrity
+    for signal in signals:
+        assert signal["code"]
+        assert isinstance(signal["weight"], (int, float))
+        assert isinstance(signal["reason"], str) and signal["reason"]
+
+
+def test_identical_geometry_triggers_risk_auto_hold() -> None:
+    _, project_b = _create_identical_geometry_pair()
+    integrity_b = _get_integrity(project_b["friendlyId"])
+
+    assert integrity_b["integrityStatus"] == "ON_HOLD"
+    assert integrity_b["autoHold"] is True
+    assert integrity_b["riskScore"] == 100
+
+
+def test_risk_auto_hold_never_changes_operational_status() -> None:
+    _, project_b = _create_identical_geometry_pair()
+    integrity_b = _get_integrity(project_b["friendlyId"])
+    assert integrity_b["autoHold"] is True
+
+    dossier_response = client.get(f"/api/v1/projects/{project_b['friendlyId']}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    assert dossier_response.json()["project"]["status"] == "AWAITING_CERTIFICATION"
+
+
+def test_risk_recalculation_is_idempotent() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    # Mesmas tags nas duas chamadas -- so a geometria muda uma vez (para uma
+    # area isolada), depois o PATCH e repetido SEM alterar o estado, para
+    # provar que recalcular duas vezes com o mesmo estado nao infla o score.
+    same_tags = _random_integrity_tags(f"idem-{uuid.uuid4().hex[:8]}")
+    patch_payload = project_payload(friendly_id, tags=same_tags)
+
+    scores: list[int] = []
+    for _ in range(2):
+        response = client.patch(
+            f"/api/v1/projects/{friendly_id}",
+            json=patch_payload,
+            headers=auth_headers(),
+        )
+        assert response.status_code == 200, response.text
+        scores.append(_get_integrity(friendly_id)["riskScore"])
+
+    assert scores[0] == scores[1]
+
+
+def test_risk_score_decreases_when_dossier_is_completed() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    initial_score = _get_integrity(friendly_id)["riskScore"]
+
+    for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
+        content = b"%PDF-1.4\n" + document_type.encode() + b" " + uuid.uuid4().hex.encode()
+        upload_response = client.post(
+            f"/api/v1/projects/{friendly_id}/documents",
+            data={"document_type": document_type},
+            files={"file": (filename, content, "application/pdf")},
+            headers=auth_headers(),
+        )
+        assert upload_response.status_code == 201, upload_response.text
+
+    final_score = _get_integrity(friendly_id)["riskScore"]
+    assert final_score < initial_score
+
+
+def test_certifier_decision_recalculates_risk() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    certifier_approve(friendly_id, credit_potential=100.0)
+
+    integrity = _get_integrity(friendly_id)
+    assert integrity["trigger"] == "CERTIFICATION_DECISION"
+
+
+def test_integrity_endpoint_is_org_scoped() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    outsider_headers = auth_headers_for_new_role("producer", f"Outra Fazenda {uuid.uuid4().hex[:6]}")
+    outsider_response = client.get(f"/api/v1/projects/{friendly_id}/integrity", headers=outsider_headers)
+    assert outsider_response.status_code == 403
+
+    anonymous_response = client.get(f"/api/v1/projects/{friendly_id}/integrity")
+    assert anonymous_response.status_code == 401

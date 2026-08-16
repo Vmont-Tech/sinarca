@@ -907,7 +907,18 @@ class ProjectsService:
 
         # Phase 04.2 / INTG-03 (D-09/D-11): interpreta o overlap ja calculado
         # pela Phase 04.1 e persiste Conflict com severidade, de forma sincrona.
-        await self.integrity.detect_and_persist_conflicts(project, actor_id=actor_id, actor_role=actor_role)
+        affected = await self.integrity.detect_and_persist_conflicts(project, actor_id=actor_id, actor_role=actor_role)
+
+        # Phase 04.2 / INTG-04 (D-19): todo projeto criado ja nasce com um
+        # risk_assessment explicavel; os vizinhos afetados pelo overlap acima
+        # tambem sao recalculados, senao o risco deles so mudaria na proxima
+        # edicao (D-23).
+        await self.integrity.recalculate_risk_score(
+            project, trigger="PROJECT_CREATED", actor_id=actor_id, actor_role=actor_role
+        )
+        await self.integrity.recalculate_for_related(
+            affected, trigger="RELATED_CONFLICT_CHANGED", actor_id=actor_id, actor_role=actor_role
+        )
 
         await create_audit_event(
             self.session,
@@ -1003,7 +1014,19 @@ class ProjectsService:
 
             # D-23: editar a geometria muda o overlap; Conflict e RE-DERIVADO
             # (resolve o que deixou de intersectar, atualiza o que continua).
-            await self.integrity.detect_and_persist_conflicts(project, actor_id=actor_id, actor_role=actor_role)
+            affected = await self.integrity.detect_and_persist_conflicts(
+                project, actor_id=actor_id, actor_role=actor_role
+            )
+
+            # Phase 04.2 / INTG-04 (D-23): geometria mudou -> risco e
+            # RE-DERIVADO (append-only) para este projeto e para os vizinhos
+            # cujo Conflict mudou.
+            await self.integrity.recalculate_risk_score(
+                project, trigger="BOUNDARY_UPDATED", actor_id=actor_id, actor_role=actor_role
+            )
+            await self.integrity.recalculate_for_related(
+                affected, trigger="RELATED_CONFLICT_CHANGED", actor_id=actor_id, actor_role=actor_role
+            )
 
         await create_audit_event(
             self.session,

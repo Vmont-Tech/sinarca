@@ -239,6 +239,14 @@ class IntegrityService:
         await self._sync_structural_completeness_evidence(project, actor_id=actor_id, actor_role=actor_role)
         await self._recompute_claim_states(project)
 
+        # Phase 04.2 / INTG-04: nova Evidence pode remover sinais de claim
+        # (LAND_CLAIM_UNVERIFIED/CLAIM_EVIDENCE_PENDING) -- recalcula o risco
+        # append-only. No envio de rascunho isso roda uma vez por documento;
+        # e intencional e barato (funcao pura sobre poucas dezenas de linhas)
+        # e cada recalculo vira uma linha nova em risk_assessments, que e o
+        # historico exigido por D-19.
+        await self.recalculate_risk_score(project, trigger="EVIDENCE_CREATED", actor_id=actor_id, actor_role=actor_role)
+
         await create_audit_event(
             self.session,
             action="EVIDENCE_CREATED",
@@ -768,6 +776,13 @@ class IntegrityService:
             integrity_status=integrity_status,
             auto_hold=auto_hold,
             trigger=trigger,
+            # created_at explicito (nao server_default): Postgres func.now()
+            # devolve o mesmo instante para toda a transacao, entao dois
+            # recalculos no mesmo commit (ex.: EVIDENCE_CREATED do hook de
+            # certificado seguido de CERTIFICATION_DECISION) empatariam e
+            # tornariam "ultimo assessment" nao-deterministico. Usa o relogio
+            # da aplicacao, que avanca a cada chamada.
+            created_at=datetime.now(timezone.utc),
             metadata_={
                 "claim_count": len(claims),
                 "conflict_count": open_conflict_count,
