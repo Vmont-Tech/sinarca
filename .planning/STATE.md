@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "Phase 04.2 plan 05 complete (INTG-05 closed: public integrity vocabulary and risk explanation)"
-last_updated: "2026-08-16T14:52:42.576Z"
+status: completed
+stopped_at: "Completed 04.2 (integrity-layer-foundation) — UAT 8/8 + security 24/24 verified"
+last_updated: "2026-08-16T15:03:21.209Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 13
@@ -21,12 +21,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 04.2 — integrity-layer-foundation
+**Current focus:** Phase 05 — satellite-monitoring-and-field-audit
 
 ## Current Position
 
-Phase: 04.2 (integrity-layer-foundation) — EXECUTING
-Plan: 5 of 5
+Phase: 05
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-08-16
 
@@ -36,7 +36,7 @@ Progress: [███████░░░] 74%
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 27
 - Average duration: tracked in per-plan summaries where available
 - Total execution time: tracked in phase summaries where available
 
@@ -68,6 +68,7 @@ Progress: [███████░░░] 74%
 | Phase 04.2 P03 | 25min | 3 tasks | 5 files |
 | Phase 04.2 P04 | 40min | 3 tasks | 8 files |
 | Phase 04.2 P05 | 14min | 3 tasks | 7 files |
+| 04.2 | 5 | - | - |
 
 ## Accumulated Context
 
@@ -167,6 +168,7 @@ Progress: [███████░░░] 74%
 - Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
 - Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
 - ~~Planejar Phase 04.1 (`geospatial-foundation`)~~ — concluído 2026-08-16 (5/5 plans, UAT 6/6, security 22/22). Phase 04.2 e Phase 5 expandida agora desbloqueadas.
+- ~~Discutir, planejar, executar e validar Phase 04.2 (`integrity-layer-foundation`)~~ — concluído 2026-08-16 (5/5 plans, UAT 8/8, security 24/24). `Claim`/`Evidence`/`Conflict`/Risk Engine/Auto Hold agora vivem em `backend_app/modules/integrity/`, paralelos a `projects.status` (nunca o substituem, D-04). Phase 5 (satellite-monitoring-and-field-audit) e Phase 05.1 agora desbloqueadas.
 - Decidir e documentar build vs. buy de provedor de registro externo (ONR/SIGEF/CAR) antes de planejar a Phase 05.1 — sem fornecedor definido em 2026-08-14.
 
 ### Blockers/Concerns
@@ -189,6 +191,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T14:52:42.572Z
-Stopped at: Phase 04.2 plan 05 complete (INTG-05 closed: public integrity vocabulary and risk explanation)
+Last session: 2026-08-16
+Stopped at: Phase 04.2 complete (UAT 8/8, security 24/24) — ready to plan Phase 05
 Resume file: None
