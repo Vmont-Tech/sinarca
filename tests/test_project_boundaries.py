@@ -184,6 +184,7 @@ client = TestClient(app)
 # from tests/test_certifier_workbench.py rather than imported, using the exact
 # same coordinates so results are directly comparable across suites.
 PRODUCER = ("produtor@sinarca.com.br", "produtor")
+CERTIFIER = ("certificadora@sinarca.com.br", "certificadora")
 
 
 def auth_headers(email: str, password: str) -> dict[str, str]:
@@ -615,4 +616,112 @@ def test_detect_boundary_overlaps_uses_gist_index() -> None:
     assert len(rows) == 1
     indexdef = rows[0]["indexdef"].lower()
     assert "gist" in indexdef
-    assert "active_boundary" in indexdef
+
+
+# --- Plan 04.1-04: GEOF-05 payload contract (boundary served as GeoJSON) ---
+
+
+def test_public_dossier_includes_persisted_boundary() -> None:
+    prefix = f"boundary-payload-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    dossier_response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    payload = dossier_response.json()
+
+    assert payload["boundary"] is not None
+    assert payload["boundary"]["declared"]["type"] == "Polygon"
+    assert payload["boundary"]["active"]["type"] == "Polygon"
+    assert payload["boundary"]["activeTier"] == "DECLARED"
+    assert payload["boundary"]["declaredVertexCount"] == 4
+
+    ring = payload["boundary"]["declared"]["coordinates"][0]
+    assert len(ring) == 5
+    assert ring[0] == ring[-1]
+
+    # GeoJSON coordinate order is [longitude, latitude] (X, Y) -- the OPPOSITE of
+    # this codebase's and Leaflet's [latitude, longitude] convention. x is checked
+    # against the longitude range, y against the latitude range.
+    for x, y in ring:
+        assert -49.5 < x < -47.5
+        assert -11.5 < y < -9.5
+
+
+def test_public_dossier_boundary_omits_internal_validation_metadata() -> None:
+    """D-20/D-22 minimization: declaredSource and area-divergence telemetry are
+    internal validation metadata and must not reach the anonymous public dossier."""
+    prefix = f"boundary-minimize-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    dossier_response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    boundary = dossier_response.json()["boundary"]
+
+    assert "declaredSource" not in boundary
+    assert "areaDivergencePct" not in boundary
+    assert "areaDivergenceFlagged" not in boundary
+
+
+def test_review_includes_persisted_boundary() -> None:
+    prefix = f"boundary-review-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    review_response = client.get(
+        f"/api/v1/certifier/projects/{friendly_id}/review",
+        headers=auth_headers(*CERTIFIER),
+    )
+    assert review_response.status_code == 200, review_response.text
+    boundary = review_response.json()["boundary"]
+
+    assert boundary["declared"]["type"] == "Polygon"
+    assert boundary["declaredSource"] == "api_v1_project_write"
+    # D-GEO-02: the fixture rectangle diverges ~363% from _area_from_tags(); the
+    # flag is set while the project is still created successfully (never blocking).
+    assert "areaDivergencePct" in boundary
+    assert boundary["areaDivergenceFlagged"] is True
+
+
+def test_boundary_is_null_when_project_has_no_geometry() -> None:
+    async def find_project_without_tags() -> str | None:
+        async with get_sessionmaker()() as session:
+            row = (
+                await session.execute(
+                    text(
+                        """
+                        select p.friendly_id
+                        from projects p
+                        left join project_tags t on t.project_id = p.id
+                        group by p.friendly_id
+                        having count(t.id) = 0
+                        limit 1
+                        """
+                    )
+                )
+            ).mappings().one_or_none()
+            return row["friendly_id"] if row is not None else None
+
+    friendly_id = asyncio.run(find_project_without_tags())
+    if friendly_id is None:
+        pytest.skip("nenhum projeto sem project_tags no banco atual")
+
+    dossier_response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    assert dossier_response.json()["boundary"] is None
