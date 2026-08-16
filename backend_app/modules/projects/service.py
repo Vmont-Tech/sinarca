@@ -37,6 +37,7 @@ from backend_app.db.models import (
     TreasuryAuthorization,
 )
 from backend_app.db.repositories import create_audit_event
+from backend_app.modules.integrity.constants import PUBLIC_RISK_SIGNAL_CODES
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
     BlockchainData,
@@ -212,6 +213,17 @@ DOSSIER_INCOMPLETE_DETAIL = (
 class ProjectsService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self._integrity: Any | None = None
+
+    @property
+    def integrity(self) -> "IntegrityService":
+        # Import local: o modulo integrity (Plan 03, Conflict) importa
+        # ProjectsService de volta. Import no topo criaria ciclo.
+        from backend_app.modules.integrity.service import IntegrityService
+
+        if self._integrity is None:
+            self._integrity = IntegrityService(self.session)
+        return self._integrity
 
     async def list_projects(
         self,
@@ -336,6 +348,7 @@ class ProjectsService:
             tags=[tag_item(tag) for tag in tags],
             baseline=baseline_item(baseline),
             boundary=public_boundary_item(await self.boundary_item(str(project.id))),
+            integrity=public_integrity_item(await self.integrity.integrity_summary(project)),
             certifications=[public_certification_item(item) for item in certifications],
             audits=[audit_item(item) for item in audits],
             documents=[
@@ -713,6 +726,7 @@ class ProjectsService:
             project_dto = await self.create_project(project_payload, actor_id=actor_id, actor_role=actor_role, commit=False)
             project = await self._get_project_model(project_dto.friendlyId)
 
+        created_documents: list[Document] = []
         for draft_document in draft_documents:
             existing_project_document = (
                 await self.session.execute(
@@ -734,25 +748,35 @@ class ProjectsService:
                 extension,
             )
             await copy_storage_object(location.bucket, draft_document.storage_object_path, location.object_path)
-            self.session.add(
-                Document(
-                    owner_profile_id=draft_document.owner_profile_id,
-                    owner_organization_id=draft.producer_organization_id,
-                    project_id=project.id,
-                    document_type=draft_document.document_type,
-                    storage_bucket=location.bucket,
-                    storage_object_path=location.object_path,
-                    storage_path=location.uri,
-                    sha256_hash=draft_document.sha256_hash,
-                    mime_type=draft_document.mime_type,
-                    size_bytes=draft_document.size_bytes,
-                    metadata_={
-                        **(draft_document.metadata_ or {}),
-                        "draft_id": str(draft.id),
-                        "draft_document_id": str(draft_document.id),
-                    },
-                )
+            project_document = Document(
+                owner_profile_id=draft_document.owner_profile_id,
+                owner_organization_id=draft.producer_organization_id,
+                project_id=project.id,
+                document_type=draft_document.document_type,
+                storage_bucket=location.bucket,
+                storage_object_path=location.object_path,
+                storage_path=location.uri,
+                sha256_hash=draft_document.sha256_hash,
+                mime_type=draft_document.mime_type,
+                size_bytes=draft_document.size_bytes,
+                metadata_={
+                    **(draft_document.metadata_ or {}),
+                    "draft_id": str(draft.id),
+                    "draft_document_id": str(draft_document.id),
+                },
             )
+            self.session.add(project_document)
+            created_documents.append(project_document)
+
+        if created_documents:
+            await self.session.flush()
+            for created_document in created_documents:
+                await self.integrity.create_evidence_for_document(
+                    created_document,
+                    project=project,
+                    actor_id=actor_id,
+                    actor_role=actor_role,
+                )
 
         now = datetime.now(timezone.utc)
         draft.status = "SUBMITTED"
@@ -878,6 +902,26 @@ class ProjectsService:
         await self.session.flush()
         await self.persist_project_boundary(project, payload.tags)
 
+        # Phase 04.2 / INTG-01 (D-01): a submissao de originacao gera Claims
+        # DECLARED. Nao promove projects.status nem depende de nada do payload
+        # alem do que ja foi validado acima.
+        await self.integrity.create_origination_claims(project, actor_id=actor_id, actor_role=actor_role)
+
+        # Phase 04.2 / INTG-03 (D-09/D-11): interpreta o overlap ja calculado
+        # pela Phase 04.1 e persiste Conflict com severidade, de forma sincrona.
+        affected = await self.integrity.detect_and_persist_conflicts(project, actor_id=actor_id, actor_role=actor_role)
+
+        # Phase 04.2 / INTG-04 (D-19): todo projeto criado ja nasce com um
+        # risk_assessment explicavel; os vizinhos afetados pelo overlap acima
+        # tambem sao recalculados, senao o risco deles so mudaria na proxima
+        # edicao (D-23).
+        await self.integrity.recalculate_risk_score(
+            project, trigger="PROJECT_CREATED", actor_id=actor_id, actor_role=actor_role
+        )
+        await self.integrity.recalculate_for_related(
+            affected, trigger="RELATED_CONFLICT_CHANGED", actor_id=actor_id, actor_role=actor_role
+        )
+
         await create_audit_event(
             self.session,
             action="PROJECT_CREATED",
@@ -969,6 +1013,22 @@ class ProjectsService:
 
             await self.session.flush()
             await self.persist_project_boundary(project, payload.tags)
+
+            # D-23: editar a geometria muda o overlap; Conflict e RE-DERIVADO
+            # (resolve o que deixou de intersectar, atualiza o que continua).
+            affected = await self.integrity.detect_and_persist_conflicts(
+                project, actor_id=actor_id, actor_role=actor_role
+            )
+
+            # Phase 04.2 / INTG-04 (D-23): geometria mudou -> risco e
+            # RE-DERIVADO (append-only) para este projeto e para os vizinhos
+            # cujo Conflict mudou.
+            await self.integrity.recalculate_risk_score(
+                project, trigger="BOUNDARY_UPDATED", actor_id=actor_id, actor_role=actor_role
+            )
+            await self.integrity.recalculate_for_related(
+                affected, trigger="RELATED_CONFLICT_CHANGED", actor_id=actor_id, actor_role=actor_role
+            )
 
         await create_audit_event(
             self.session,
@@ -2147,6 +2207,35 @@ def public_boundary_item(boundary: dict[str, Any] | None) -> dict[str, Any] | No
         "declaredAreaHa": boundary["declaredAreaHa"],
         "declaredVertexCount": boundary["declaredVertexCount"],
         "activeTier": boundary["activeTier"],
+    }
+
+
+def public_integrity_item(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Visao publica da integridade (D-16/D-17 / Bible secao 40 e 42).
+
+    Allowlist explicita, mesmo principio de PUBLIC_DOCUMENT_TYPES: o dossie
+    publico recebe o vocabulario de status, a classe/score de risco e as razoes
+    em texto — NUNCA o metadata dos sinais (que carrega ids de projetos de
+    terceiros), nunca relatedProjectId, nunca o trigger interno.
+    """
+    if summary is None:
+        return None
+    signals = [
+        {
+            "code": signal["code"],
+            "weight": signal["weight"],
+            "reason": signal["reason"],
+        }
+        for signal in summary.get("signals", [])
+        if signal.get("publicSafe") and signal.get("code") in PUBLIC_RISK_SIGNAL_CODES
+    ]
+    return {
+        "publicStatus": summary["publicStatus"],
+        "riskScore": summary["riskScore"],
+        "riskClass": summary["riskClass"],
+        "conflictCount": summary["conflictCount"],
+        "assessedAt": summary["assessedAt"],
+        "signals": signals,
     }
 
 

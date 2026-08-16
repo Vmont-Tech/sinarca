@@ -168,10 +168,14 @@ Plans:
   3. `Conflict` é gerado automaticamente quando `ST_Intersects` (Phase 04.1) encontra overlap acima do limiar configurável, com severidade `CLEAR → CRITICAL`.
   4. Risk Score é calculado com sinais explicáveis (ex.: "+30 SIGEF diverge da geometria") e projetos `CRITICAL` entram automaticamente em `ON_HOLD`.
   5. O status público do projeto nunca usa apenas "Certified" sem explicitar o que foi verificado, conforme `.planning/docs/bible/14_Novos_requisitos.md` seção 40.
-**Plans**: Not planned yet
+**Plans**: 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 04.2 to break down)
+- [x] 04.2-01-PLAN.md — Schema do Integrity Layer: migrations claims/evidence/conflicts/risk_assessments/risk_signals, colunas `projects.integrity_status`/`risk_score`, modelos, constantes e limiares configuráveis (INTG-01..04).
+- [x] 04.2-02-PLAN.md — `IntegrityService` de Claim/Evidence: Claims de originação `DECLARED`, Evidence a partir de `documents.sha256_hash`, 4 hooks de escrita e rotas org-scoped `/claims` e `/evidence` (INTG-01, INTG-02).
+- [x] 04.2-03-PLAN.md — Conflict com severidade `CLEAR→CRITICAL` sobre o overlap da Phase 04.1, re-derivação a cada mudança de geometria, DOUBLE_CLAIM restrito a pares sobrepostos e rota `/conflicts` (INTG-03).
+- [x] 04.2-04-PLAN.md — Risk Engine puro e explicável, persistência append-only em `risk_assessments`/`risk_signals`, Auto Hold em `ON_HOLD` e rota `/integrity` (INTG-04).
+- [x] 04.2-05-PLAN.md — Bloco `integrity` minimizado no dossiê público e vocabulário D-16 em `MrcaDetails.tsx`, sem Trust Badge completo (INTG-05).
 
 ### Phase 5: satellite-monitoring-and-field-audit
 *(expandida — antes "audit-monitoring-and-anomalies"; escopo de satélite incorporado a partir de `.planning/docs/bible/15_Geofance_sentinel_requisitos.md`)*
@@ -309,7 +313,7 @@ Plans:
 | 3. project-origination-and-documents | 5/5 | Complete | 2026-05-26 |
 | 4. certification-workbench | 0/0 | Not planned | - |
 | 4.1. geospatial-foundation | 0/0 | Not planned | - |
-| 4.2. integrity-layer-foundation | 0/0 | Not planned | - |
+| 4.2. integrity-layer-foundation | 5/5 | Complete | 2026-08-16 |
 | 5. satellite-monitoring-and-field-audit | 0/0 | Not planned | - |
 | 5.1. integrity-review-and-external-registries | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |

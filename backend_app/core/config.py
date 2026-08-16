@@ -40,6 +40,24 @@ class Settings(BaseSettings):
     supabase_service_role_key: str | None = None
     supabase_jwt_secret: str | None = None
 
+    # Phase 04.2 / D-10: limiares de severidade de overlap (Bible secao 16).
+    # Interpretacao: pct <= 0 -> CLEAR; <= info -> INFO; <= low -> LOW;
+    # <= medium -> MEDIUM; <= high -> HIGH; > high -> CRITICAL.
+    integrity_overlap_severity_info_pct: float = 1.0
+    integrity_overlap_severity_low_pct: float = 5.0
+    integrity_overlap_severity_medium_pct: float = 20.0
+    integrity_overlap_severity_high_pct: float = 50.0
+
+    # Phase 04.2 / D-13: pesos dos sinais de risco (Bible secao 22).
+    integrity_risk_weight_overlap_critical: float = 50.0
+    integrity_risk_weight_overlap_high: float = 30.0
+    integrity_risk_weight_overlap_medium: float = 15.0
+    integrity_risk_weight_overlap_low: float = 5.0
+    integrity_risk_weight_double_claim: float = 60.0
+    integrity_risk_weight_land_claim_unverified: float = 20.0
+    integrity_risk_weight_claim_evidence_pending: float = 10.0
+    integrity_risk_weight_possession_without_title: float = 10.0
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: object) -> list[str] | object:

@@ -15,6 +15,7 @@ from backend_app.db.models import Certification, CertificationPendency, Document
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
 from backend_app.modules.certifier.routes import pendency_item
+from backend_app.modules.integrity.service import IntegrityService
 from backend_app.modules.inventory.routes import (
     ALLOWED_EXTENSIONS,
     MAX_UPLOAD_BYTES,
@@ -540,6 +541,13 @@ async def upload_project_document(
     )
     session.add(document)
     await session.flush()
+    # Phase 04.2 / INTG-02 (D-07): Evidence reaproveita documents.sha256_hash.
+    await IntegrityService(session).create_evidence_for_document(
+        document,
+        project=project,
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+    )
     await create_audit_event(
         session,
         action="PROJECT_DOCUMENT_UPLOADED",

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04.1 (geospatial-foundation) — UAT + security verified
-last_updated: "2026-08-16T08:54:15.498Z"
-last_activity: 2026-08-16 -- Phase 04.1 verified (UAT 6/6, security 22/22 threats closed)
+stopped_at: "Completed 04.2 (integrity-layer-foundation) — UAT 8/8 + security 24/24 verified"
+last_updated: "2026-08-16T15:03:21.209Z"
+last_activity: 2026-08-16
 progress:
   total_phases: 13
-  completed_phases: 5
-  total_plans: 28
-  completed_plans: 28
+  completed_phases: 6
+  total_plans: 33
+  completed_plans: 33
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 04.2 — integrity-layer-foundation
+**Current focus:** Phase 05 — satellite-monitoring-and-field-audit
 
 ## Current Position
 
-Phase: 04.2
+Phase: 05
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-16 -- Phase 04.1 (geospatial-foundation) complete: PostGIS foundation, backfill, validation, overlap detection, persisted-geometry rendering. UAT 6/6 passed. Security 22/22 threats closed.
+Status: Ready to execute
+Last activity: 2026-08-16
 
 Progress: [███████░░░] 74%
 
@@ -36,7 +36,7 @@ Progress: [███████░░░] 74%
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 27
 - Average duration: tracked in per-plan summaries where available
 - Total execution time: tracked in phase summaries where available
 
@@ -64,6 +64,11 @@ Progress: [███████░░░] 74%
 | Phase 04.1-geospatial-foundation P04 | 25min | 3 tasks | 4 files |
 | Phase 04.1 P05 | 10min | 3 tasks | 6 files |
 | 04.1 | 5 | - | - |
+| Phase 04.2 P01 | 20min | 3 tasks | 8 files |
+| Phase 04.2 P03 | 25min | 3 tasks | 5 files |
+| Phase 04.2 P04 | 40min | 3 tasks | 8 files |
+| Phase 04.2 P05 | 14min | 3 tasks | 7 files |
+| 04.2 | 5 | - | - |
 
 ## Accumulated Context
 
@@ -135,6 +140,12 @@ Progress: [███████░░░] 74%
 - [Phase 04.1-03]: Endpoint boundary-overlaps guardado org-scoped pelo mesmo require_role + _assert_project_edit_permission de /projects/{id}/pendencies, porque overlap revela existencia e proximidade geometrica de projetos de terceiros (T-041-11)
 - [Phase 04.1-04]: boundary_item/public_boundary_item mirroram o padrao certification_item/document_item: dossie publico recebe geometria + declaredAreaHa + declaredVertexCount + activeTier; revisao do certificador recebe o objeto completo com declaredSource e ambos os campos de divergencia de area (D-GEO-02).
 - [Phase 04.1]: Frontend GEOF-05: ProjectGeofencePreview passa a renderizar boundary GeoJSON persistido (dossie publico e revisao do certificador), com fallback client-side quando boundary e null; wizard de originacao continua recalculando ao vivo, intencionalmente sem a prop boundary.
+- [Phase 04.2-01]: integrity_status/risk_score sao colunas aditivas em projects, totalmente paralelas a ProjectStatusEnum; nenhum tipo ENUM novo criado no Postgres (D-04).
+- [Phase 04.2-01]: claims/evidence/conflicts/risk_assessments/risk_signals sao tabelas operacionais internas: RLS habilitado, DML revogado de anon/authenticated, sem policy de select; leitura so via /api/v1 org-scoped nas plans seguintes.
+- [Phase 04.2-03]: Conflict e reconciliado sem deletar (RESOLVED + resolved_at); DOUBLE_CLAIM restrito a pares ja sobrepostos (D-12), com relatedProjectId (uuid) como chave confiavel entre tipos de Conflict, ja que relatedProjectFriendlyId so e populado para GEOSPATIAL_OVERLAP.
+- [Phase 04.2-04]: ProjectRiskAssessment.created_at e definido pelo relogio da aplicacao (datetime.now(timezone.utc)) em vez do server_default do Postgres, porque now() devolve o mesmo valor para toda a transacao e tornaria o 'ultimo assessment' nao-deterministico quando dois recalculos (EVIDENCE_CREATED + CERTIFICATION_DECISION) caem no mesmo commit.
+- [Phase 04.2-04]: O filtro -k 'integrity or risk' dos testes de contrato coleta 8 testes, nao 7, porque o teste pre-existente test_integrity_claims_endpoint_is_org_scoped (Plan 02) tambem casa com a palavra-chave; sem impacto de escopo, todos os 8 passam.
+- [Phase 04.2-05]: Checkpoint-scoped copy fixes (public-facing PT-BR text discovered while reviewing exactly the surface the checkpoint asks the human to read) are applied directly within the same checkpoint response rather than triggering a full round-trip — risk_engine.py's reason strings are rendered verbatim in the Integridade e risco card; fixing accentuation there is the same category of in-scope public copy named in the plan's Task 3 action
 
 ### Roadmap Evolution
 
@@ -157,6 +168,7 @@ Progress: [███████░░░] 74%
 - Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
 - Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
 - ~~Planejar Phase 04.1 (`geospatial-foundation`)~~ — concluído 2026-08-16 (5/5 plans, UAT 6/6, security 22/22). Phase 04.2 e Phase 5 expandida agora desbloqueadas.
+- ~~Discutir, planejar, executar e validar Phase 04.2 (`integrity-layer-foundation`)~~ — concluído 2026-08-16 (5/5 plans, UAT 8/8, security 24/24). `Claim`/`Evidence`/`Conflict`/Risk Engine/Auto Hold agora vivem em `backend_app/modules/integrity/`, paralelos a `projects.status` (nunca o substituem, D-04). Phase 5 (satellite-monitoring-and-field-audit) e Phase 05.1 agora desbloqueadas.
 - Decidir e documentar build vs. buy de provedor de registro externo (ONR/SIGEF/CAR) antes de planejar a Phase 05.1 — sem fornecedor definido em 2026-08-14.
 
 ### Blockers/Concerns
@@ -179,6 +191,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T02:53:33.233Z
-Stopped at: Completed 04.1-05-PLAN.md
+Last session: 2026-08-16
+Stopped at: Phase 04.2 complete (UAT 8/8, security 24/24) — ready to plan Phase 05
 Resume file: None

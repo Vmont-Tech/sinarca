@@ -135,6 +135,14 @@ class CertifierService:
         )
         self.session.add(document)
         await self.session.flush()
+        # D-21: o certificado ganha Evidence pelo hook padrao de documento.
+        # NAO existe validationMethod "CERTIFIER_REVIEW" nesta fase (D-08).
+        await self.projects.integrity.create_evidence_for_document(
+            document,
+            project=project,
+            actor_id=None,
+            actor_role="certifier",
+        )
         return document
 
     async def _create_pendency(
@@ -449,10 +457,22 @@ class CertifierService:
                 },
             )
 
-        # 9. Único commit do caminho feliz.
+        # 9. D-21: a decisao da certificadora recalcula o risco. NAO cria
+        # validationMethod novo (o certificado ja ganha Evidence pelo hook de
+        # documento em _persist_certificate). Nenhum guard bloqueante aqui --
+        # D-05: nesta fase o Integrity Layer e informativo + Auto Hold, nunca
+        # bloqueante da decisao da certificadora.
+        await self.projects.integrity.recalculate_risk_score(
+            project,
+            trigger="CERTIFICATION_DECISION",
+            actor_id=actor.id,
+            actor_role=actor.role,
+        )
+
+        # 10. Único commit do caminho feliz.
         await self.session.commit()
 
-        # 10. Retorno.
+        # 11. Retorno.
         return {
             "success": True,
             "project_id": project.friendly_id,

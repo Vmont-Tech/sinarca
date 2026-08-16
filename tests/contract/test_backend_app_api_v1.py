@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import random
 import uuid
 import asyncio
 
@@ -1270,3 +1272,423 @@ def test_project_draft_submit_revalidates_required_documents_and_geofence() -> N
     colinear_submit = client.post(f"/api/v1/project-drafts/{draft_id}/submit", headers=headers)
     assert colinear_submit.status_code == 400
     assert "área válida" in colinear_submit.json()["detail"]
+
+
+# --- Plan 04.2-02: Integrity Layer (INTG-01, INTG-02) contract tests ---
+
+
+def rectangle_tags(prefix: str, base_lat: float, base_lng: float, span: float = 0.02) -> list[dict[str, object]]:
+    """Retangulo axis-aligned local a este arquivo (evita herdar sobreposicoes
+    de 100% dos fixtures fixos de tag_payload usados pelo resto do arquivo)."""
+    points = [
+        ("A", base_lat, base_lng),
+        ("B", base_lat, base_lng + span),
+        ("C", base_lat - span, base_lng + span),
+        ("D", base_lat - span, base_lng),
+    ]
+    return [
+        {
+            "tag_uid": f"{prefix}-{index}",
+            "cmac": f"cmac-{prefix}-{index}",
+            "latitude": latitude,
+            "longitude": longitude,
+            "vertex_label": label,
+        }
+        for index, (label, latitude, longitude) in enumerate(points, start=1)
+    ]
+
+
+def _random_integrity_tags(prefix: str) -> list[dict[str, object]]:
+    base_lat = -10.0 - random.random()
+    base_lng = -48.0 - random.random()
+    return rectangle_tags(prefix, base_lat, base_lng)
+
+
+def create_integrity_test_project(prefix: str | None = None) -> dict[str, object]:
+    unique_prefix = prefix or f"integrity-{uuid.uuid4().hex[:10]}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(unique_prefix, tags=_random_integrity_tags(unique_prefix)),
+        headers=auth_headers(),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["project"]
+
+
+def test_project_create_generates_origination_claims() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    response = client.get(f"/api/v1/projects/{friendly_id}/claims", headers=auth_headers())
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["total"] == 2
+    claims = body["claims"]
+    assert {claim["type"] for claim in claims} == {"LAND_POSSESSION", "RIGHT_TO_OPERATE"}
+    for claim in claims:
+        assert claim["status"] == "DECLARED"
+        assert 0 <= claim["confidenceScore"] <= 20
+        assert isinstance(claim["statement"], str) and claim["statement"]
+
+
+def test_claim_status_is_never_client_supplied() -> None:
+    prefix = f"integrity-spoof-{uuid.uuid4().hex[:10]}"
+    payload = project_payload(prefix, tags=_random_integrity_tags(prefix))
+    payload["integrity_status"] = "VERIFIED"
+    payload["risk_score"] = 0
+    payload["claims"] = [{"type": "LAND_OWNERSHIP", "status": "VERIFIED", "confidence_score": 100}]
+
+    response = client.post("/api/v1/projects", json=payload, headers=auth_headers())
+    assert response.status_code == 201, response.text
+    project = response.json()["project"]
+    friendly_id = project["friendlyId"]
+    original_status = project["status"]
+
+    claims_response = client.get(f"/api/v1/projects/{friendly_id}/claims", headers=auth_headers())
+    assert claims_response.status_code == 200, claims_response.text
+    claims = claims_response.json()["claims"]
+    assert claims, claims
+    for claim in claims:
+        assert claim["status"] == "DECLARED"
+        assert claim["confidenceScore"] == 10
+
+    dossier_response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    assert dossier_response.json()["project"]["status"] == original_status
+
+
+def test_document_upload_creates_evidence_with_document_hash() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+    content = b"%PDF-1.4\nforest inventory " + uuid.uuid4().hex.encode()
+
+    upload_response = client.post(
+        f"/api/v1/projects/{friendly_id}/documents",
+        data={"document_type": "FOREST_INVENTORY"},
+        files={"file": ("inventario.pdf", content, "application/pdf")},
+        headers=auth_headers(),
+    )
+    assert upload_response.status_code == 201, upload_response.text
+    sha256 = upload_response.json()["sha256"]
+
+    evidence_response = client.get(f"/api/v1/projects/{friendly_id}/evidence", headers=auth_headers())
+    assert evidence_response.status_code == 200, evidence_response.text
+    body = evidence_response.json()
+    matching = [item for item in body["evidence"] if item["hash"] == sha256]
+    assert matching, body
+    item = matching[0]
+    assert item["validationMethod"] == "HASH_INTEGRITY"
+    assert item["sourceType"] == "SELF_DECLARED"
+    assert item["claimId"] is not None
+
+
+def test_evidence_upload_is_idempotent() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+    content = b"%PDF-1.4\nforest inventory idempotent " + uuid.uuid4().hex.encode()
+    sha256 = None
+
+    for _ in range(2):
+        upload_response = client.post(
+            f"/api/v1/projects/{friendly_id}/documents",
+            data={"document_type": "FOREST_INVENTORY"},
+            files={"file": ("inventario.pdf", content, "application/pdf")},
+            headers=auth_headers(),
+        )
+        assert upload_response.status_code == 201, upload_response.text
+        sha256 = upload_response.json()["sha256"]
+
+    evidence_response = client.get(f"/api/v1/projects/{friendly_id}/evidence", headers=auth_headers())
+    assert evidence_response.status_code == 200, evidence_response.text
+    matching = [
+        item
+        for item in evidence_response.json()["evidence"]
+        if item["hash"] == sha256 and item["validationMethod"] == "HASH_INTEGRITY"
+    ]
+    assert len(matching) == 1, matching
+
+
+def test_legal_ownership_document_reconciles_land_claim_type() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    upload_response = client.post(
+        f"/api/v1/projects/{friendly_id}/documents",
+        data={"document_type": "LEGAL_OWNERSHIP"},
+        files={"file": ("matricula.pdf", b"%PDF-1.4\nmatricula " + uuid.uuid4().hex.encode(), "application/pdf")},
+        headers=auth_headers(),
+    )
+    assert upload_response.status_code == 201, upload_response.text
+
+    claims_response = client.get(f"/api/v1/projects/{friendly_id}/claims", headers=auth_headers())
+    assert claims_response.status_code == 200, claims_response.text
+    body = claims_response.json()
+    assert body["total"] == 2
+    types = {claim["type"] for claim in body["claims"]}
+    assert "LAND_OWNERSHIP" in types
+    assert "LAND_POSSESSION" not in types
+
+
+def test_structural_completeness_evidence_turns_verified_when_dossier_complete() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
+        content = b"%PDF-1.4\n" + document_type.encode() + b" " + uuid.uuid4().hex.encode()
+        upload_response = client.post(
+            f"/api/v1/projects/{friendly_id}/documents",
+            data={"document_type": document_type},
+            files={"file": (filename, content, "application/pdf")},
+            headers=auth_headers(),
+        )
+        assert upload_response.status_code == 201, upload_response.text
+
+    evidence_response = client.get(f"/api/v1/projects/{friendly_id}/evidence", headers=auth_headers())
+    assert evidence_response.status_code == 200, evidence_response.text
+    structural = [
+        item for item in evidence_response.json()["evidence"] if item["validationMethod"] == "STRUCTURAL_COMPLETENESS"
+    ]
+    assert len(structural) == 1, structural
+    assert structural[0]["validationStatus"] == "VERIFIED"
+
+    claims_response = client.get(f"/api/v1/projects/{friendly_id}/claims", headers=auth_headers())
+    assert claims_response.status_code == 200, claims_response.text
+    claims = claims_response.json()["claims"]
+    assert len(claims) == 2
+    for claim in claims:
+        assert claim["status"] == "EVIDENCE_VERIFIED"
+        assert claim["confidenceScore"] == 60
+
+
+def test_integrity_claims_endpoint_is_org_scoped() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    outsider_headers = auth_headers_for_new_role("producer", f"Outra Fazenda {uuid.uuid4().hex[:6]}")
+    outsider_response = client.get(f"/api/v1/projects/{friendly_id}/claims", headers=outsider_headers)
+    assert outsider_response.status_code == 403
+
+    anonymous_response = client.get(f"/api/v1/projects/{friendly_id}/claims")
+    assert anonymous_response.status_code == 401
+
+
+def test_evidence_validation_method_is_capped() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
+        content = b"%PDF-1.4\n" + document_type.encode() + b" " + uuid.uuid4().hex.encode()
+        upload_response = client.post(
+            f"/api/v1/projects/{friendly_id}/documents",
+            data={"document_type": document_type},
+            files={"file": (filename, content, "application/pdf")},
+            headers=auth_headers(),
+        )
+        assert upload_response.status_code == 201, upload_response.text
+
+    evidence_response = client.get(f"/api/v1/projects/{friendly_id}/evidence", headers=auth_headers())
+    assert evidence_response.status_code == 200, evidence_response.text
+    allowed = {"HASH_INTEGRITY", "STRUCTURAL_COMPLETENESS"}
+    for item in evidence_response.json()["evidence"]:
+        assert item["validationMethod"] in allowed
+
+
+# ----------------------------------------------------------------------
+# Phase 04.2 Plan 04: Risk Engine (INTG-04) -- persistencia, Auto Hold e
+# recalculo nos 5 eventos.
+# ----------------------------------------------------------------------
+
+RISK_CLASSES = {"LOW", "MODERATE", "HIGH", "VERY_HIGH", "CRITICAL"}
+
+
+def _get_integrity(friendly_id: str, headers: dict[str, str] | None = None) -> dict[str, object]:
+    response = client.get(f"/api/v1/projects/{friendly_id}/integrity", headers=headers or auth_headers())
+    assert response.status_code == 200, response.text
+    return response.json()["integrity"]
+
+
+def _create_identical_geometry_pair() -> tuple[dict[str, object], dict[str, object]]:
+    base_lat = -10.0 - random.random()
+    base_lng = -48.0 - random.random()
+    prefix_a = f"risk-identical-a-{uuid.uuid4().hex[:10]}"
+    prefix_b = f"risk-identical-b-{uuid.uuid4().hex[:10]}"
+    # Mesma geometria (base_lat/base_lng/span identicos), so os tag_uid/cmac
+    # diferem por prefixo -- garante overlap ~100% (OVERLAP_CRITICAL) e mesmo
+    # methodology/vintage (DOUBLE_CLAIM, D-12).
+    tags_a = rectangle_tags(prefix_a, base_lat, base_lng, span=0.02)
+    tags_b = rectangle_tags(prefix_b, base_lat, base_lng, span=0.02)
+
+    response_a = client.post(
+        "/api/v1/projects", json=project_payload(prefix_a, tags=tags_a), headers=auth_headers()
+    )
+    assert response_a.status_code == 201, response_a.text
+    project_a = response_a.json()["project"]
+
+    response_b = client.post(
+        "/api/v1/projects", json=project_payload(prefix_b, tags=tags_b), headers=auth_headers()
+    )
+    assert response_b.status_code == 201, response_b.text
+    project_b = response_b.json()["project"]
+    return project_a, project_b
+
+
+def test_project_create_produces_risk_assessment_with_signals() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_integrity(project["friendlyId"])
+
+    assert isinstance(integrity["riskScore"], int)
+    assert integrity["riskClass"] in RISK_CLASSES
+    signals = integrity["signals"]
+    assert signals, integrity
+    for signal in signals:
+        assert signal["code"]
+        assert isinstance(signal["weight"], (int, float))
+        assert isinstance(signal["reason"], str) and signal["reason"]
+
+
+def test_identical_geometry_triggers_risk_auto_hold() -> None:
+    _, project_b = _create_identical_geometry_pair()
+    integrity_b = _get_integrity(project_b["friendlyId"])
+
+    assert integrity_b["integrityStatus"] == "ON_HOLD"
+    assert integrity_b["autoHold"] is True
+    assert integrity_b["riskScore"] == 100
+
+
+def test_risk_auto_hold_never_changes_operational_status() -> None:
+    _, project_b = _create_identical_geometry_pair()
+    integrity_b = _get_integrity(project_b["friendlyId"])
+    assert integrity_b["autoHold"] is True
+
+    dossier_response = client.get(f"/api/v1/projects/{project_b['friendlyId']}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    assert dossier_response.json()["project"]["status"] == "AWAITING_CERTIFICATION"
+
+
+def test_risk_recalculation_is_idempotent() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    # Mesmas tags nas duas chamadas -- so a geometria muda uma vez (para uma
+    # area isolada), depois o PATCH e repetido SEM alterar o estado, para
+    # provar que recalcular duas vezes com o mesmo estado nao infla o score.
+    same_tags = _random_integrity_tags(f"idem-{uuid.uuid4().hex[:8]}")
+    patch_payload = project_payload(friendly_id, tags=same_tags)
+
+    scores: list[int] = []
+    for _ in range(2):
+        response = client.patch(
+            f"/api/v1/projects/{friendly_id}",
+            json=patch_payload,
+            headers=auth_headers(),
+        )
+        assert response.status_code == 200, response.text
+        scores.append(_get_integrity(friendly_id)["riskScore"])
+
+    assert scores[0] == scores[1]
+
+
+def test_risk_score_decreases_when_dossier_is_completed() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    initial_score = _get_integrity(friendly_id)["riskScore"]
+
+    for document_type, filename in (("LEGAL_OWNERSHIP", "matricula.pdf"), ("FOREST_INVENTORY", "inventario.pdf")):
+        content = b"%PDF-1.4\n" + document_type.encode() + b" " + uuid.uuid4().hex.encode()
+        upload_response = client.post(
+            f"/api/v1/projects/{friendly_id}/documents",
+            data={"document_type": document_type},
+            files={"file": (filename, content, "application/pdf")},
+            headers=auth_headers(),
+        )
+        assert upload_response.status_code == 201, upload_response.text
+
+    final_score = _get_integrity(friendly_id)["riskScore"]
+    assert final_score < initial_score
+
+
+def test_certifier_decision_recalculates_risk() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    certifier_approve(friendly_id, credit_potential=100.0)
+
+    integrity = _get_integrity(friendly_id)
+    assert integrity["trigger"] == "CERTIFICATION_DECISION"
+
+
+def test_integrity_endpoint_is_org_scoped() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    outsider_headers = auth_headers_for_new_role("producer", f"Outra Fazenda {uuid.uuid4().hex[:6]}")
+    outsider_response = client.get(f"/api/v1/projects/{friendly_id}/integrity", headers=outsider_headers)
+    assert outsider_response.status_code == 403
+
+    anonymous_response = client.get(f"/api/v1/projects/{friendly_id}/integrity")
+    assert anonymous_response.status_code == 401
+
+
+# ----------------------------------------------------------------------
+# Phase 04.2 Plan 05: bloco integrity minimizado no dossie publico (INTG-05)
+# ----------------------------------------------------------------------
+
+PUBLIC_INTEGRITY_STATUSES = {"DECLARED", "VERIFIED", "UNDER_REVIEW", "ON_HOLD", "SUSPENDED", "REVOKED"}
+
+
+def _get_public_dossier_integrity(friendly_id: str) -> dict[str, object]:
+    # Visitante anonimo -- sem header de auth, mesmo padrao ja usado por
+    # test_risk_auto_hold_never_changes_operational_status.
+    response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert response.status_code == 200, response.text
+    return response.json()["integrity"]
+
+
+def test_public_dossier_integrity_uses_public_vocabulary() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_public_dossier_integrity(project["friendlyId"])
+
+    assert integrity is not None
+    assert integrity["publicStatus"] in PUBLIC_INTEGRITY_STATUSES
+
+
+def test_public_dossier_integrity_is_minimized() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_public_dossier_integrity(project["friendlyId"])
+
+    assert set(integrity.keys()) == {
+        "publicStatus",
+        "riskScore",
+        "riskClass",
+        "conflictCount",
+        "assessedAt",
+        "signals",
+    }
+    for signal in integrity["signals"]:
+        assert set(signal.keys()) == {"code", "weight", "reason"}
+
+    serialized = json.dumps(integrity)
+    for leaked in ("relatedProject", "metadata", "integrityStatus", "autoHold", "trigger"):
+        assert leaked not in serialized, (leaked, serialized)
+
+
+def test_public_dossier_integrity_reasons_are_human_readable() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_public_dossier_integrity(project["friendlyId"])
+
+    assert integrity["signals"], integrity
+    for signal in integrity["signals"]:
+        assert isinstance(signal["reason"], str) and len(signal["reason"]) > 10
+        assert "PRC-" not in signal["reason"]
+
+
+def test_public_dossier_on_hold_project_does_not_show_bare_certified() -> None:
+    _, project_b = _create_identical_geometry_pair()
+    integrity_b = _get_public_dossier_integrity(project_b["friendlyId"])
+
+    assert integrity_b["publicStatus"] == "ON_HOLD"
+
+    dossier_response = client.get(f"/api/v1/projects/{project_b['friendlyId']}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    assert dossier_response.json()["project"]["status"] != integrity_b["publicStatus"]

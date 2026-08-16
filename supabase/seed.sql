@@ -620,7 +620,7 @@ values
   ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-010'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-010-inventario.pdf', 'sha256-inventario-prc-2026-010', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf')),
   ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'LEGAL_OWNERSHIP', 's3://sinarca-seed/documents/prc-2026-011-legal.pdf', 'sha256-legal-prc-2026-011', 'application/pdf', 102400, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'matricula.pdf')),
   ((select id from organizations where external_id = 'prod-001'), (select id from projects where friendly_id = 'PRC-2026-011'), 'FOREST_INVENTORY', 's3://sinarca-seed/documents/prc-2026-011-inventario.pdf', 'sha256-inventario-prc-2026-011', 'application/pdf', 153600, jsonb_build_object('source', 'dossie minimo seed', 'filename', 'inventario.pdf'))
-on conflict (project_id, sha256_hash) do update set
+on conflict (project_id, document_type, sha256_hash) do update set
   owner_organization_id = excluded.owner_organization_id,
   project_id = excluded.project_id,
   document_type = excluded.document_type,

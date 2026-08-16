@@ -456,3 +456,43 @@ def test_project_cards_and_dossier_render_canonical_lifecycle() -> None:
     assert "CREATED" in lifecycle_component
     assert "AVAILABLE" in lifecycle_component
     assert "Eventos registrados" in details
+
+
+# ----------------------------------------------------------------------
+# Phase 04.2 Plan 05: vocabulario publico de integridade (INTG-05, D-16/D-17)
+# ----------------------------------------------------------------------
+
+def test_public_dossier_renders_integrity_vocabulary() -> None:
+    details = read("src/pages/Dashboard/MrcaDetails.tsx")
+
+    assert "integrityStatusLabel" in details
+    for label in ("'Declarado'", "'Verificado'", "'Em análise'", "'Em retenção'", "'Suspenso'", "'Revogado'"):
+        assert label in details
+
+
+def test_public_dossier_shows_integrity_next_to_operational_status() -> None:
+    details = read("src/pages/Dashboard/MrcaDetails.tsx")
+
+    assert "Integridade: {integrityStatusLabel(" in details
+    assert "statusLabel(project.status)" in details
+
+
+def test_public_dossier_never_renders_bare_certified_badge() -> None:
+    details = read("src/pages/Dashboard/MrcaDetails.tsx")
+
+    assert "Certified" not in details
+    assert "SINARCA VERIFIED" not in details
+
+
+def test_public_dossier_renders_risk_explanation() -> None:
+    details = read("src/pages/Dashboard/MrcaDetails.tsx")
+
+    assert "signal.reason" in details
+    assert "riskClassLabel" in details
+
+
+def test_database_service_types_public_integrity() -> None:
+    database_service = read("src/services/database.ts")
+
+    assert "ProjectIntegrityPayload" in database_service
+    assert "integrity: ProjectIntegrityPayload | null;" in database_service
