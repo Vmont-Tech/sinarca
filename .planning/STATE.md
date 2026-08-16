@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 04.2 plan 04 complete (Risk Engine: score, signals, Auto Hold)"
-last_updated: "2026-08-16T14:23:51.791Z"
+stopped_at: "Phase 04.2 plan 05 complete (INTG-05 closed: public integrity vocabulary and risk explanation)"
+last_updated: "2026-08-16T14:52:42.576Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 13
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 33
-  completed_plans: 32
-  percent: 97
+  completed_plans: 33
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04.2 (integrity-layer-foundation) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-08-16
 
@@ -67,6 +67,7 @@ Progress: [███████░░░] 74%
 | Phase 04.2 P01 | 20min | 3 tasks | 8 files |
 | Phase 04.2 P03 | 25min | 3 tasks | 5 files |
 | Phase 04.2 P04 | 40min | 3 tasks | 8 files |
+| Phase 04.2 P05 | 14min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Progress: [███████░░░] 74%
 - [Phase 04.2-03]: Conflict e reconciliado sem deletar (RESOLVED + resolved_at); DOUBLE_CLAIM restrito a pares ja sobrepostos (D-12), com relatedProjectId (uuid) como chave confiavel entre tipos de Conflict, ja que relatedProjectFriendlyId so e populado para GEOSPATIAL_OVERLAP.
 - [Phase 04.2-04]: ProjectRiskAssessment.created_at e definido pelo relogio da aplicacao (datetime.now(timezone.utc)) em vez do server_default do Postgres, porque now() devolve o mesmo valor para toda a transacao e tornaria o 'ultimo assessment' nao-deterministico quando dois recalculos (EVIDENCE_CREATED + CERTIFICATION_DECISION) caem no mesmo commit.
 - [Phase 04.2-04]: O filtro -k 'integrity or risk' dos testes de contrato coleta 8 testes, nao 7, porque o teste pre-existente test_integrity_claims_endpoint_is_org_scoped (Plan 02) tambem casa com a palavra-chave; sem impacto de escopo, todos os 8 passam.
+- [Phase 04.2-05]: Checkpoint-scoped copy fixes (public-facing PT-BR text discovered while reviewing exactly the surface the checkpoint asks the human to read) are applied directly within the same checkpoint response rather than triggering a full round-trip — risk_engine.py's reason strings are rendered verbatim in the Integridade e risco card; fixing accentuation there is the same category of in-scope public copy named in the plan's Task 3 action
 
 ### Roadmap Evolution
 
@@ -187,6 +189,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T14:23:51.788Z
-Stopped at: Phase 04.2 plan 04 complete (Risk Engine: score, signals, Auto Hold)
-Resume file: .planning/phases/04.2-integrity-layer-foundation/04.2-04-SUMMARY.md
+Last session: 2026-08-16T14:52:42.572Z
+Stopped at: Phase 04.2 plan 05 complete (INTG-05 closed: public integrity vocabulary and risk explanation)
+Resume file: None
