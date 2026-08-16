@@ -4,7 +4,8 @@ import json
 from io import BytesIO
 from typing import Any
 
-from backend_app.modules.supabase_storage import SupabaseStorageClient
+from backend_app.core.config import Settings
+from backend_app.modules.supabase_storage import SupabaseStorageClient, get_supabase_storage_client
 
 
 class _Response:
@@ -85,3 +86,22 @@ def test_supabase_storage_client_builds_public_object_url() -> None:
         client.public_object_url("profiles", "projects/PRC-2026-001/images/hash.png")
         == "http://supabase.public/storage/v1/object/public/profiles/projects/PRC-2026-001/images/hash.png"
     )
+
+
+def test_supabase_storage_client_falls_back_to_loopback_when_host_docker_internal_is_unavailable(
+    monkeypatch: Any,
+) -> None:
+    def fail_dns(_: str) -> str:
+        raise OSError("host not found")
+
+    monkeypatch.setattr("backend_app.modules.supabase_storage.socket.gethostbyname", fail_dns)
+    settings = Settings(
+        supabase_url="http://host.docker.internal:54321",
+        supabase_public_url="http://127.0.0.1:54321",
+        supabase_service_role_key="service-role-token",
+    )
+
+    client = get_supabase_storage_client(settings)
+
+    assert client is not None
+    assert client.supabase_url == "http://127.0.0.1:54321"

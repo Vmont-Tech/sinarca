@@ -5,6 +5,7 @@ import base64
 import hashlib
 import hmac
 import json
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -17,6 +18,8 @@ from backend_app.core.config import Settings, get_settings
 
 LOCAL_SUPABASE_JWT_SECRET = "super-secret-jwt-token-with-at-least-32-characters-long"
 PLACEHOLDER_KEYS = {"replace-with-supabase-service-role-key", "change-me"}
+HOST_DOCKER_INTERNAL = "host.docker.internal"
+LOCALHOST_FALLBACK = "127.0.0.1"
 
 
 class SupabaseStorageError(RuntimeError):
@@ -108,12 +111,35 @@ def get_supabase_storage_client(settings: Settings | None = None) -> SupabaseSto
     supabase_url = _clean_setting(settings.supabase_url)
     if not supabase_url:
         return None
+    supabase_url = _host_reachable_url(supabase_url, settings)
 
     service_role_key = _storage_service_key(settings)
     if not service_role_key:
         return None
 
     return SupabaseStorageClient(supabase_url, service_role_key, _clean_setting(settings.supabase_public_url))
+
+
+def _host_reachable_url(supabase_url: str, settings: Settings) -> str:
+    if settings.app_env.strip().lower() == "production":
+        return supabase_url
+
+    parsed = urllib.parse.urlsplit(supabase_url)
+    if parsed.hostname != HOST_DOCKER_INTERNAL or _hostname_resolves(HOST_DOCKER_INTERNAL):
+        return supabase_url
+
+    netloc = LOCALHOST_FALLBACK
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+    return urllib.parse.urlunsplit(parsed._replace(netloc=netloc))
+
+
+def _hostname_resolves(hostname: str) -> bool:
+    try:
+        socket.gethostbyname(hostname)
+    except OSError:
+        return False
+    return True
 
 
 async def upload_storage_object(bucket: str, object_path: str, content: bytes, content_type: str | None) -> bool:

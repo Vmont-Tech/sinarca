@@ -869,7 +869,7 @@ export default function AddProject({ mode = 'create' }: AddProjectProps) {
             updateDocument(documentItem.id, { status: 'uploading', error: undefined });
             try {
                 const uploaded = await uploadProjectDraftDocument(draftId, documentItem.documentType, documentItem.file);
-                updateDocument(documentItem.id, { status: 'uploaded', uploaded, error: undefined });
+                updateDocument(documentItem.id, { documentType: uploaded.documentType as ProjectDocumentType, status: 'uploaded', uploaded, error: undefined });
             } catch (err) {
                 failed = true;
                 updateDocument(documentItem.id, {

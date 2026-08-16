@@ -513,7 +513,7 @@ class ProjectDraftDocument(Base):
     __table_args__ = (
         Index("project_draft_documents_draft_idx", "draft_id", "document_type"),
         Index("project_draft_documents_sha256_hash_idx", "sha256_hash"),
-        UniqueConstraint("draft_id", "sha256_hash", name="project_draft_documents_draft_sha256_key"),
+        UniqueConstraint("draft_id", "document_type", "sha256_hash", name="project_draft_documents_draft_type_sha256_key"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -534,7 +534,7 @@ class Document(Base):
     __tablename__ = "documents"
     __table_args__ = (
         Index("documents_sha256_hash_idx", "sha256_hash"),
-        UniqueConstraint("project_id", "sha256_hash", name="documents_project_sha256_key"),
+        UniqueConstraint("project_id", "document_type", "sha256_hash", name="documents_project_type_sha256_key"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()

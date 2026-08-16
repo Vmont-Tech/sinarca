@@ -103,6 +103,7 @@ class CertifierService:
             await self.session.execute(
                 select(Document).where(
                     Document.project_id == project.id,
+                    Document.document_type == CERTIFICATION_CERTIFICATE_DOCUMENT_TYPE,
                     Document.sha256_hash == upload["sha256"],
                 )
             )

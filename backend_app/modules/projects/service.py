@@ -642,6 +642,7 @@ class ProjectsService:
             await self.session.execute(
                 select(ProjectDraftDocument).where(
                     ProjectDraftDocument.draft_id == draft.id,
+                    ProjectDraftDocument.document_type == document_type,
                     ProjectDraftDocument.sha256_hash == sha256,
                 )
             )
@@ -717,6 +718,7 @@ class ProjectsService:
                 await self.session.execute(
                     select(Document).where(
                         Document.project_id == project.id,
+                        Document.document_type == draft_document.document_type,
                         Document.sha256_hash == draft_document.sha256_hash,
                     )
                 )

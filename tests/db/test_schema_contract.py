@@ -14,6 +14,7 @@ PROJECT_PUBLIC_MARKETPLACE_MIGRATION_SQL = ROOT / "supabase/migrations/202605260
 PROJECT_OPTIONAL_QTAGS_MIGRATION_SQL = ROOT / "supabase/migrations/202605260005_project_vertices_optional_qtags.sql"
 SUPABASE_STORAGE_MIGRATION_SQL = ROOT / "supabase/migrations/202605260006_supabase_storage_buckets.sql"
 DOCUMENT_HASH_MIGRATION_SQL = ROOT / "supabase/migrations/202605270001_relax_document_hash_uniqueness.sql"
+DOCUMENT_TYPE_HASH_MIGRATION_SQL = ROOT / "supabase/migrations/202608160001_scope_document_hash_uniqueness_by_type.sql"
 
 BRAZIL_UFS = {
     "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO",
@@ -350,6 +351,7 @@ def test_document_hash_uniqueness_is_scoped_to_project_or_draft() -> None:
     schema_sql = read(SCHEMA_SQL).lower()
     project_drafts_sql = read(PROJECT_DRAFTS_MIGRATION_SQL).lower()
     migration_sql = read(DOCUMENT_HASH_MIGRATION_SQL).lower()
+    document_type_migration_sql = read(DOCUMENT_TYPE_HASH_MIGRATION_SQL).lower()
 
     assert "create unique index documents_sha256_hash_idx" not in schema_sql
     assert "documents_project_sha256_key unique (project_id, sha256_hash)" in schema_sql
@@ -365,3 +367,11 @@ def test_document_hash_uniqueness_is_scoped_to_project_or_draft() -> None:
         "project_draft_documents_draft_sha256_key",
     ]:
         assert marker in migration_sql
+
+    for marker in [
+        "drop constraint if exists documents_project_sha256_key",
+        "drop constraint if exists project_draft_documents_draft_sha256_key",
+        "documents_project_type_sha256_key unique (project_id, document_type, sha256_hash)",
+        "project_draft_documents_draft_type_sha256_key unique (draft_id, document_type, sha256_hash)",
+    ]:
+        assert marker in document_type_migration_sql
