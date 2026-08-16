@@ -55,7 +55,7 @@ Requisitos do milestone v1.0. Cada um mapeia para exatamente uma fase do roadmap
 
 - [x] **INTG-01**: Toda submissão relevante (propriedade, metodologia, direito de operar) gera um registro `Claim` com `status` e `confidenceScore` próprios, sem promover `projects.status` diretamente a partir do input do usuário.
 - [x] **INTG-02**: `Evidence` referencia hash, origem, `validationMethod` e `validationStatus`, vinculada a um `Claim`.
-- [x] **INTG-03**: `Conflict` é gerado automaticamente quando `ST_Intersects` (Phase 4.1) encontra overlap acima do limiar configurável, com severidade `CLEAR → CRITICAL`. *(schema pronto na Plan 04.2-01; geração de Conflict é a Plan 04.2-03)*
+- [x] **INTG-03**: `Conflict` é gerado automaticamente quando `ST_Intersects` (Phase 4.1) encontra overlap acima do limiar configurável, com severidade `CLEAR → CRITICAL`.
 - [ ] **INTG-04**: Risk Score é calculado com sinais explicáveis (ex.: "+30 SIGEF diverge da geometria") e projetos `CRITICAL` entram automaticamente em `ON_HOLD`. *(schema pronto na Plan 04.2-01; Risk Engine é a Plan 04.2-04)*
 - [ ] **INTG-05**: O status público do projeto nunca usa apenas "Certified" sem explicitar o que foi verificado.
 
