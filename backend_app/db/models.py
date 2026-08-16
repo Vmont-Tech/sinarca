@@ -161,6 +161,10 @@ class Project(Base):
     methodology: Mapped[str] = mapped_column(String, nullable=False)
     methodology_link: Mapped[str | None] = mapped_column(String)
     status: Mapped[str] = mapped_column(ProjectStatusEnum, nullable=False, server_default=text("'REGISTERED'"))
+    # Phase 04.2 / D-04: eixo de confianca, INDEPENDENTE de ProjectStatusEnum.
+    # Pitfall RESEARCH #4: NUNCA escrever "ON_HOLD" em project.status.
+    integrity_status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DECLARED'"))
+    risk_score: Mapped[int | None] = mapped_column()
     public_marketplace: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     producer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
     developer_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
@@ -579,3 +583,92 @@ class IdempotencyKey(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'RECORDED'"))
     created_at: Mapped[datetime] = created_at_column()
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Claim(Base):
+    __tablename__ = "claims"
+    __table_args__ = (Index("claims_project_status_idx", "project_id", "status", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    claimant_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    claimant_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DECLARED'"))
+    confidence_score: Mapped[int] = mapped_column(nullable=False, server_default=text("10"))
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class Evidence(Base):
+    __tablename__ = "evidence"
+    __table_args__ = (Index("evidence_project_created_idx", "project_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    claim_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("claims.id"))
+    document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"))
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    source_type: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'SELF_DECLARED'"))
+    hash: Mapped[str] = mapped_column(String, nullable=False)
+    validation_method: Mapped[str] = mapped_column(String, nullable=False)
+    validation_status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'PENDING'"))
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class Conflict(Base):
+    __tablename__ = "conflicts"
+    __table_args__ = (Index("conflicts_project_status_idx", "project_id", "status", "severity"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    related_project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    severity: Mapped[str] = mapped_column(String, nullable=False)
+    overlap_percentage: Mapped[Decimal | None] = mapped_column(Numeric(9, 4))
+    overlap_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'OPEN'"))
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class ProjectRiskAssessment(Base):
+    __tablename__ = "risk_assessments"
+    __table_args__ = (Index("risk_assessments_project_created_idx", "project_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    risk_score: Mapped[int] = mapped_column(nullable=False)
+    risk_class: Mapped[str] = mapped_column(String, nullable=False)
+    integrity_status: Mapped[str] = mapped_column(String, nullable=False)
+    auto_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    trigger: Mapped[str] = mapped_column(String, nullable=False)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class RiskSignal(Base):
+    __tablename__ = "risk_signals"
+    __table_args__ = (Index("risk_signals_assessment_idx", "risk_assessment_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    risk_assessment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("risk_assessments.id"), nullable=False)
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    weight: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    public_safe: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
