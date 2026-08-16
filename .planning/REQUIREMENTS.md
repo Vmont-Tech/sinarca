@@ -47,7 +47,7 @@ Requisitos do milestone v1.0. Cada um mapeia para exatamente uma fase do roadmap
 
 - [x] **GEOF-01**: `postgis` está habilitado no Supabase e `project_boundaries` armazena `geometry(Polygon, 4326)` com colunas `declared_boundary`/`field_verified_boundary`/`certified_boundary`/`active_boundary`.
 - [x] **GEOF-02**: Todo projeto com QTAGs existentes (Phase 3) tem `declared_boundary` populada via backfill, sem perda de área/vértices em relação ao cálculo shoelace anterior.
-- [ ] **GEOF-03**: `ST_IsValid`, autointerseção, vértices duplicados e divergência entre área declarada e calculada são validados no backend antes de persistir.
+- [x] **GEOF-03**: `ST_IsValid`, autointerseção, vértices duplicados e divergência entre área declarada e calculada são validados no backend antes de persistir.
 - [ ] **GEOF-04**: `ST_Intersects`/`ST_Area` detectam overlap entre dois projetos do próprio Sinarca e calculam `overlapPercentage`.
 - [ ] **GEOF-05**: `ProjectGeofencePreview` (frontend) passa a renderizar a partir da geometria persistida, não do recálculo client-side dos 4 pontos.
 

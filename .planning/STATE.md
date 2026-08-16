@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04.1-01-PLAN.md
-last_updated: "2026-08-16T02:21:39.331Z"
+stopped_at: Completed 04.1-02-PLAN.md
+last_updated: "2026-08-16T02:28:20.183Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 13
   completed_phases: 4
   total_plans: 28
-  completed_plans: 24
-  percent: 86
+  completed_plans: 25
+  percent: 89
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-26)
 ## Current Position
 
 Phase: 04.1 (geospatial-foundation) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-08-16
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 74%
 | Phase 04-certification-workbench P06 | 25min | 3 tasks | 2 files |
 | Phase 04-certification-workbench P07 | 30min | 3 tasks | 6 files |
 | Phase 04.1 P01 | 30min | 3 tasks | 7 files |
+| Phase 04.1 P02 | 15min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,8 @@ Progress: [███████░░░] 74%
 - [Phase 04.1-01]: D-GEO-03 -- active_boundary espelha declared_boundary por codigo (migration/seed), nunca por trigger; active_boundary_tier = 'DECLARED' nesta fase.
 - [Phase 04.1-01]: Backfill do declared_boundary reusa exatamente o algoritmo centroide + atan2 de _polygon_area()/orderTagsForPolygon(); PRC-2024-002 backfilled com vertices/area identicos ao calculo shoelace anterior (1e-12).
 - [Phase 04.1-01]: npx supabase db reset aplica migrations antes de seed.sql; a logica idempotente de backfill foi replicada em supabase/seed.sql (apos inserir project_tags) para garantir PRC-2024-002 backfilled em todo reset local fresco.
+- [Phase 04.1]: D-GEO-02: divergencia de area declarada vs calculada e sempre computada, sempre persistida, sempre exposta, e NUNCA bloqueia persistencia nesta fase. Limiar BOUNDARY_AREA_DIVERGENCE_WARN_PCT = 10.0 (flag-only). No retangulo dos fixtures de teste a heuristica _area_from_tags() devolve ~104.93 ha contra ~486 ha geodesicos (ST_Area(::geography)) -- ~363% de divergencia; um limiar bloqueante rejeitaria todo projeto existente. Falhas topologicas (ST_IsValid/ST_IsSimple falso, vertices duplicados, <4 ou >500 vertices) SEGUEM bloqueando com HTTP 400.
+- [Phase 04.1]: tests/ nao tem __init__.py, entao import estilo pacote (tests.test_certifier_workbench) nao resolve na config de pytest deste repo; fixtures HTTP foram copiadas verbatim em tests/test_project_boundaries.py em vez de importadas, conforme fallback ja documentado no proprio plano.
 
 ### Roadmap Evolution
 
@@ -168,6 +171,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-16T02:21:39.328Z
-Stopped at: Completed 04.1-01-PLAN.md
+Last session: 2026-08-16T02:28:20.180Z
+Stopped at: Completed 04.1-02-PLAN.md
 Resume file: None

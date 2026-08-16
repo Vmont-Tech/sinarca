@@ -150,7 +150,7 @@ Plans:
 
 Plans:
 - [x] 04.1-01-PLAN.md — PostGIS habilitado, tabela `project_boundaries` (4 colunas geometry(Polygon,4326)) e backfill idempotente dos QTAGs existentes, com push do schema para o Postgres local (GEOF-01, GEOF-02).
-- [ ] 04.1-02-PLAN.md — Construção server-side do polígono reusando a ordenação por ângulo polar, bateria de validação PostGIS antes de persistir e escrita de declared/active boundary em create/update (GEOF-03).
+- [x] 04.1-02-PLAN.md — Construção server-side do polígono reusando a ordenação por ângulo polar, bateria de validação PostGIS antes de persistir e escrita de declared/active boundary em create/update (GEOF-03).
 - [ ] 04.1-03-PLAN.md — Detecção interna de overlap via `ST_Intersects`/`ST_Area` com `overlapPercentage` e endpoint autenticado de leitura (GEOF-04).
 - [ ] 04.1-04-PLAN.md — Serializador GeoJSON (`ST_AsGeoJSON`) e campo `boundary` no dossiê público (minimizado) e na revisão da certificadora (completo) (GEOF-05).
 - [ ] 04.1-05-PLAN.md — `ProjectGeofencePreview` renderiza a geometria persistida em MrcaDetails e CertifierReview; wizard de originação segue no recálculo client-side, documentado (GEOF-05).
