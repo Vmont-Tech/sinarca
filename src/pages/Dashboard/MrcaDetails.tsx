@@ -61,6 +61,54 @@ const riskClassLabel = (value?: string | null) => ({
     CRITICAL: 'Risco crítico',
 }[value || ''] || 'Risco ainda não avaliado');
 
+// Mirrors backend_app/modules/integrity/constants.py RISK_CLASS_BOUNDS (20/40/60/80/100).
+// Unlike a credit-score gauge, HIGHER is WORSE here, so green sits at the low end.
+const RISK_GAUGE_ZONES = [
+    { upTo: 20, color: '#22c55e' },
+    { upTo: 40, color: '#84cc16' },
+    { upTo: 60, color: '#f59e0b' },
+    { upTo: 80, color: '#f97316' },
+    { upTo: 100, color: '#ef4444' },
+];
+
+const RiskScoreGauge = ({ score }: { score: number | null | undefined }) => {
+    const hasScore = typeof score === 'number' && Number.isFinite(score);
+    const markerPosition = hasScore ? Math.min(100, Math.max(0, score as number)) : null;
+
+    return (
+        <div className="mt-3">
+            <div className="relative pt-3">
+                {markerPosition !== null && (
+                    <div
+                        className="absolute top-0 -translate-x-1/2 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-gray-900"
+                        style={{ left: `${markerPosition}%` }}
+                        aria-hidden="true"
+                    />
+                )}
+                <div className="flex h-2 w-full overflow-hidden rounded-full">
+                    {RISK_GAUGE_ZONES.map((zone, index) => (
+                        <div
+                            key={zone.upTo}
+                            style={{
+                                width: `${zone.upTo - (RISK_GAUGE_ZONES[index - 1]?.upTo ?? 0)}%`,
+                                backgroundColor: zone.color,
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
+            <div className="mt-1 flex justify-between text-[9px] font-mono text-gray-400">
+                <span>0</span>
+                <span>20</span>
+                <span>40</span>
+                <span>60</span>
+                <span>80</span>
+                <span>100</span>
+            </div>
+        </div>
+    );
+};
+
 const timelineCodeLabel = (code?: string) => ({
     CREATED: 'Projeto criado',
     QTAGS_RECORDED: 'Vértices registrados',
@@ -330,6 +378,7 @@ export default function MrcaDetails() {
                                                         {dossier.integrity.riskScore ?? '—'}{dossier.integrity.riskScore !== null ? '/100' : ''}
                                                     </p>
                                                     <p className="text-xs text-gray-500 mt-1">{riskClassLabel(dossier.integrity.riskClass)}</p>
+                                                    <RiskScoreGauge score={dossier.integrity.riskScore} />
                                                 </div>
                                                 <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
                                                     <p className="text-[10px] uppercase font-bold text-gray-400">Sobreposições detectadas</p>
