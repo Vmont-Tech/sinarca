@@ -163,6 +163,7 @@ async def certifier_project_review(
     return CertifierReviewResponse(
         project=await service.project_to_mrca(project),
         baseline=baseline_item(baseline),
+        boundary=await service.boundary_item(str(project.id)),
         tags=[tag_item(t) for t in tags],
         documents=[document_item(d) for d in documents],
         dossier=dossier,
