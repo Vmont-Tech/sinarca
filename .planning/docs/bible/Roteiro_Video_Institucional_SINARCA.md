@@ -35,7 +35,7 @@
 ## Cena 6: Chamada para Ação
 
 *   **Visual:** Logo do SINARCA. Endereço do site. Frase de impacto.
-*   **Locução (Voz Off, tom direto e convidativo):** "Junte-se ao SINARCA. Faça parte da solução. Garanta que seu investimento em créditos ambientais gere um impacto real e duradouro. SINARCA: O Brasil que ninguém rouba. Visite [SeuSiteAqui.com.br] e saiba mais."
+*   **Locução (Voz Off, tom direto e convidativo):** "Junte-se ao SINARCA. Faça parte da solução. Garanta que seu investimento em créditos ambientais gere um impacto real e duradouro. SINARCA: Transparência que transforma compromissos em florestas. Visite [SeuSiteAqui.com.br] e saiba mais."
 
 ## Música de Fundo
 
