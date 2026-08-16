@@ -162,3 +162,306 @@ def test_backfill_is_idempotent() -> None:
     assert result["before_count"] == 1
     assert result["after_count"] == 1
     assert result["npoints"] == 5
+
+
+# --- Plan 04.1-02: GEOF-03 write-path validation + persistence battery ---
+
+import copy
+
+import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
+from backend_app.main import app
+from backend_app.modules.projects.service import MAX_PROJECT_TAG_VERTICES, _validate_boundary_geometry, _polygon_wkt
+
+client = TestClient(app)
+
+# `tests/` has no __init__.py, so `from tests.test_certifier_workbench import ...`
+# does not resolve as a package import under this repo's pytest configuration.
+# Per plan 04.1-02's fallback instruction, the HTTP fixtures are copied verbatim
+# from tests/test_certifier_workbench.py rather than imported, using the exact
+# same coordinates so results are directly comparable across suites.
+PRODUCER = ("produtor@sinarca.com.br", "produtor")
+
+
+def auth_headers(email: str, password: str) -> dict[str, str]:
+    response = client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def tag_payload(prefix: str) -> list[dict[str, object]]:
+    points = [
+        ("A", -10.100000, -48.300000),
+        ("B", -10.100000, -48.320000),
+        ("C", -10.120000, -48.320000),
+        ("D", -10.120000, -48.300000),
+    ]
+    return [
+        {
+            "tag_uid": f"{prefix}-{index}",
+            "cmac": f"cmac-{prefix}-{index}",
+            "latitude": latitude,
+            "longitude": longitude,
+            "vertex_label": label,
+        }
+        for index, (label, latitude, longitude) in enumerate(points, start=1)
+    ]
+
+
+def project_payload(prefix: str, tags: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        "name": f"Projeto Bancada Certificadora {prefix}",
+        "description": "Projeto criado pelo contrato de testes da bancada de certificacao.",
+        "project_type": "reforestation",
+        "producer_id": "prod-001",
+        "certifier_id": "std-001",
+        "image_url": f"data:image/png;base64,{prefix}",
+        "location": {
+            "city": "Porto Nacional",
+            "state": "Tocantins",
+            "stateId": "to",
+            "bioma": "Cerrado",
+            "coordinates": {"lat": -10.70, "lng": -48.41, "svgX": 392, "svgY": 292},
+        },
+        "tags": tags,
+    }
+
+
+def test_postgis_rejects_self_intersecting_polygon() -> None:
+    """_ordered_ring sorts vertices by polar angle around the centroid, which makes
+    almost any vertex set star-shaped (and therefore simple/non-self-intersecting) by
+    construction -- going through the API/service ordering path can never exercise a
+    genuine self-intersection. This bowtie is built BY HAND, bypassing the ordering
+    entirely, to prove the PostGIS ST_IsSimple layer is actually wired and would catch
+    a non-star-shaped ring if one ever reached it.
+    """
+
+    async def run() -> None:
+        async with get_sessionmaker()() as session:
+            await _validate_boundary_geometry(session, "POLYGON((0 0, 1 1, 1 0, 0 1, 0 0))")
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(run())
+    assert exc.value.status_code == 400
+    assert "autointerseção" in exc.value.detail or "inválida" in exc.value.detail
+
+
+def test_validate_boundary_geometry_returns_geodesic_hectares() -> None:
+    """Regression guard against a missing ::geography cast, which would return a value
+    near 4e-4 (square degrees) instead of a real hectare figure. The fixture rectangle
+    (0.02 deg x 0.02 deg at latitude ~-10.1) is geodesically ~486 ha.
+    """
+    coordinates = [(point[1], point[2]) for point in [("A", -10.100000, -48.300000), ("B", -10.100000, -48.320000), ("C", -10.120000, -48.320000), ("D", -10.120000, -48.300000)]]
+    wkt = _polygon_wkt(coordinates)
+
+    async def run() -> float:
+        async with get_sessionmaker()() as session:
+            return await _validate_boundary_geometry(session, wkt)
+
+    area_ha = asyncio.run(run())
+    assert 400 < area_ha < 600
+
+
+def test_project_create_rejects_duplicate_vertices() -> None:
+    prefix = f"dupvertex-{uuid_hex()}"
+    tags = tag_payload(prefix)
+    tags[3]["latitude"] = tags[0]["latitude"]
+    tags[3]["longitude"] = tags[0]["longitude"]
+
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tags),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 400, response.text
+    detail = response.json()["detail"]
+    assert "repetir" in detail or "duplicados" in detail
+
+
+def test_project_create_rejects_collinear_vertices() -> None:
+    prefix = f"collinear-{uuid_hex()}"
+    tags = tag_payload(prefix)
+    lngs = [-48.300, -48.310, -48.320, -48.330]
+    for tag, lng in zip(tags, lngs):
+        tag["latitude"] = -10.10
+        tag["longitude"] = lng
+
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tags),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 400, response.text
+
+
+def test_project_create_rejects_excess_vertices() -> None:
+    prefix = f"excess-{uuid_hex()}"
+    center_lat, center_lng, radius = -10.11, -48.31, 0.01
+    count = MAX_PROJECT_TAG_VERTICES + 1
+    tags = []
+    for index in range(count):
+        angle = 2 * math.pi * index / count
+        tags.append(
+            {
+                "tag_uid": f"{prefix}-{index}",
+                "cmac": f"cmac-{prefix}-{index}",
+                "latitude": center_lat + radius * math.sin(angle),
+                "longitude": center_lng + radius * math.cos(angle),
+                "vertex_label": f"V{index + 1:04d}",
+            }
+        )
+
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tags),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 400, response.text
+    assert "limite técnico" in response.json()["detail"]
+
+
+def test_project_create_persists_declared_and_active_boundary() -> None:
+    prefix = f"persist-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    async def evaluate() -> dict[str, object]:
+        async with get_sessionmaker()() as session:
+            row = (
+                await session.execute(
+                    text(
+                        """
+                        select ST_NPoints(b.declared_boundary) as npoints,
+                               ST_IsValid(b.declared_boundary) as is_valid,
+                               ST_Equals(b.declared_boundary, b.active_boundary) as mirrors,
+                               b.active_boundary_tier, b.declared_vertex_count, b.declared_source,
+                               b.declared_area_ha, b.declared_area_divergence_pct, b.declared_area_divergence_flagged,
+                               ST_X(ST_PointN(ST_ExteriorRing(b.declared_boundary), 1)) as first_x,
+                               ST_Y(ST_PointN(ST_ExteriorRing(b.declared_boundary), 1)) as first_y
+                        from project_boundaries b join projects p on p.id = b.project_id
+                        where p.friendly_id = :friendly_id
+                        """
+                    ),
+                    {"friendly_id": friendly_id},
+                )
+            ).mappings().one()
+            return dict(row)
+
+    row = asyncio.run(evaluate())
+    assert row["npoints"] == 5
+    assert row["is_valid"] is True
+    assert row["mirrors"] is True
+    assert row["active_boundary_tier"] == "DECLARED"
+    assert row["declared_vertex_count"] == 4
+    assert row["declared_source"] == "api_v1_project_write"
+    assert 400 < float(row["declared_area_ha"]) < 600
+
+    # Coordinate-order guard: X is longitude (~-48), Y is latitude (~-10).
+    # If these were swapped this assertion fails.
+    assert -49.0 < row["first_x"] < -48.0
+    assert -11.0 < row["first_y"] < -10.0
+
+
+def test_area_divergence_is_flagged_but_not_blocking() -> None:
+    """D-GEO-02: projects.area_hectares comes from the crude _area_from_tags()
+    bounding-box heuristic (~104.93 ha for this rectangle), while ST_Area(::geography)
+    is the real geodesic area (~486 ha) -- a divergence of ~363%. This must be flagged,
+    never blocked: the create request itself returns HTTP 201.
+    """
+    prefix = f"divergence-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    async def evaluate() -> dict[str, object]:
+        async with get_sessionmaker()() as session:
+            row = (
+                await session.execute(
+                    text(
+                        """
+                        select b.declared_area_divergence_pct, b.declared_area_divergence_flagged
+                        from project_boundaries b join projects p on p.id = b.project_id
+                        where p.friendly_id = :friendly_id
+                        """
+                    ),
+                    {"friendly_id": friendly_id},
+                )
+            ).mappings().one()
+            return dict(row)
+
+    row = asyncio.run(evaluate())
+    assert float(row["declared_area_divergence_pct"]) > 10.0
+    assert row["declared_area_divergence_flagged"] is True
+
+
+def test_project_update_replaces_boundary_without_duplicating_row() -> None:
+    prefix = f"update-{uuid_hex()}"
+    original_tags = tag_payload(prefix)
+    create_response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=original_tags),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert create_response.status_code == 201, create_response.text
+    friendly_id = create_response.json()["project"]["friendlyId"]
+
+    shifted_tags = copy.deepcopy(original_tags)
+    for tag in shifted_tags:
+        tag["latitude"] = round(tag["latitude"] + 0.01, 6)
+
+    patch_response = client.patch(
+        f"/api/v1/projects/{friendly_id}",
+        json=project_payload(prefix, tags=shifted_tags),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert patch_response.status_code == 200, patch_response.text
+
+    async def evaluate() -> dict[str, object]:
+        async with get_sessionmaker()() as session:
+            count_row = (
+                await session.execute(
+                    text(
+                        """
+                        select count(*) from project_boundaries b
+                        join projects p on p.id = b.project_id
+                        where p.friendly_id = :friendly_id
+                        """
+                    ),
+                    {"friendly_id": friendly_id},
+                )
+            ).scalar_one()
+            ymin_row = (
+                await session.execute(
+                    text(
+                        """
+                        select ST_YMin(b.declared_boundary) as ymin
+                        from project_boundaries b join projects p on p.id = b.project_id
+                        where p.friendly_id = :friendly_id
+                        """
+                    ),
+                    {"friendly_id": friendly_id},
+                )
+            ).mappings().one()
+            return {"count": count_row, "ymin": float(ymin_row["ymin"])}
+
+    result = asyncio.run(evaluate())
+    assert result["count"] == 1
+    original_ymin = min(point["latitude"] for point in original_tags)
+    assert math.isclose(result["ymin"] - original_ymin, 0.01, abs_tol=1e-6)
+
+
+def uuid_hex() -> str:
+    import uuid
+
+    return uuid.uuid4().hex[:10]
