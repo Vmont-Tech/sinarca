@@ -480,7 +480,8 @@ export default function CertifierReview() {
 
                                             {activeTab === 'qtags' && (
                                                 <section className="space-y-6">
-                                                    <ProjectGeofencePreview tags={qtagDrafts} />
+                                                    {/* GEOF-05: geometria persistida servida por /certifier/projects/:id/review. */}
+                                                    <ProjectGeofencePreview tags={qtagDrafts} boundary={review.boundary?.declared ?? null} />
                                                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                                         {review.tags.map((tag: any) => (
                                                             <div key={tag.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
