@@ -132,6 +132,13 @@ class CertifierReviewResponse(BaseModel):
     certificate: dict[str, Any] | None = None
 
 
+class ProjectBoundaryOverlapsResponse(BaseModel):
+    success: bool = True
+    project_id: str
+    total: int
+    overlaps: list[dict[str, Any]] = []
+
+
 class PublicProfileResponse(BaseModel):
     success: bool = True
     profile: dict[str, Any]

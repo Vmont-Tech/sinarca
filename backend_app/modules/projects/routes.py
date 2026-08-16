@@ -34,6 +34,7 @@ from backend_app.modules.projects.schemas import (
     ProjectPublicDossierResponse,
     ProjectResponse,
     ProjectsResponse,
+    ProjectBoundaryOverlapsResponse,
     ProjectUpdate,
     PublicProfileResponse,
 )
@@ -357,6 +358,30 @@ async def list_project_pendencies(
         )
     ).scalars().all()
     return [pendency_item(item) for item in pendencies]
+
+
+@router.get("/projects/{project_id}/boundary-overlaps", response_model=ProjectBoundaryOverlapsResponse)
+async def get_project_boundary_overlaps(
+    project_id: str,
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectBoundaryOverlapsResponse:
+    """Overlap interno entre geometrias de projetos Sinarca (GEOF-04).
+
+    Somente deteccao/medicao. Nao cria Conflict nem aplica severidade — isso e
+    Phase 04.2. Guardado org-scoped pelo mesmo _assert_project_edit_permission
+    usado por /projects/{id}/pendencies, porque overlap revela a existencia e a
+    posicao de projetos de terceiros.
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+    overlaps = await service.detect_boundary_overlaps(project_id)
+    return ProjectBoundaryOverlapsResponse(
+        project_id=str(project.id),
+        total=len(overlaps),
+        overlaps=overlaps,
+    )
 
 
 @router.post("/projects/{project_id}/pendencies/{pendency_id}/respond")
