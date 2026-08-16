@@ -11,6 +11,7 @@ from backend_app.modules.integrity.schemas import (
     ProjectClaimsResponse,
     ProjectConflictsResponse,
     ProjectEvidenceResponse,
+    ProjectIntegrityResponse,
 )
 from backend_app.modules.integrity.service import IntegrityService
 from backend_app.modules.projects.service import ProjectsService
@@ -79,3 +80,26 @@ async def get_project_conflicts(
     await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
     conflicts = await IntegrityService(session).list_conflicts(project, status_filter=status_filter)
     return ProjectConflictsResponse(project_id=str(project.id), total=len(conflicts), conflicts=conflicts)
+
+
+@router.get("/projects/{project_id}/integrity", response_model=ProjectIntegrityResponse)
+async def get_project_integrity(
+    project_id: str,
+    current_user: AuthenticatedUser = Depends(require_role("producer", "certifier", "admin")),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectIntegrityResponse:
+    """Risk Engine: visao INTERNA completa do risco do projeto (INTG-04).
+
+    Devolve riskScore, riskClass, integrityStatus/publicStatus, autoHold e a
+    lista completa de sinais explicados (code/weight/reason/publicSafe) do
+    ultimo recalculo append-only em risk_assessments/risk_signals. Esta e a
+    visao INTERNA -- a visao publica minimizada (allowlist de sinais, sem
+    metadata de terceiros) e entregue apenas na Plan 05. Mesmo guard
+    org-scoped de /claims, /evidence e /conflicts, ja que os sinais citam
+    contagem de conflitos com projetos de terceiros (T-04.2-19).
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+    integrity = await IntegrityService(session).integrity_summary(project)
+    return ProjectIntegrityResponse(project_id=str(project.id), integrity=integrity)

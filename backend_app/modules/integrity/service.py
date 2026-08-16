@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from decimal import Decimal
+from typing import Any, Sequence
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.config import Settings, get_settings
-from backend_app.db.models import Claim, Conflict, Document, Evidence, Project
+from backend_app.db.models import Claim, Conflict, Document, Evidence, Project, ProjectRiskAssessment, RiskSignal
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.integrity.constants import (
     CLAIM_CONFIDENCE_DECLARED,
@@ -18,6 +19,16 @@ from backend_app.modules.integrity.constants import (
     CLAIM_TYPE_LAND_POSSESSION,
     CLAIM_TYPE_RIGHT_TO_OPERATE,
     CONFLICT_SEVERITIES,
+    PUBLIC_INTEGRITY_STATUS_BY_INTERNAL,
+    RISK_CLASS_AUTO_HOLD,
+)
+from backend_app.modules.integrity.risk_engine import (
+    ClaimSnapshot,
+    ConflictSnapshot,
+    compute_signals,
+    integrity_status_for,
+    risk_class_for_score,
+    score_from_signals,
 )
 
 # D-18: documentos que sustentam o Claim de terra. Qualquer outro tipo de
@@ -680,3 +691,224 @@ class IntegrityService:
             }
             for row in rows
         ]
+
+    # ------------------------------------------------------------------
+    # Risk Engine: recalculo append-only + Auto Hold (Phase 04.2 / INTG-04)
+    # ------------------------------------------------------------------
+
+    async def recalculate_risk_score(
+        self,
+        project: Project,
+        *,
+        trigger: str,
+        actor_id: str | None = None,
+        actor_role: str | None = None,
+    ) -> ProjectRiskAssessment:
+        """Recompute PURO do risco (D-13/D-19, RESEARCH Pitfall 5).
+
+        A cada chamada, le do banco TODO o estado atual de Claim/Evidence/
+        Conflict do projeto -- nunca mantem total acumulado entre chamadas,
+        o que garante que recalcular duas vezes com o mesmo estado produz o
+        mesmo score. O resultado e sempre gravado como uma linha NOVA em
+        risk_assessments (append-only, nunca update/delete) com um RiskSignal
+        por sinal computado, para que o score nunca apareca sem a explicacao
+        que o produziu.
+        """
+        claims = (
+            await self.session.execute(select(Claim).where(Claim.project_id == project.id))
+        ).scalars().all()
+        evidence = (
+            await self.session.execute(select(Evidence).where(Evidence.project_id == project.id))
+        ).scalars().all()
+        conflicts = (
+            await self.session.execute(select(Conflict).where(Conflict.project_id == project.id))
+        ).scalars().all()
+
+        evidence_by_claim: dict[uuid.UUID, list[Evidence]] = {}
+        for item in evidence:
+            if item.claim_id is not None:
+                evidence_by_claim.setdefault(item.claim_id, []).append(item)
+
+        claim_snapshots = [
+            ClaimSnapshot(
+                type=claim.type,
+                status=claim.status,
+                has_evidence=bool(evidence_by_claim.get(claim.id)),
+                has_verified_evidence=any(
+                    e.validation_status == "VERIFIED" for e in evidence_by_claim.get(claim.id, [])
+                ),
+            )
+            for claim in claims
+        ]
+        conflict_snapshots = [
+            ConflictSnapshot(
+                type=c.type,
+                severity=c.severity,
+                status=c.status,
+                overlap_percentage=float(c.overlap_percentage or 0),
+            )
+            for c in conflicts
+        ]
+
+        signals = compute_signals(claim_snapshots, conflict_snapshots)
+        score = score_from_signals(signals)
+        risk_class = risk_class_for_score(score)
+        integrity_status = integrity_status_for(claim_snapshots, risk_class=risk_class)
+        auto_hold = risk_class == RISK_CLASS_AUTO_HOLD
+
+        previous_integrity_status = project.integrity_status
+        previous_risk_score = project.risk_score
+
+        open_conflict_count = len([c for c in conflicts if c.status == "OPEN"])
+
+        assessment = ProjectRiskAssessment(
+            project_id=project.id,
+            risk_score=score,
+            risk_class=risk_class,
+            integrity_status=integrity_status,
+            auto_hold=auto_hold,
+            trigger=trigger,
+            metadata_={
+                "claim_count": len(claims),
+                "conflict_count": open_conflict_count,
+                "evidence_count": len(evidence),
+            },
+        )
+        self.session.add(assessment)
+        await self.session.flush()
+
+        for signal in signals:
+            self.session.add(
+                RiskSignal(
+                    risk_assessment_id=assessment.id,
+                    code=signal.code,
+                    weight=Decimal(str(signal.weight)),
+                    reason=signal.reason,
+                    public_safe=signal.public_safe,
+                    metadata_=signal.metadata,
+                )
+            )
+        await self.session.flush()
+
+        # D-04/D-06 (RESEARCH Pitfall 4): Auto Hold escreve exclusivamente o
+        # eixo de integridade do projeto. "ON_HOLD" NAO e valor valido de
+        # ProjectStatusEnum e "SUSPENDED" colidiria com a rejeicao da
+        # certificadora -- a coluna operacional NUNCA e tocada aqui.
+        project.risk_score = score
+        project.integrity_status = integrity_status
+
+        await create_audit_event(
+            self.session,
+            action="RISK_RECALCULATED",
+            entity_type="risk_assessments",
+            entity_id=assessment.id,
+            actor_role=actor_role,
+            before_data={"integrity_status": previous_integrity_status, "risk_score": previous_risk_score},
+            after_data={"integrity_status": integrity_status, "risk_score": score, "risk_class": risk_class},
+            metadata={
+                "actor_external_id": actor_id,
+                "friendly_id": project.friendly_id,
+                "trigger": trigger,
+                "signals": [s.code for s in signals],
+            },
+        )
+
+        if auto_hold and previous_integrity_status != "ON_HOLD":
+            # D-06: transicao para Auto Hold e uma regra de aceite
+            # nao-discricionaria; precisa de trilha de auditoria propria,
+            # separada do recalculo rotineiro.
+            await create_audit_event(
+                self.session,
+                action="INTEGRITY_AUTO_HOLD",
+                entity_type="risk_assessments",
+                entity_id=assessment.id,
+                actor_role=actor_role,
+                before_data={"integrity_status": previous_integrity_status},
+                after_data={"integrity_status": integrity_status, "risk_score": score},
+                metadata={
+                    "actor_external_id": actor_id,
+                    "friendly_id": project.friendly_id,
+                    "trigger": trigger,
+                    "risk_score": score,
+                    "signals": [s.code for s in signals],
+                },
+            )
+
+        return assessment
+
+    async def recalculate_for_related(
+        self,
+        projects: Sequence[Project],
+        *,
+        trigger: str,
+        actor_id: str | None = None,
+        actor_role: str | None = None,
+    ) -> None:
+        """Recalcula o risco dos projetos relacionados devolvidos por
+        detect_and_persist_conflicts (o vizinho tambem passou a ter Conflict
+        e sem isso o risco dele so seria atualizado na proxima edicao dele
+        mesmo). Deduplicado por id; NUNCA chama detect_and_persist_conflicts
+        aqui (evitaria recursao entre projetos vizinhos).
+        """
+        seen: set[uuid.UUID] = set()
+        for related in projects:
+            if related.id in seen:
+                continue
+            seen.add(related.id)
+            await self.recalculate_risk_score(related, trigger=trigger, actor_id=actor_id, actor_role=actor_role)
+
+    async def integrity_summary(self, project: Project) -> dict[str, Any]:
+        """Visao INTERNA completa do risco do projeto (sinais explicados).
+
+        A visao publica minimizada (allowlist de PUBLIC_RISK_SIGNAL_CODES,
+        sem metadata) fica para a Plan 05.
+        """
+        assessment = (
+            await self.session.execute(
+                select(ProjectRiskAssessment)
+                .where(ProjectRiskAssessment.project_id == project.id)
+                .order_by(ProjectRiskAssessment.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+        open_conflict_count = (
+            await self.session.execute(
+                select(Conflict).where(Conflict.project_id == project.id, Conflict.status == "OPEN")
+            )
+        ).scalars().all()
+        claim_count = (
+            await self.session.execute(select(Claim).where(Claim.project_id == project.id))
+        ).scalars().all()
+
+        signals: list[dict[str, Any]] = []
+        if assessment is not None:
+            signal_rows = (
+                await self.session.execute(
+                    select(RiskSignal)
+                    .where(RiskSignal.risk_assessment_id == assessment.id)
+                    .order_by(RiskSignal.created_at)
+                )
+            ).scalars().all()
+            signals = [
+                {
+                    "code": row.code,
+                    "weight": float(row.weight),
+                    "reason": row.reason,
+                    "publicSafe": row.public_safe,
+                }
+                for row in signal_rows
+            ]
+
+        return {
+            "integrityStatus": project.integrity_status,
+            "publicStatus": PUBLIC_INTEGRITY_STATUS_BY_INTERNAL.get(project.integrity_status, "UNDER_REVIEW"),
+            "riskScore": project.risk_score,
+            "riskClass": assessment.risk_class if assessment is not None else None,
+            "autoHold": assessment.auto_hold if assessment is not None else False,
+            "assessedAt": assessment.created_at.isoformat() if assessment is not None else None,
+            "trigger": assessment.trigger if assessment is not None else None,
+            "conflictCount": len(open_conflict_count),
+            "claimCount": len(claim_count),
+            "signals": signals,
+        }

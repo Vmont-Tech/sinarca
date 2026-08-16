@@ -24,3 +24,9 @@ class ProjectConflictsResponse(BaseModel):
     project_id: str
     total: int
     conflicts: list[dict[str, Any]] = []
+
+
+class ProjectIntegrityResponse(BaseModel):
+    success: bool = True
+    project_id: str
+    integrity: dict[str, Any]
