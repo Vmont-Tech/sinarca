@@ -299,7 +299,10 @@ export default function MrcaDetails() {
                                     <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Vértices / Georreferenciamento</h3>
                                     {dossier.tags.length > 0 ? (
                                         <div className="space-y-5">
-                                            <ProjectGeofencePreview tags={qtagDrafts} />
+                                            {/* GEOF-05: o poligono vem da geometria persistida (project_boundaries),
+                                                nao do recalculo client-side dos vertices. qtagDrafts continua alimentando
+                                                a lista de QTAGs e o fallback quando boundary e null. */}
+                                            <ProjectGeofencePreview tags={qtagDrafts} boundary={dossier.boundary?.declared ?? null} />
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {dossier.tags.map((tag) => (
                                                     <div key={tag.id} className="p-5 rounded-xl border border-gray-100 bg-gray-50">

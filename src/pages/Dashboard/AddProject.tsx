@@ -1593,6 +1593,11 @@ export default function AddProject({ mode = 'create' }: AddProjectProps) {
                         onActiveVertexChange={setActiveMapVertex}
                         onSetVertexCoordinates={handleMapCoordinatePick}
                     />
+                    {/* GEOF-05: intencionalmente SEM a prop boundary. O wizard previsualiza os
+                        vertices que o usuario esta digitando agora — em criacao nao existe projeto
+                        persistido, e em edicao o usuario esta justamente alterando os vertices.
+                        O recalculo client-side (orderTagsForPolygon/calculatePolygonArea) e o
+                        comportamento correto aqui. */}
                     <ProjectGeofencePreview tags={tags} />
                 </div>
             </div>
@@ -1738,6 +1743,11 @@ export default function AddProject({ mode = 'create' }: AddProjectProps) {
                     </p>
                 </div>
 
+                {/* GEOF-05: intencionalmente SEM a prop boundary. O wizard previsualiza os
+                    vertices que o usuario esta digitando agora — em criacao nao existe projeto
+                    persistido, e em edicao o usuario esta justamente alterando os vertices.
+                    O recalculo client-side (orderTagsForPolygon/calculatePolygonArea) e o
+                    comportamento correto aqui. */}
                 <ProjectGeofencePreview tags={tags} />
             </div>
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import base64
 import binascii
+import json
 import math
 import uuid
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
-from sqlalchemy import delete, false, func, or_, select
+from sqlalchemy import delete, false, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.db.models import (
@@ -136,6 +137,25 @@ PROJECT_STATUS_TO_LIFECYCLE_CODE = {
     "SUSPENDED": "AWAITING_CERTIFICATION",
 }
 BLOCKED_PROJECT_STATUSES = {"BLOCKED_AUDIT_REQUIRED", "RECALCULATION_REQUIRED", "SUSPENDED"}
+
+# Phase 04.1 / GEOF-03.
+# Limite tecnico de vertices para protecao da API e do banco. O produto nao
+# define maximo logico (Bible 15 §5), mas project_tags nao tem limite superior
+# em lugar nenhum hoje — sem teto, um payload com milhares de vertices vira DoS
+# na construcao do WKT e no GEOS.
+MAX_PROJECT_TAG_VERTICES = 500
+
+# D-GEO-02: limiar de DIVERGENCIA DE AREA. E limiar de SINALIZACAO, nunca de
+# bloqueio. projects.area_hectares vem de _area_from_tags() (heuristica de
+# bounding box: lat_span * lng_span * 12321 + 100) ou da area legal declarada
+# pelo usuario; nenhuma das duas e comparavel geodesicamente com
+# ST_Area(::geography). No retangulo dos fixtures de teste (0.02 x 0.02 grau em
+# lat -10.1) a heuristica devolve ~104.93 ha contra ~486 ha geodesicos: ~363% de
+# divergencia. Qualquer limiar bloqueante rejeitaria todo projeto existente.
+# Trocar _area_from_tags pela area geodesica esta fora do escopo desta fase.
+BOUNDARY_AREA_DIVERGENCE_WARN_PCT = 10.0
+
+BOUNDARY_SOURCE_API_WRITE = "api_v1_project_write"
 
 REQUIRED_CERTIFICATION_DOCUMENT_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("documento legal ou CAR", ("LEGAL_OWNERSHIP", "CAR")),
@@ -315,6 +335,7 @@ class ProjectsService:
             project=project_dto,
             tags=[tag_item(tag) for tag in tags],
             baseline=baseline_item(baseline),
+            boundary=public_boundary_item(await self.boundary_item(str(project.id))),
             certifications=[public_certification_item(item) for item in certifications],
             audits=[audit_item(item) for item in audits],
             documents=[
@@ -852,6 +873,9 @@ class ProjectsService:
                 )
             )
 
+        await self.session.flush()
+        await self.persist_project_boundary(project, payload.tags)
+
         await create_audit_event(
             self.session,
             action="PROJECT_CREATED",
@@ -941,6 +965,9 @@ class ProjectsService:
                     )
                 )
 
+            await self.session.flush()
+            await self.persist_project_boundary(project, payload.tags)
+
         await create_audit_event(
             self.session,
             action="PROJECT_UPDATED",
@@ -964,6 +991,189 @@ class ProjectsService:
         else:
             await self.session.flush()
         return await self.project_to_mrca(project)
+
+    async def persist_project_boundary(
+        self,
+        project: Project,
+        tags: list[Any] | None,
+        *,
+        source: str = BOUNDARY_SOURCE_API_WRITE,
+    ) -> dict[str, Any] | None:
+        """Constroi, valida e persiste a geometria declarada do projeto (GEOF-03).
+
+        Roda na MESMA transacao da escrita de project_tags: um poligono
+        reprovado levanta HTTPException 400 antes de qualquer commit, entao
+        nunca chega geometria ruim ao banco.
+
+        D-GEO-03: active_boundary espelha declared_boundary por codigo de
+        aplicacao (o repo nao usa trigger). DECLARED e o unico tier populado
+        nesta fase, logo e trivialmente o tier ativo pela regra de prioridade
+        CERTIFIED > FIELD_VERIFIED > DECLARED.
+        """
+        if not tags:
+            return None
+
+        coordinates = [(float(tag.latitude), float(tag.longitude)) for tag in tags]
+        _validate_ring_shape(coordinates)
+        wkt = _polygon_wkt(coordinates)
+        calculated_area_ha = await _validate_boundary_geometry(self.session, wkt)
+
+        declared_area_ha = float(project.area_hectares or 0.0)
+        divergence_pct = _area_divergence_pct(declared_area_ha, calculated_area_ha)
+        # D-GEO-02: sinaliza, nao bloqueia.
+        divergence_flagged = divergence_pct > BOUNDARY_AREA_DIVERGENCE_WARN_PCT
+
+        await self.session.execute(
+            text(
+                """
+                insert into project_boundaries (
+                  project_id, declared_boundary, declared_area_ha, declared_source,
+                  declared_vertex_count, declared_area_divergence_pct,
+                  declared_area_divergence_flagged, active_boundary, active_boundary_tier
+                )
+                values (
+                  :project_id, ST_GeomFromText(:wkt, 4326), :area_ha, :source,
+                  :vertex_count, :divergence_pct, :divergence_flagged,
+                  ST_GeomFromText(:wkt, 4326), 'DECLARED'
+                )
+                on conflict (project_id) do update set
+                  declared_boundary = excluded.declared_boundary,
+                  declared_area_ha = excluded.declared_area_ha,
+                  declared_source = excluded.declared_source,
+                  declared_vertex_count = excluded.declared_vertex_count,
+                  declared_area_divergence_pct = excluded.declared_area_divergence_pct,
+                  declared_area_divergence_flagged = excluded.declared_area_divergence_flagged,
+                  active_boundary = excluded.active_boundary,
+                  active_boundary_tier = excluded.active_boundary_tier,
+                  updated_at = now()
+                """
+            ),
+            {
+                "project_id": str(project.id),
+                "wkt": wkt,
+                "area_ha": round(calculated_area_ha, 4),
+                "source": source,
+                "vertex_count": len(coordinates),
+                "divergence_pct": divergence_pct,
+                "divergence_flagged": divergence_flagged,
+            },
+        )
+        return {
+            "calculatedAreaHa": round(calculated_area_ha, 4),
+            "declaredAreaHa": round(declared_area_ha, 4),
+            "areaDivergencePct": divergence_pct,
+            "areaDivergenceFlagged": divergence_flagged,
+            "vertexCount": len(coordinates),
+        }
+
+    async def detect_boundary_overlaps(self, project_id: str) -> list[dict[str, Any]]:
+        """Overlap interno entre projetos do proprio Sinarca (GEOF-04).
+
+        ST_Intersects e o pre-filtro barato: em coluna com indice GiST
+        (project_boundaries_active_boundary_gix) ele usa o bounding box do
+        indice em vez de calcular geometria par a par. ST_Intersection +
+        ST_Area(::geography) so rodam para quem realmente cruza.
+
+        ST_Area precisa do cast ::geography: em geometry(Polygon, 4326) o
+        resultado sai em graus quadrados, nao em metros quadrados.
+
+        Esta fase NAO interpreta o overlap: nao cria Conflict, nao atribui
+        severidade e nao bloqueia nada. Isso e Phase 04.2 (INTG-03).
+        """
+        project = await self._get_project_model(project_id)
+        rows = (
+            await self.session.execute(
+                text(
+                    """
+                    select
+                      other_p.id::text as related_project_id,
+                      other_p.friendly_id as related_project_friendly_id,
+                      other_p.name as related_project_name,
+                      ST_Area(ST_Intersection(mine.active_boundary, other.active_boundary)::geography) / 10000.0
+                        as overlap_area_ha,
+                      (
+                        ST_Area(ST_Intersection(mine.active_boundary, other.active_boundary)::geography)
+                        / nullif(ST_Area(mine.active_boundary::geography), 0)
+                      ) * 100 as overlap_percentage,
+                      (
+                        ST_Area(ST_Intersection(mine.active_boundary, other.active_boundary)::geography)
+                        / nullif(ST_Area(other.active_boundary::geography), 0)
+                      ) * 100 as overlap_percentage_of_related
+                    from project_boundaries mine
+                    join project_boundaries other
+                      on other.project_id != mine.project_id
+                      and ST_Intersects(mine.active_boundary, other.active_boundary)
+                    join projects other_p on other_p.id = other.project_id
+                    where mine.project_id = :project_id
+                    order by overlap_percentage desc
+                    """
+                ),
+                {"project_id": str(project.id)},
+            )
+        ).mappings().all()
+
+        return [
+            {
+                "relatedProjectId": row["related_project_id"],
+                "relatedProjectFriendlyId": row["related_project_friendly_id"],
+                "relatedProjectName": row["related_project_name"],
+                "overlapAreaHa": round(float(row["overlap_area_ha"] or 0.0), 4),
+                "overlapPercentage": round(float(row["overlap_percentage"] or 0.0), 4),
+                "overlapPercentageOfRelated": round(float(row["overlap_percentage_of_related"] or 0.0), 4),
+            }
+            for row in rows
+        ]
+
+    async def boundary_item(self, project_id: str) -> dict[str, Any] | None:
+        """Geometria persistida serializada como GeoJSON (GEOF-05).
+
+        ST_AsGeoJSON emite coordenadas [longitude, latitude] — a convencao do
+        GeoJSON/PostGIS, INVERSA da convencao (latitude, longitude) usada no
+        resto do repo e pelo Leaflet. Quem consome no frontend precisa inverter.
+
+        Visao interna completa. Para o dossie publico use public_boundary_item()
+        por cima deste retorno.
+        """
+        row = (
+            await self.session.execute(
+                text(
+                    """
+                    select
+                      ST_AsGeoJSON(declared_boundary) as declared,
+                      ST_AsGeoJSON(active_boundary) as active,
+                      ST_AsGeoJSON(field_verified_boundary) as field_verified,
+                      ST_AsGeoJSON(certified_boundary) as certified,
+                      declared_area_ha,
+                      declared_vertex_count,
+                      declared_source,
+                      declared_area_divergence_pct,
+                      declared_area_divergence_flagged,
+                      active_boundary_tier
+                    from project_boundaries
+                    where project_id = :project_id
+                    """
+                ),
+                {"project_id": str(project_id)},
+            )
+        ).mappings().one_or_none()
+
+        if row is None:
+            return None
+
+        return {
+            "declared": json.loads(row["declared"]) if row["declared"] else None,
+            "active": json.loads(row["active"]) if row["active"] else None,
+            "fieldVerified": json.loads(row["field_verified"]) if row["field_verified"] else None,
+            "certified": json.loads(row["certified"]) if row["certified"] else None,
+            "declaredAreaHa": float(row["declared_area_ha"]) if row["declared_area_ha"] is not None else None,
+            "declaredVertexCount": int(row["declared_vertex_count"]) if row["declared_vertex_count"] is not None else None,
+            "declaredSource": row["declared_source"],
+            "areaDivergencePct": (
+                float(row["declared_area_divergence_pct"]) if row["declared_area_divergence_pct"] is not None else None
+            ),
+            "areaDivergenceFlagged": bool(row["declared_area_divergence_flagged"]),
+            "activeTier": row["active_boundary_tier"],
+        }
 
     async def catalog(self, role: str) -> CatalogResponse:
         role_map = {
@@ -1672,6 +1882,87 @@ def _polygon_area(coordinates: list[tuple[float, float]]) -> float:
     return abs(area) / 2
 
 
+def _ordered_ring(coordinates: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Mesma ordenacao de _polygon_area(): centroide + angulo polar via atan2.
+
+    Reaproveitar (e nao reinventar) e requisito de aceite do GEOF-02: qualquer
+    outra ordenacao mudaria a forma de poligonos nao convexos em relacao ao que
+    o usuario ve desde a Phase 3. Devolve (lat, lng) na ordem do poligono, ainda
+    NAO fechado.
+    """
+    center_lat = sum(lat for lat, _ in coordinates) / len(coordinates)
+    center_lng = sum(lng for _, lng in coordinates) / len(coordinates)
+    return sorted(coordinates, key=lambda item: math.atan2(item[0] - center_lat, item[1] - center_lng))
+
+
+def _polygon_wkt(coordinates: list[tuple[float, float]]) -> str:
+    """Constroi o WKT POLYGON a partir de tuplas (lat, lng).
+
+    ATENCAO ordem de coordenada: WKT/PostGIS/GeoJSON usam (X Y) =
+    (longitude latitude), o INVERSO da convencao (latitude, longitude) usada em
+    todo o resto deste repositorio (project_tags, tuplas Python, Leaflet).
+    Este e o unico ponto do backend que constroi WKT — nao duplicar em lugar
+    nenhum. O anel e fechado explicitamente repetindo o primeiro ponto.
+    """
+    ring = _ordered_ring(coordinates)
+    closed = ring + [ring[0]]
+    points = ", ".join(f"{lng} {lat}" for lat, lng in closed)  # lng primeiro
+    return f"POLYGON(({points}))"
+
+
+def _validate_ring_shape(coordinates: list[tuple[float, float]]) -> None:
+    """Checagens baratas em Python, antes de qualquer ida ao banco (GEOF-03)."""
+    if len(coordinates) < 4:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Polígono precisa de no mínimo 4 vértices")
+    if len(coordinates) > MAX_PROJECT_TAG_VERTICES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Polígono excede o limite técnico de {MAX_PROJECT_TAG_VERTICES} vértices",
+        )
+    if len(set(coordinates)) != len(coordinates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Vértices duplicados não são permitidos")
+    if any(lat < -90 or lat > 90 or lng < -180 or lng > 180 for lat, lng in coordinates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coordenadas fora do intervalo válido")
+
+
+def _area_divergence_pct(declared_area_ha: float, calculated_area_ha: float) -> float:
+    return round(abs(declared_area_ha - calculated_area_ha) / max(declared_area_ha, 1e-9) * 100, 4)
+
+
+async def _validate_boundary_geometry(session: AsyncSession, wkt: str) -> float:
+    """Bateria PostGIS do GEOF-03. Devolve a area geodesica em hectares.
+
+    Uma unica ida ao banco. O WKT viaja como PARAMETRO LIGADO (:wkt) — nunca
+    interpolar coordenada dentro do texto SQL entregue a session.execute().
+    ST_Area precisa do cast ::geography: em geometry(Polygon, 4326) o retorno
+    sai em graus quadrados, que nao viram hectare.
+    """
+    row = (
+        await session.execute(
+            text(
+                """
+                select
+                  ST_IsValid(g) as is_valid,
+                  ST_IsValidReason(g) as invalid_reason,
+                  ST_IsSimple(g) as is_simple,
+                  ST_Area(g::geography) / 10000.0 as area_ha
+                from (select ST_GeomFromText(:wkt, 4326) as g) t
+                """
+            ),
+            {"wkt": wkt},
+        )
+    ).mappings().one()
+
+    if not bool(row["is_valid"]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Geometria inválida: {row['invalid_reason'] or 'motivo não informado pelo PostGIS'}",
+        )
+    if not bool(row["is_simple"]):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Polígono possui autointerseção")
+    return float(row["area_ha"])
+
+
 def project_lifecycle_for_status(project_status: str | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     normalized_status = (project_status or "CREATED").upper()
     current_code = PROJECT_STATUS_TO_LIFECYCLE_CODE.get(normalized_status, "CREATED")
@@ -1835,6 +2126,25 @@ def public_certification_item(certification: Certification) -> dict[str, Any]:
         "signedDocumentHash": certification.signed_document_hash,
         "signedAt": certification.signed_at.isoformat() if certification.signed_at else None,
         "createdAt": certification.created_at.isoformat(),
+    }
+
+
+def public_boundary_item(boundary: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Visao publica da geometria (D-20/D-22).
+
+    Mesmo padrao de public_certification_item/public_document_item: a geometria
+    em si ja e publica (os vertices aparecem no dossie desde a Phase 3), mas
+    declaredSource e a telemetria de divergencia de area sao metadados internos
+    de validacao e nao saem no dossie publico.
+    """
+    if boundary is None:
+        return None
+    return {
+        "declared": boundary["declared"],
+        "active": boundary["active"],
+        "declaredAreaHa": boundary["declaredAreaHa"],
+        "declaredVertexCount": boundary["declaredVertexCount"],
+        "activeTier": boundary["activeTier"],
     }
 
 

@@ -363,6 +363,84 @@ on conflict (tag_uid) where tag_uid is not null do update set
   last_seen_at = excluded.last_seen_at,
   metadata = excluded.metadata;
 
+-- Phase 04.1 / GEOF-02: `npx supabase db reset` applies every migration in
+-- supabase/migrations/ BEFORE running this seed file, so the backfill
+-- migration (202608150004_backfill_declared_boundaries.sql) runs against an
+-- empty project_tags table on a fresh local reset and backfills 0 rows.
+-- Re-running the exact same idempotent (upsert on project_id) backfill body
+-- here, after project_tags is seeded, guarantees PRC-2024-002 ends up with a
+-- declared_boundary row on every fresh reset, matching the migration's own
+-- ordering/coordinate-order/geography-cast logic exactly. Safe to re-run any
+-- number of times (on conflict do update), including in non-local environments
+-- where the migration already backfilled real project_tags data.
+with centroids as (
+  select
+    t.project_id,
+    avg(t.latitude) as c_lat,
+    avg(t.longitude) as c_lng,
+    count(*) as vertex_count
+  from public.project_tags t
+  group by t.project_id
+  having count(*) >= 4
+),
+ordered as (
+  select
+    t.project_id,
+    t.latitude,
+    t.longitude,
+    atan2(t.latitude - c.c_lat, t.longitude - c.c_lng) as angle
+  from public.project_tags t
+  join centroids c on c.project_id = t.project_id
+),
+rings as (
+  select
+    o.project_id,
+    ST_MakeLine(
+      array_agg(
+        ST_SetSRID(ST_MakePoint(o.longitude::float8, o.latitude::float8), 4326)
+        order by o.angle
+      )
+    ) as open_line
+  from ordered o
+  group by o.project_id
+),
+polygons as (
+  select
+    r.project_id,
+    ST_MakePolygon(ST_AddPoint(r.open_line, ST_StartPoint(r.open_line))) as boundary
+  from rings r
+)
+insert into project_boundaries (
+  project_id,
+  declared_boundary,
+  declared_area_ha,
+  declared_source,
+  declared_vertex_count,
+  active_boundary,
+  active_boundary_tier,
+  metadata
+)
+select
+  p.project_id,
+  p.boundary,
+  round((ST_Area(p.boundary::geography) / 10000.0)::numeric, 4),
+  'backfill_qtag_shoelace_v1',
+  c.vertex_count,
+  p.boundary,
+  'DECLARED',
+  jsonb_build_object('backfill_migration', '202608150004_backfill_declared_boundaries')
+from polygons p
+join centroids c on c.project_id = p.project_id
+where ST_IsValid(p.boundary)
+on conflict (project_id) do update set
+  declared_boundary = excluded.declared_boundary,
+  declared_area_ha = excluded.declared_area_ha,
+  declared_source = excluded.declared_source,
+  declared_vertex_count = excluded.declared_vertex_count,
+  active_boundary = excluded.active_boundary,
+  active_boundary_tier = excluded.active_boundary_tier,
+  updated_at = now();
+
 insert into project_baselines (project_id, sentinel_scene_id, baseline_hash, points_analyzed, vegetation_cover_pct, ndvi_mean, captured_at, evidence_uri)
 values
   ((select id from projects where friendly_id = 'PRC-2024-002'), 'S2A_MSIL2A_20240215T133241_N0509_R081_T22LHH', 'baseline-prc-2024-002-cerrado', 5000, 72.400, 0.681, '2024-02-15T13:32:41Z', 's3://sinarca-seed/baselines/PRC-2024-002.json'),

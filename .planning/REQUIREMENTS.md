@@ -45,11 +45,11 @@ Requisitos do milestone v1.0. Cada um mapeia para exatamente uma fase do roadmap
 
 ### Fundação Geoespacial (Phase 4.1 — geospatial-foundation) *(inserida 2026-08-14)*
 
-- [ ] **GEOF-01**: `postgis` está habilitado no Supabase e `project_boundaries` armazena `geometry(Polygon, 4326)` com colunas `declared_boundary`/`field_verified_boundary`/`certified_boundary`/`active_boundary`.
-- [ ] **GEOF-02**: Todo projeto com QTAGs existentes (Phase 3) tem `declared_boundary` populada via backfill, sem perda de área/vértices em relação ao cálculo shoelace anterior.
-- [ ] **GEOF-03**: `ST_IsValid`, autointerseção, vértices duplicados e divergência entre área declarada e calculada são validados no backend antes de persistir.
-- [ ] **GEOF-04**: `ST_Intersects`/`ST_Area` detectam overlap entre dois projetos do próprio Sinarca e calculam `overlapPercentage`.
-- [ ] **GEOF-05**: `ProjectGeofencePreview` (frontend) passa a renderizar a partir da geometria persistida, não do recálculo client-side dos 4 pontos.
+- [x] **GEOF-01**: `postgis` está habilitado no Supabase e `project_boundaries` armazena `geometry(Polygon, 4326)` com colunas `declared_boundary`/`field_verified_boundary`/`certified_boundary`/`active_boundary`.
+- [x] **GEOF-02**: Todo projeto com QTAGs existentes (Phase 3) tem `declared_boundary` populada via backfill, sem perda de área/vértices em relação ao cálculo shoelace anterior.
+- [x] **GEOF-03**: `ST_IsValid`, autointerseção, vértices duplicados e divergência entre área declarada e calculada são validados no backend antes de persistir.
+- [x] **GEOF-04**: `ST_Intersects`/`ST_Area` detectam overlap entre dois projetos do próprio Sinarca e calculam `overlapPercentage`.
+- [x] **GEOF-05**: `ProjectGeofencePreview` (frontend) passa a renderizar a partir da geometria persistida, não do recálculo client-side dos 4 pontos.
 
 ### Fundação do Integrity Layer (Phase 4.2 — integrity-layer-foundation) *(inserida 2026-08-14)*
 

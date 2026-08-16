@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-08-15T13:43:27.862Z"
-last_activity: 2026-08-15 -- Phase 04 marked complete
+stopped_at: Completed 04.1 (geospatial-foundation) — UAT + security verified
+last_updated: "2026-08-16T08:54:15.498Z"
+last_activity: 2026-08-16 -- Phase 04.1 verified (UAT 6/6, security 22/22 threats closed)
 progress:
   total_phases: 13
-  completed_phases: 4
-  total_plans: 23
-  completed_plans: 23
+  completed_phases: 5
+  total_plans: 28
+  completed_plans: 28
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 04 — certification-workbench
+**Current focus:** Phase 04.2 — integrity-layer-foundation
 
 ## Current Position
 
-Phase: 04 — COMPLETE
-Plan: 7 of 7 complete
-Status: Phase 04 complete
-Last activity: 2026-08-15 -- Phase 04 marked complete
+Phase: 04.2
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-16 -- Phase 04.1 (geospatial-foundation) complete: PostGIS foundation, backfill, validation, overlap detection, persisted-geometry rendering. UAT 6/6 passed. Security 22/22 threats closed.
 
 Progress: [███████░░░] 74%
 
@@ -36,7 +36,7 @@ Progress: [███████░░░] 74%
 
 **Velocity:**
 
-- Total plans completed: 17
+- Total plans completed: 22
 - Average duration: tracked in per-plan summaries where available
 - Total execution time: tracked in phase summaries where available
 
@@ -58,6 +58,12 @@ Progress: [███████░░░] 74%
 | Phase 04-certification-workbench P05 | 35min | 3 tasks | 3 files |
 | Phase 04-certification-workbench P06 | 25min | 3 tasks | 2 files |
 | Phase 04-certification-workbench P07 | 30min | 3 tasks | 6 files |
+| Phase 04.1 P01 | 30min | 3 tasks | 7 files |
+| Phase 04.1 P02 | 15min | 3 tasks | 2 files |
+| Phase 04.1 P03 | 20min | 3 tasks | 4 files |
+| Phase 04.1-geospatial-foundation P04 | 25min | 3 tasks | 4 files |
+| Phase 04.1 P05 | 10min | 3 tasks | 6 files |
+| 04.1 | 5 | - | - |
 
 ## Accumulated Context
 
@@ -118,6 +124,17 @@ Progress: [███████░░░] 74%
 - [Phase 04-certification-workbench]: [Phase 04-certification-workbench]: GET /projects/{id}/certification-history entrega a trilha interna completa (com notes) para produtor dono, certificadora do projeto e admin, guardado por _assert_project_edit_permission org-scoped e nao apenas require_role.
 - [Phase 04-certification-workbench]: GET /projects/{id}/certificate usa optional_user (nao require_role) e converte 401/403 de _assert_project_edit_permission em 403 uniforme, para nao disparar clearAuthSession() no visitante anonimo do dossie publico.
 - [Phase 04-certification-workbench]: Dossie publico (MrcaDetails.tsx) exibe referencia/hash/download condicional do certificado e a linha do tempo publica de decisoes finais; codigo morto cert.notes removido, sem regressao de minimizacao (D-20).
+- [Phase 04.1-01]: PostGIS 3.3.7 enabled; project_boundaries e a fundacao geoespacial aditiva, sem tocar project_tags.
+- [Phase 04.1-01]: D-GEO-01 -- project_boundaries e tabela operacional interna: RLS habilitado, DML revogado de anon/authenticated, sem policy de select; geometria so chega ao cliente via backend_app (GeoJSON).
+- [Phase 04.1-01]: D-GEO-03 -- active_boundary espelha declared_boundary por codigo (migration/seed), nunca por trigger; active_boundary_tier = 'DECLARED' nesta fase.
+- [Phase 04.1-01]: Backfill do declared_boundary reusa exatamente o algoritmo centroide + atan2 de _polygon_area()/orderTagsForPolygon(); PRC-2024-002 backfilled com vertices/area identicos ao calculo shoelace anterior (1e-12).
+- [Phase 04.1-01]: npx supabase db reset aplica migrations antes de seed.sql; a logica idempotente de backfill foi replicada em supabase/seed.sql (apos inserir project_tags) para garantir PRC-2024-002 backfilled em todo reset local fresco.
+- [Phase 04.1]: D-GEO-02: divergencia de area declarada vs calculada e sempre computada, sempre persistida, sempre exposta, e NUNCA bloqueia persistencia nesta fase. Limiar BOUNDARY_AREA_DIVERGENCE_WARN_PCT = 10.0 (flag-only). No retangulo dos fixtures de teste a heuristica _area_from_tags() devolve ~104.93 ha contra ~486 ha geodesicos (ST_Area(::geography)) -- ~363% de divergencia; um limiar bloqueante rejeitaria todo projeto existente. Falhas topologicas (ST_IsValid/ST_IsSimple falso, vertices duplicados, <4 ou >500 vertices) SEGUEM bloqueando com HTTP 400.
+- [Phase 04.1]: tests/ nao tem __init__.py, entao import estilo pacote (tests.test_certifier_workbench) nao resolve na config de pytest deste repo; fixtures HTTP foram copiadas verbatim em tests/test_project_boundaries.py em vez de importadas, conforme fallback ja documentado no proprio plano.
+- [Phase 04.1-03]: GEOF-04: detect_boundary_overlaps e GET /projects/{id}/boundary-overlaps sao deteccao/medicao apenas via ST_Intersects (pre-filtro GiST) + ST_Area(ST_Intersection(...)::geography); nenhum Conflict, severidade ou threshold criado (Phase 04.2/INTG-03)
+- [Phase 04.1-03]: Endpoint boundary-overlaps guardado org-scoped pelo mesmo require_role + _assert_project_edit_permission de /projects/{id}/pendencies, porque overlap revela existencia e proximidade geometrica de projetos de terceiros (T-041-11)
+- [Phase 04.1-04]: boundary_item/public_boundary_item mirroram o padrao certification_item/document_item: dossie publico recebe geometria + declaredAreaHa + declaredVertexCount + activeTier; revisao do certificador recebe o objeto completo com declaredSource e ambos os campos de divergencia de area (D-GEO-02).
+- [Phase 04.1]: Frontend GEOF-05: ProjectGeofencePreview passa a renderizar boundary GeoJSON persistido (dossie publico e revisao do certificador), com fallback client-side quando boundary e null; wizard de originacao continua recalculando ao vivo, intencionalmente sem a prop boundary.
 
 ### Roadmap Evolution
 
@@ -139,7 +156,7 @@ Progress: [███████░░░] 74%
 
 - Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
 - Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
-- Planejar Phase 04.1 (`geospatial-foundation`) — pré-requisito bloqueante de 04.2 e da Phase 5 expandida; nenhuma das duas pode ser executada antes dela.
+- ~~Planejar Phase 04.1 (`geospatial-foundation`)~~ — concluído 2026-08-16 (5/5 plans, UAT 6/6, security 22/22). Phase 04.2 e Phase 5 expandida agora desbloqueadas.
 - Decidir e documentar build vs. buy de provedor de registro externo (ONR/SIGEF/CAR) antes de planejar a Phase 05.1 — sem fornecedor definido em 2026-08-14.
 
 ### Blockers/Concerns
@@ -162,6 +179,6 @@ Progress: [███████░░░] 74%
 
 ## Session Continuity
 
-Last session: 2026-08-15T13:42:19.383Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-08-16T02:53:33.233Z
+Stopped at: Completed 04.1-05-PLAN.md
 Resume file: None

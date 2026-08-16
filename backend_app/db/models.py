@@ -210,6 +210,38 @@ class ProjectTag(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
+class ProjectBoundary(Base):
+    """Geometria persistida do projeto (Phase 04.1).
+
+    As quatro colunas geometry(Polygon, 4326) — declared_boundary,
+    field_verified_boundary, certified_boundary e active_boundary — NAO sao
+    mapeadas aqui de proposito: o repo nao usa GeoAlchemy2, e toda leitura/
+    escrita de geometria acontece por SQL parametrizado com funcoes ST_*
+    (ST_GeomFromText, ST_AsGeoJSON, ST_Intersects). SQLAlchemy nao exige
+    cobertura total das colunas da tabela.
+    """
+
+    __tablename__ = "project_boundaries"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    declared_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    declared_source: Mapped[str | None] = mapped_column(String)
+    declared_vertex_count: Mapped[int | None] = mapped_column()
+    declared_area_divergence_pct: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    declared_area_divergence_flagged: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    field_verified_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    field_verified_source: Mapped[str | None] = mapped_column(String)
+    field_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    certified_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    certified_source: Mapped[str | None] = mapped_column(String)
+    certified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active_boundary_tier: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DECLARED'"))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
 class ProjectBaseline(Base):
     __tablename__ = "project_baselines"
 
