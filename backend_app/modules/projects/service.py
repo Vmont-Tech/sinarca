@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import base64
 import binascii
+import json
 import math
 import uuid
 from datetime import datetime, timezone
@@ -334,6 +335,7 @@ class ProjectsService:
             project=project_dto,
             tags=[tag_item(tag) for tag in tags],
             baseline=baseline_item(baseline),
+            boundary=public_boundary_item(await self.boundary_item(str(project.id))),
             certifications=[public_certification_item(item) for item in certifications],
             audits=[audit_item(item) for item in audits],
             documents=[
@@ -1121,6 +1123,57 @@ class ProjectsService:
             }
             for row in rows
         ]
+
+    async def boundary_item(self, project_id: str) -> dict[str, Any] | None:
+        """Geometria persistida serializada como GeoJSON (GEOF-05).
+
+        ST_AsGeoJSON emite coordenadas [longitude, latitude] — a convencao do
+        GeoJSON/PostGIS, INVERSA da convencao (latitude, longitude) usada no
+        resto do repo e pelo Leaflet. Quem consome no frontend precisa inverter.
+
+        Visao interna completa. Para o dossie publico use public_boundary_item()
+        por cima deste retorno.
+        """
+        row = (
+            await self.session.execute(
+                text(
+                    """
+                    select
+                      ST_AsGeoJSON(declared_boundary) as declared,
+                      ST_AsGeoJSON(active_boundary) as active,
+                      ST_AsGeoJSON(field_verified_boundary) as field_verified,
+                      ST_AsGeoJSON(certified_boundary) as certified,
+                      declared_area_ha,
+                      declared_vertex_count,
+                      declared_source,
+                      declared_area_divergence_pct,
+                      declared_area_divergence_flagged,
+                      active_boundary_tier
+                    from project_boundaries
+                    where project_id = :project_id
+                    """
+                ),
+                {"project_id": str(project_id)},
+            )
+        ).mappings().one_or_none()
+
+        if row is None:
+            return None
+
+        return {
+            "declared": json.loads(row["declared"]) if row["declared"] else None,
+            "active": json.loads(row["active"]) if row["active"] else None,
+            "fieldVerified": json.loads(row["field_verified"]) if row["field_verified"] else None,
+            "certified": json.loads(row["certified"]) if row["certified"] else None,
+            "declaredAreaHa": float(row["declared_area_ha"]) if row["declared_area_ha"] is not None else None,
+            "declaredVertexCount": int(row["declared_vertex_count"]) if row["declared_vertex_count"] is not None else None,
+            "declaredSource": row["declared_source"],
+            "areaDivergencePct": (
+                float(row["declared_area_divergence_pct"]) if row["declared_area_divergence_pct"] is not None else None
+            ),
+            "areaDivergenceFlagged": bool(row["declared_area_divergence_flagged"]),
+            "activeTier": row["active_boundary_tier"],
+        }
 
     async def catalog(self, role: str) -> CatalogResponse:
         role_map = {
@@ -2073,6 +2126,25 @@ def public_certification_item(certification: Certification) -> dict[str, Any]:
         "signedDocumentHash": certification.signed_document_hash,
         "signedAt": certification.signed_at.isoformat() if certification.signed_at else None,
         "createdAt": certification.created_at.isoformat(),
+    }
+
+
+def public_boundary_item(boundary: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Visao publica da geometria (D-20/D-22).
+
+    Mesmo padrao de public_certification_item/public_document_item: a geometria
+    em si ja e publica (os vertices aparecem no dossie desde a Phase 3), mas
+    declaredSource e a telemetria de divergencia de area sao metadados internos
+    de validacao e nao saem no dossie publico.
+    """
+    if boundary is None:
+        return None
+    return {
+        "declared": boundary["declared"],
+        "active": boundary["active"],
+        "declaredAreaHa": boundary["declaredAreaHa"],
+        "declaredVertexCount": boundary["declaredVertexCount"],
+        "activeTier": boundary["activeTier"],
     }
 
 

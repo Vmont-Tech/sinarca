@@ -98,6 +98,7 @@ class ProjectPublicDossierResponse(BaseModel):
     project: ProjectMRCA
     tags: list[dict[str, Any]]
     baseline: dict[str, Any] | None = None
+    boundary: dict[str, Any] | None = None
     certifications: list[dict[str, Any]]
     audits: list[dict[str, Any]]
     documents: list[dict[str, Any]]
@@ -122,6 +123,7 @@ class CertifierReviewResponse(BaseModel):
     success: bool = True
     project: ProjectMRCA
     baseline: dict[str, Any] | None = None
+    boundary: dict[str, Any] | None = None
     tags: list[dict[str, Any]] = []
     documents: list[dict[str, Any]] = []
     dossier: dict[str, Any]
