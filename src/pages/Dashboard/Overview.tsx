@@ -113,7 +113,10 @@ export default function Overview() {
                 const data = await database.getMarketProjects({
                     limit: 1000,
                     ownedOnly: isProducerAccount,
-                    portfolioOnly: isProducerAccount,
+                    // portfolio_only excludes pre-certification statuses (CREATED, REGISTERED, ...)
+                    // by API contract; producers need to see their own projects at every stage here
+                    // (same fix as Feed.tsx's loadStats/loadMRCAs).
+                    portfolioOnly: false,
                 });
                 const savedProjects = (data || []).filter((item: any) =>
                     (item.friendlyId || item.projectId) &&
