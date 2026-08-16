@@ -22,8 +22,8 @@ A ingestão de `.planning/docs/bible/14_Novos_requisitos.md` (Sinarca Integrity 
 - [x] **Phase 1: backend-rebuild** - Reconstruir o backend, cobrir os fluxos do frontend dependentes de dados e preparar validação local/staging.
 - [x] **Phase 2: public-transparency-and-profiles** - Fechar experiência pública, dossiê público de projeto, explorer, perfis públicos, cadastro por perfil e edição de perfil.
 - [x] **Phase 3: project-origination-and-documents** - Completar originação do projeto com produtor, localização, metodologia, QTAGs/NFC, geofence, documentos e timeline canônica.
-- [ ] **Phase 4: certification-workbench** - Completar revisão da certificadora, decisão técnica, certificado/documento, histórico e orquestração para lastro/mint bloqueado.
-- [ ] **Phase 4.1: geospatial-foundation** *(inserida)* - Introduzir PostGIS e perímetro real (geometry), backfill dos QTAGs e overlap interno — pré-requisito comum do Integrity Layer e do Satellite Monitoring.
+- [x] **Phase 4: certification-workbench** - Completar revisão da certificadora, decisão técnica, certificado/documento, histórico e orquestração para lastro/mint bloqueado.
+- [x] **Phase 4.1: geospatial-foundation** *(inserida)* - Introduzir PostGIS e perímetro real (geometry), backfill dos QTAGs e overlap interno — pré-requisito comum do Integrity Layer e do Satellite Monitoring.
 - [ ] **Phase 4.2: integrity-layer-foundation** *(inserida)* - Claim/Evidence/Conflict, estados de confiança, Risk Score e detecção de duplicidade — P0 do Sinarca Integrity Layer.
 - [ ] **Phase 5: satellite-monitoring-and-field-audit** *(expandida)* - Completar auditoria de campo e monitoramento via Copernicus Sentinel-2 real (NDVI/NDMI/NBR, reconstrução histórica, anomalias), substituindo o baseline determinístico atual.
 - [ ] **Phase 5.1: integrity-review-and-external-registries** *(inserida)* - Four-eyes review e verificação de registros oficiais (ONR/SIGEF/CAR) — começa pela decisão de build vs. buy, sem fornecedor definido hoje.

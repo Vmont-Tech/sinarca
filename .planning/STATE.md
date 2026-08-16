@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 04.1-05-PLAN.md
-last_updated: "2026-08-16T02:53:33.238Z"
-last_activity: 2026-08-16
+status: completed
+stopped_at: Completed 04.1 (geospatial-foundation) — UAT + security verified
+last_updated: "2026-08-16T08:54:15.498Z"
+last_activity: 2026-08-16 -- Phase 04.1 verified (UAT 6/6, security 22/22 threats closed)
 progress:
   total_phases: 13
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 04.1 — geospatial-foundation
+**Current focus:** Phase 04.2 — integrity-layer-foundation
 
 ## Current Position
 
-Phase: 04.1 (geospatial-foundation) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-08-16
+Phase: 04.2
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-16 -- Phase 04.1 (geospatial-foundation) complete: PostGIS foundation, backfill, validation, overlap detection, persisted-geometry rendering. UAT 6/6 passed. Security 22/22 threats closed.
 
 Progress: [███████░░░] 74%
 
@@ -36,7 +36,7 @@ Progress: [███████░░░] 74%
 
 **Velocity:**
 
-- Total plans completed: 17
+- Total plans completed: 22
 - Average duration: tracked in per-plan summaries where available
 - Total execution time: tracked in phase summaries where available
 
@@ -63,6 +63,7 @@ Progress: [███████░░░] 74%
 | Phase 04.1 P03 | 20min | 3 tasks | 4 files |
 | Phase 04.1-geospatial-foundation P04 | 25min | 3 tasks | 4 files |
 | Phase 04.1 P05 | 10min | 3 tasks | 6 files |
+| 04.1 | 5 | - | - |
 
 ## Accumulated Context
 
@@ -155,7 +156,7 @@ Progress: [███████░░░] 74%
 
 - Planejar Phase 4 (`certification-workbench`) a partir de `.planning/phases/04-certification-workbench/04-CONTEXT.md`.
 - Antes de seguir para execução de Phase 4, confirmar se a branch `feat/fase-3-originacao-documentos` já foi revisada/shipada conforme fluxo de PR.
-- Planejar Phase 04.1 (`geospatial-foundation`) — pré-requisito bloqueante de 04.2 e da Phase 5 expandida; nenhuma das duas pode ser executada antes dela.
+- ~~Planejar Phase 04.1 (`geospatial-foundation`)~~ — concluído 2026-08-16 (5/5 plans, UAT 6/6, security 22/22). Phase 04.2 e Phase 5 expandida agora desbloqueadas.
 - Decidir e documentar build vs. buy de provedor de registro externo (ONR/SIGEF/CAR) antes de planejar a Phase 05.1 — sem fornecedor definido em 2026-08-14.
 
 ### Blockers/Concerns
