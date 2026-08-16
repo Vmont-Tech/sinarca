@@ -16,6 +16,11 @@ re-run: projects that already have an assessment are skipped.
 Usage (from the repo root, against the local Supabase Postgres):
     DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:54322/postgres \\
         .venv/bin/python scripts/backfill_project_integrity.py
+
+The Supabase CLI has no post-seed hook, so `npx supabase db reset` alone will
+never run this on its own -- use `npm run db:reset` instead (chains
+`supabase db reset` with this script) to get seeded projects with a real risk
+assessment on every reset, not just the first time.
 """
 
 from __future__ import annotations
