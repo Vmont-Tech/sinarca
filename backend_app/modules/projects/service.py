@@ -1064,6 +1064,64 @@ class ProjectsService:
             "vertexCount": len(coordinates),
         }
 
+    async def detect_boundary_overlaps(self, project_id: str) -> list[dict[str, Any]]:
+        """Overlap interno entre projetos do proprio Sinarca (GEOF-04).
+
+        ST_Intersects e o pre-filtro barato: em coluna com indice GiST
+        (project_boundaries_active_boundary_gix) ele usa o bounding box do
+        indice em vez de calcular geometria par a par. ST_Intersection +
+        ST_Area(::geography) so rodam para quem realmente cruza.
+
+        ST_Area precisa do cast ::geography: em geometry(Polygon, 4326) o
+        resultado sai em graus quadrados, nao em metros quadrados.
+
+        Esta fase NAO interpreta o overlap: nao cria Conflict, nao atribui
+        severidade e nao bloqueia nada. Isso e Phase 04.2 (INTG-03).
+        """
+        project = await self._get_project_model(project_id)
+        rows = (
+            await self.session.execute(
+                text(
+                    """
+                    select
+                      other_p.id::text as related_project_id,
+                      other_p.friendly_id as related_project_friendly_id,
+                      other_p.name as related_project_name,
+                      ST_Area(ST_Intersection(mine.active_boundary, other.active_boundary)::geography) / 10000.0
+                        as overlap_area_ha,
+                      (
+                        ST_Area(ST_Intersection(mine.active_boundary, other.active_boundary)::geography)
+                        / nullif(ST_Area(mine.active_boundary::geography), 0)
+                      ) * 100 as overlap_percentage,
+                      (
+                        ST_Area(ST_Intersection(mine.active_boundary, other.active_boundary)::geography)
+                        / nullif(ST_Area(other.active_boundary::geography), 0)
+                      ) * 100 as overlap_percentage_of_related
+                    from project_boundaries mine
+                    join project_boundaries other
+                      on other.project_id != mine.project_id
+                      and ST_Intersects(mine.active_boundary, other.active_boundary)
+                    join projects other_p on other_p.id = other.project_id
+                    where mine.project_id = :project_id
+                    order by overlap_percentage desc
+                    """
+                ),
+                {"project_id": str(project.id)},
+            )
+        ).mappings().all()
+
+        return [
+            {
+                "relatedProjectId": row["related_project_id"],
+                "relatedProjectFriendlyId": row["related_project_friendly_id"],
+                "relatedProjectName": row["related_project_name"],
+                "overlapAreaHa": round(float(row["overlap_area_ha"] or 0.0), 4),
+                "overlapPercentage": round(float(row["overlap_percentage"] or 0.0), 4),
+                "overlapPercentageOfRelated": round(float(row["overlap_percentage_of_related"] or 0.0), 4),
+            }
+            for row in rows
+        ]
+
     async def catalog(self, role: str) -> CatalogResponse:
         role_map = {
             "certifiers": ("Certifier", "certifiers"),
