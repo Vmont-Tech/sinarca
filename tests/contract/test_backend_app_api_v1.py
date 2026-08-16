@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 import uuid
 import asyncio
@@ -1627,3 +1628,67 @@ def test_integrity_endpoint_is_org_scoped() -> None:
 
     anonymous_response = client.get(f"/api/v1/projects/{friendly_id}/integrity")
     assert anonymous_response.status_code == 401
+
+
+# ----------------------------------------------------------------------
+# Phase 04.2 Plan 05: bloco integrity minimizado no dossie publico (INTG-05)
+# ----------------------------------------------------------------------
+
+PUBLIC_INTEGRITY_STATUSES = {"DECLARED", "VERIFIED", "UNDER_REVIEW", "ON_HOLD", "SUSPENDED", "REVOKED"}
+
+
+def _get_public_dossier_integrity(friendly_id: str) -> dict[str, object]:
+    # Visitante anonimo -- sem header de auth, mesmo padrao ja usado por
+    # test_risk_auto_hold_never_changes_operational_status.
+    response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert response.status_code == 200, response.text
+    return response.json()["integrity"]
+
+
+def test_public_dossier_integrity_uses_public_vocabulary() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_public_dossier_integrity(project["friendlyId"])
+
+    assert integrity is not None
+    assert integrity["publicStatus"] in PUBLIC_INTEGRITY_STATUSES
+
+
+def test_public_dossier_integrity_is_minimized() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_public_dossier_integrity(project["friendlyId"])
+
+    assert set(integrity.keys()) == {
+        "publicStatus",
+        "riskScore",
+        "riskClass",
+        "conflictCount",
+        "assessedAt",
+        "signals",
+    }
+    for signal in integrity["signals"]:
+        assert set(signal.keys()) == {"code", "weight", "reason"}
+
+    serialized = json.dumps(integrity)
+    for leaked in ("relatedProject", "metadata", "integrityStatus", "autoHold", "trigger"):
+        assert leaked not in serialized, (leaked, serialized)
+
+
+def test_public_dossier_integrity_reasons_are_human_readable() -> None:
+    project = create_integrity_test_project()
+    integrity = _get_public_dossier_integrity(project["friendlyId"])
+
+    assert integrity["signals"], integrity
+    for signal in integrity["signals"]:
+        assert isinstance(signal["reason"], str) and len(signal["reason"]) > 10
+        assert "PRC-" not in signal["reason"]
+
+
+def test_public_dossier_on_hold_project_does_not_show_bare_certified() -> None:
+    _, project_b = _create_identical_geometry_pair()
+    integrity_b = _get_public_dossier_integrity(project_b["friendlyId"])
+
+    assert integrity_b["publicStatus"] == "ON_HOLD"
+
+    dossier_response = client.get(f"/api/v1/projects/{project_b['friendlyId']}/public-dossier")
+    assert dossier_response.status_code == 200, dossier_response.text
+    assert dossier_response.json()["project"]["status"] != integrity_b["publicStatus"]

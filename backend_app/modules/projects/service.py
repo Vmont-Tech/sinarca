@@ -37,6 +37,7 @@ from backend_app.db.models import (
     TreasuryAuthorization,
 )
 from backend_app.db.repositories import create_audit_event
+from backend_app.modules.integrity.constants import PUBLIC_RISK_SIGNAL_CODES
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
     BlockchainData,
@@ -347,6 +348,7 @@ class ProjectsService:
             tags=[tag_item(tag) for tag in tags],
             baseline=baseline_item(baseline),
             boundary=public_boundary_item(await self.boundary_item(str(project.id))),
+            integrity=public_integrity_item(await self.integrity.integrity_summary(project)),
             certifications=[public_certification_item(item) for item in certifications],
             audits=[audit_item(item) for item in audits],
             documents=[
@@ -2205,6 +2207,35 @@ def public_boundary_item(boundary: dict[str, Any] | None) -> dict[str, Any] | No
         "declaredAreaHa": boundary["declaredAreaHa"],
         "declaredVertexCount": boundary["declaredVertexCount"],
         "activeTier": boundary["activeTier"],
+    }
+
+
+def public_integrity_item(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Visao publica da integridade (D-16/D-17 / Bible secao 40 e 42).
+
+    Allowlist explicita, mesmo principio de PUBLIC_DOCUMENT_TYPES: o dossie
+    publico recebe o vocabulario de status, a classe/score de risco e as razoes
+    em texto — NUNCA o metadata dos sinais (que carrega ids de projetos de
+    terceiros), nunca relatedProjectId, nunca o trigger interno.
+    """
+    if summary is None:
+        return None
+    signals = [
+        {
+            "code": signal["code"],
+            "weight": signal["weight"],
+            "reason": signal["reason"],
+        }
+        for signal in summary.get("signals", [])
+        if signal.get("publicSafe") and signal.get("code") in PUBLIC_RISK_SIGNAL_CODES
+    ]
+    return {
+        "publicStatus": summary["publicStatus"],
+        "riskScore": summary["riskScore"],
+        "riskClass": summary["riskClass"],
+        "conflictCount": summary["conflictCount"],
+        "assessedAt": summary["assessedAt"],
+        "signals": signals,
     }
 
 

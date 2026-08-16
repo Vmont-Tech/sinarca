@@ -99,6 +99,7 @@ class ProjectPublicDossierResponse(BaseModel):
     tags: list[dict[str, Any]]
     baseline: dict[str, Any] | None = None
     boundary: dict[str, Any] | None = None
+    integrity: dict[str, Any] | None = None
     certifications: list[dict[str, Any]]
     audits: list[dict[str, Any]]
     documents: list[dict[str, Any]]
