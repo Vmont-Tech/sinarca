@@ -216,8 +216,8 @@ class ProjectsService:
 
     @property
     def integrity(self) -> "IntegrityService":
-        # Import local: IntegrityService.detect_and_persist_conflicts (Plan 03)
-        # importa ProjectsService de volta. Import no topo criaria ciclo.
+        # Import local: o modulo integrity (Plan 03, Conflict) importa
+        # ProjectsService de volta. Import no topo criaria ciclo.
         from backend_app.modules.integrity.service import IntegrityService
 
         if self._integrity is None:
@@ -905,6 +905,10 @@ class ProjectsService:
         # alem do que ja foi validado acima.
         await self.integrity.create_origination_claims(project, actor_id=actor_id, actor_role=actor_role)
 
+        # Phase 04.2 / INTG-03 (D-09/D-11): interpreta o overlap ja calculado
+        # pela Phase 04.1 e persiste Conflict com severidade, de forma sincrona.
+        await self.integrity.detect_and_persist_conflicts(project, actor_id=actor_id, actor_role=actor_role)
+
         await create_audit_event(
             self.session,
             action="PROJECT_CREATED",
@@ -996,6 +1000,10 @@ class ProjectsService:
 
             await self.session.flush()
             await self.persist_project_boundary(project, payload.tags)
+
+            # D-23: editar a geometria muda o overlap; Conflict e RE-DERIVADO
+            # (resolve o que deixou de intersectar, atualiza o que continua).
+            await self.integrity.detect_and_persist_conflicts(project, actor_id=actor_id, actor_role=actor_role)
 
         await create_audit_event(
             self.session,
