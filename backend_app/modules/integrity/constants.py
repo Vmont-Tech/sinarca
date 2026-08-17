@@ -112,6 +112,11 @@ RISK_SIGNAL_CODES: tuple[str, ...] = (
     "LAND_CLAIM_UNVERIFIED",
     "CLAIM_EVIDENCE_PENDING",
     "POSSESSION_WITHOUT_TITLE",
+    # NOVO -- Phase 05 / D-20: anomalia satelital confirmada por decisao humana.
+    # risk_signals.code e text sem CHECK (202608170002), entao nenhuma migration
+    # e necessaria para este acrescimo.
+    "SATELLITE_ANOMALY_CONFIRMED_CRITICAL",
+    "SATELLITE_ANOMALY_CONFIRMED_HIGH",
 )
 
 # Allowlist de minimizacao (mesmo principio de PUBLIC_DOCUMENT_TYPES): apenas
