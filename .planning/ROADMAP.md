@@ -200,8 +200,8 @@ Plans:
 **Plans**: 9 plans em 6 waves
 
 Plans:
-- [ ] 05-01-PLAN.md — Fundação: `httpx`/APScheduler, thresholds em `Settings`, vocabulário satelital, 7 tabelas (RLS sem policy, idempotência D-15) e task `[BLOCKING]` de schema push (SATM-05/06/09/10).
-- [ ] 05-02-PLAN.md — Auditoria de campo no backend: upload real de evidência, assinatura stub SHA-256 recalculada no servidor e minimização do laudo no dossiê público (SATM-01/02/03).
+- [x] 05-01-PLAN.md — Fundação: `httpx`/APScheduler, thresholds em `Settings`, vocabulário satelital, 7 tabelas (RLS sem policy, idempotência D-15) e task `[BLOCKING]` de schema push (SATM-05/06/09/10).
+- [x] 05-02-PLAN.md — Auditoria de campo no backend: upload real de evidência, assinatura stub SHA-256 recalculada no servidor e minimização do laudo no dossiê público (SATM-01/02/03).
 - [ ] 05-03-PLAN.md — `SatelliteProvider` + `CopernicusProvider` fail-closed sobre `httpx.AsyncClient`: OAuth2 cacheado, semáforo de 2 requests, STAC/Statistical/Process e consumo em `copernicus_api_usage` (SATM-05/10).
 - [ ] 05-04-PLAN.md — `AnomalyDetector` puro (nunca `DEFORESTATION`) e sinal `SATELLITE_ANOMALY_CONFIRMED_*` no Risk Engine da Phase 04.2 (SATM-06/08).
 - [ ] 05-05-PLAN.md — Persistência idempotente, reconstrução histórica de 5 anos mensal, primeiro lifespan FastAPI + APScheduler e enfileiramento em `create_project` (SATM-05/07/10).
