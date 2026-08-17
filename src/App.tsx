@@ -132,6 +132,7 @@ function App() {
               <Route path="auditoria" element={<AuditorReview />} />
               <Route path="auditoria/registro" element={<AuditRegistration />} />
               <Route path="monitoramento" element={<MonitoringNDVI />} />
+              <Route path="monitoramento/:projectId" element={<MonitoringNDVI />} />
 
               {/* Visualização Interna (Restored for Dashboard Functionality) */}
               <Route path="mrca/:id/editar" element={<AddProject mode="edit" />} />

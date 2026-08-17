@@ -321,9 +321,18 @@ class CopernicusProvider:
             await self._record_usage(endpoint, "SUCCESS", resp.status_code, started, processing_units=processing_units)
             return resp.status_code, (resp.json() if expect_json else resp.content)
 
+    # BUGFIX (validacao critica pos-checkpoint 05-09): o CDSE STAC rejeita
+    # limit > 200 para a colecao sentinel-2-l2a com HTTP 400 LimitValidationError
+    # ("exceptionally heavy responses"), mesmo que a doc generica do STAC anuncie
+    # ate 500. Confirmado ao vivo contra https://stac.dataspace.copernicus.eu/v1/search
+    # -- reproduzia 400 em TODA chamada de search_scenes(), derrubando 100% dos
+    # jobs HISTORICAL_RECONSTRUCTION/CONTINUOUS_MONITORING. O loop de paginacao
+    # existente (ate 5 paginas) ja cobre a janela de 5 anos com o limite menor.
+    CDSE_SENTINEL2_MAX_LIMIT = 200
+
     async def search_scenes(
         self, *, aoi: dict[str, Any], date_from: datetime, date_to: datetime,
-        max_cloud_coverage: float, limit: int = 500,
+        max_cloud_coverage: float, limit: int = CDSE_SENTINEL2_MAX_LIMIT,
     ) -> list[SceneDTO]:
         # Gate fail-closed visivel no proprio metodo publico, como em
         # stellar.py:56-57 -- mesmo que _get_token tambem chame assert_ready.
@@ -332,7 +341,7 @@ class CopernicusProvider:
             "collections": ["sentinel-2-l2a"],
             "datetime": f"{_iso_z(date_from)}/{_iso_z(date_to)}",
             "intersects": aoi,
-            "limit": min(limit, 500),
+            "limit": min(limit, self.CDSE_SENTINEL2_MAX_LIMIT),
             "filter-lang": "cql2-json",
             "filter": {"op": "<=", "args": [{"property": "eo:cloud_cover"}, float(max_cloud_coverage)]},
         }
@@ -357,6 +366,16 @@ class CopernicusProvider:
         scenes.sort(key=lambda scene: scene.observed_at)
         return scenes
 
+    # BUGFIX (validacao critica pos-checkpoint 05-09): bounds.properties.crs abaixo
+    # e geografico (CRS84 = graus), entao resx/resy sao interpretados pela
+    # Statistics API do CDSE nas MESMAS unidades do CRS -- "10" virava 10 graus
+    # (~3744 m/pixel no equador), estourando o limite de 1500 m/pixel da colecao
+    # S2L2A com HTTP 400 COMMON_EXCEPTION em toda chamada. Confirmado ao vivo
+    # contra https://sh.dataspace.copernicus.eu/api/v1/statistics. 0.0001 grau
+    # equivale a ~11 m no equador, o mais proximo do nativo 10 m do Sentinel-2
+    # que se pode expressar sem trocar o CRS do bounds para uma projecao metrica.
+    STATISTICS_RESOLUTION_DEGREES = 0.0001
+
     async def get_statistics(
         self, *, aoi: dict[str, Any], date_from: datetime, date_to: datetime,
         aggregation_interval: str = "P1M", max_cloud_coverage: float = 20.0,
@@ -374,8 +393,8 @@ class CopernicusProvider:
                 "timeRange": {"from": _iso_z(date_from), "to": _iso_z(date_to)},
                 "aggregationInterval": {"of": aggregation_interval},
                 "evalscript": SENTINEL2_INDICES_EVALSCRIPT,
-                "resx": 10,
-                "resy": 10,
+                "resx": self.STATISTICS_RESOLUTION_DEGREES,
+                "resy": self.STATISTICS_RESOLUTION_DEGREES,
             },
             "calculations": {"default": {"statistics": {"default": {"stats": ["mean", "min", "max"]}}}},
         }
