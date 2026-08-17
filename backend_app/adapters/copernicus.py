@@ -9,6 +9,7 @@ from __future__ import annotations
 # devolve NDVI/NDMI/NBR simulado ou derivado de hash.
 
 import asyncio
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -159,6 +160,21 @@ def _band_stats(output: dict[str, Any] | None) -> dict[str, Any] | None:
     return band.get("stats") or {}
 
 
+# BUGFIX (validacao critica pos-checkpoint 05-09): a Statistical API do CDSE
+# pode devolver "mean"/"min"/"max" como NaN (nao um {"error": ...} de
+# intervalo, que ja e tratado acima) quando poucos pixels validos entram no
+# calculo de um mes. `numeric` do Postgres aceita NaN, mas o audit_events em
+# create_audit_event serializa o valor como JSON puro (nao numeric), e JSON
+# nunca aceita o token NaN -- INSERT falhava com InvalidTextRepresentationError
+# em apply_baseline_from_observations toda vez que uma observacao NaN entrava
+# na media. Mesmo principio do resto do parser: ausencia de dado vira None,
+# nunca um numero (nem 0.0, nem NaN).
+def _finite_or_none(value: Any) -> float | None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    return float(value) if math.isfinite(value) else None
+
+
 def parse_statistics_response(payload: dict[str, Any]) -> list[IndexStatisticsDTO]:
     """Helper puro e testavel: parsing da resposta Statistical API, sem HTTP."""
     results: list[IndexStatisticsDTO] = []
@@ -191,11 +207,11 @@ def parse_statistics_response(payload: dict[str, Any]) -> list[IndexStatisticsDT
             IndexStatisticsDTO(
                 interval_from=interval_from,
                 interval_to=interval_to,
-                ndvi_mean=ndvi_stats.get("mean") if ndvi_stats else None,
-                ndvi_min=ndvi_stats.get("min") if ndvi_stats else None,
-                ndvi_max=ndvi_stats.get("max") if ndvi_stats else None,
-                ndmi_mean=ndmi_stats.get("mean") if ndmi_stats else None,
-                nbr_mean=nbr_stats.get("mean") if nbr_stats else None,
+                ndvi_mean=_finite_or_none(ndvi_stats.get("mean")) if ndvi_stats else None,
+                ndvi_min=_finite_or_none(ndvi_stats.get("min")) if ndvi_stats else None,
+                ndvi_max=_finite_or_none(ndvi_stats.get("max")) if ndvi_stats else None,
+                ndmi_mean=_finite_or_none(ndmi_stats.get("mean")) if ndmi_stats else None,
+                nbr_mean=_finite_or_none(nbr_stats.get("mean")) if nbr_stats else None,
                 valid_pixel_percentage=valid_pixel_percentage,
             )
         )
