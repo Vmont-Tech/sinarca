@@ -1,23 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Leaf, 
-  Satellite, 
-  ShieldCheck, 
-  AlertCircle, 
-  Calendar, 
-  ArrowUpRight, 
-  History,
-  Info,
-  Maximize2,
-  RefreshCw,
-  Fingerprint,
-  Navigation
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+    Leaf,
+    Satellite,
+    ShieldCheck,
+    AlertCircle,
+    Calendar,
+    Info,
+    History,
+    Navigation,
+    RefreshCw,
+    Fingerprint,
+    CloudFog,
 } from 'lucide-react';
-import { database, type MonitoringProjectResponse } from '../../services/database';
+import { database, type ProjectMRCA, type ProjectPublicDossier } from '../../services/database';
+import {
+    fetchSatelliteSummary,
+    fetchSatelliteObservations,
+    fetchEnvironmentalEvents,
+    fetchCreditAdjustmentPendencies,
+    type SatelliteSummary,
+    type SatelliteObservation,
+    type EnvironmentalEvent,
+    type CreditAdjustmentPendency,
+} from '../../services/satelliteMonitoring';
 
-const MONITORED_PROJECT_ID = 'PRC-2024-002';
+// D-07/SATM-07: campos exibidos aqui SO podem vir de observacao Sentinel-2
+// real (baselineSource === 'COPERNICUS'). Qualquer valor sem essa origem
+// renderiza '—', nunca um numero plausivel de deterministic_baseline().
+const RECONSTRUCTION_POLL_INTERVAL_MS = 30_000;
 
-const formatDateTime = (value?: string) => {
+const formatDateTime = (value?: string | null) => {
     if (!value) return 'Sem registro';
     return new Intl.DateTimeFormat('pt-BR', {
         day: '2-digit',
@@ -27,73 +40,249 @@ const formatDateTime = (value?: string) => {
     }).format(new Date(value));
 };
 
+const formatDecimal = (value: number | null | undefined, digits = 3) => (
+    value === null || value === undefined ? '—' : value.toFixed(digits)
+);
+
+const formatPercent = (value: number | null | undefined) => (
+    value === null || value === undefined ? '—' : `${value.toFixed(1)}%`
+);
+
 export default function MonitoringNDVI() {
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [viewMode, setViewMode] = useState<'ndvi' | 'natural' | 'thermal'>('ndvi');
-    const [monitoring, setMonitoring] = useState<MonitoringProjectResponse | null>(null);
+    const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+    const navigate = useNavigate();
+
+    const [projectOptions, setProjectOptions] = useState<ProjectMRCA[]>([]);
+    const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(routeProjectId ?? null);
+
+    const [dossier, setDossier] = useState<ProjectPublicDossier | null>(null);
+    const [summary, setSummary] = useState<SatelliteSummary | null>(null);
+    const [observations, setObservations] = useState<SatelliteObservation[]>([]);
+    const [events, setEvents] = useState<EnvironmentalEvent[]>([]);
+    const [pendencies, setPendencies] = useState<CreditAdjustmentPendency[]>([]);
+
     const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [loadError, setLoadError] = useState('');
 
-    const loadMonitoring = async () => {
-        const response = await database.getMonitoringProject(MONITORED_PROJECT_ID);
-        setMonitoring(response);
-    };
-
+    // Lista de projetos visiveis ao usuario, para o seletor do header quando
+    // a rota nao traz :projectId (mesmo padrao de apiGet('/projects') ja
+    // usado em outras telas, via database.getRawMarketProjects).
     useEffect(() => {
         let mounted = true;
-        database.getMonitoringProject(MONITORED_PROJECT_ID)
-            .then((response) => {
-                if (mounted) setMonitoring(response);
-            })
-            .finally(() => {
-                if (mounted) setLoading(false);
-            });
+        database.getRawMarketProjects().then((projects) => {
+            if (mounted) setProjectOptions(projects);
+        }).catch(() => {
+            /* seletor fica vazio; o resto da tela segue funcionando com routeProjectId */
+        });
         return () => {
             mounted = false;
         };
     }, []);
 
+    useEffect(() => {
+        if (routeProjectId) {
+            setResolvedProjectId(routeProjectId);
+            return;
+        }
+        if (projectOptions.length > 0) {
+            setResolvedProjectId(projectOptions[0].friendlyId);
+        }
+    }, [routeProjectId, projectOptions]);
+
+    const loadAll = useCallback(async (id: string) => {
+        setLoadError('');
+        try {
+            const [dossierData, summaryData, observationsData, eventsData, pendenciesData] = await Promise.all([
+                database.getProjectPublicDossier(id),
+                fetchSatelliteSummary(id),
+                fetchSatelliteObservations(id, { limit: 500 }),
+                fetchEnvironmentalEvents(id),
+                fetchCreditAdjustmentPendencies(id),
+            ]);
+            setDossier(dossierData);
+            setSummary(summaryData);
+            setObservations(observationsData);
+            setEvents(eventsData);
+            setPendencies(pendenciesData);
+        } catch (error) {
+            setLoadError(error instanceof Error ? error.message : 'Não foi possível carregar o monitoramento satelital deste projeto.');
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!resolvedProjectId) return;
+        let mounted = true;
+        setLoading(true);
+        loadAll(resolvedProjectId).finally(() => {
+            if (mounted) setLoading(false);
+        });
+        return () => {
+            mounted = false;
+        };
+    }, [resolvedProjectId, loadAll]);
+
     const handleRefresh = async () => {
+        if (!resolvedProjectId) return;
         setIsRefreshing(true);
         try {
-            await loadMonitoring();
+            await loadAll(resolvedProjectId);
         } finally {
             setIsRefreshing(false);
         }
     };
 
-    if (loading) return <div className="p-20 text-center text-primary">Carregando monitoramento...</div>;
-    if (!monitoring) return <div className="p-20 text-center text-primary">Monitoramento não encontrado no banco.</div>;
+    // D-14/UI-SPEC: enquanto a reconstrucao historica esta em andamento e
+    // nenhum ponto chegou ainda, a pagina se atualiza sozinha a cada 30s —
+    // sem websocket, sem window.location.reload().
+    const reconstructing = summary?.lastJob?.jobType === 'HISTORICAL_RECONSTRUCTION'
+        && summary.lastJob.status !== 'COMPLETED'
+        && observations.length === 0;
 
-    const project = monitoring.project;
-    const baseline = monitoring.baseline;
-    const protectedProject = !['BLOCKED_AUDIT_REQUIRED', 'SUSPENDED'].includes(project.status);
-    const activityItems = monitoring.events.length > 0
-        ? monitoring.events.map(event => ({
-            id: event.id,
-            icon: event.type === 'TRANSFER' ? ArrowUpRight : Satellite,
-            title: `${event.type} ${event.chain}`.trim(),
-            description: event.hash || event.status,
-            date: formatDateTime(event.createdAt),
-            color: event.type === 'TRANSFER' ? 'text-blue-400' : 'text-sinarca-neon',
-        }))
-        : project.timeline.map((item, index) => ({
-            id: `${project.friendlyId}-${index}`,
-            icon: Info,
-            title: item.title,
-            description: item.desc,
-            date: item.date,
-            color: 'text-primary',
-        }));
+    useEffect(() => {
+        if (!resolvedProjectId || !reconstructing) return undefined;
+        const interval = window.setInterval(() => {
+            loadAll(resolvedProjectId);
+        }, RECONSTRUCTION_POLL_INTERVAL_MS);
+        return () => window.clearInterval(interval);
+    }, [resolvedProjectId, reconstructing, loadAll]);
+
+    if (loading) {
+        return <div className="p-20 text-center text-primary">Carregando monitoramento satelital...</div>;
+    }
+
+    if (!resolvedProjectId) {
+        return <div className="p-20 text-center text-primary">Nenhum projeto disponível para monitoramento.</div>;
+    }
+
+    if (loadError) {
+        return (
+            <div className="container mx-auto p-4 md:p-8 max-w-[1400px]">
+                <div className="bg-sinarca-deep border border-red-500/30 rounded-3xl p-8 text-center">
+                    <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-serif font-bold text-white mb-2">Não foi possível carregar o monitoramento.</h2>
+                    <p className="text-text-muted text-sm mb-6">{loadError}</p>
+                    <button
+                        onClick={handleRefresh}
+                        className="px-4 py-3 rounded-xl bg-sinarca-forest border border-sinarca-border text-white text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                        Tentar novamente
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!dossier || !summary) {
+        return <div className="p-20 text-center text-primary">Monitoramento não encontrado para este projeto.</div>;
+    }
+
+    const project = dossier.project;
+    const confirmedCount = summary.eventsByStatus.CONFIRMED ?? 0;
+    const reserveOnHold = dossier.integrity?.publicStatus === 'ON_HOLD' || confirmedCount > 0;
+
+    const projectSelector = (
+        <select
+            value={resolvedProjectId}
+            onChange={(event) => navigate(`/painel/monitoramento/${encodeURIComponent(event.target.value)}`)}
+            className="bg-black/50 border border-white/10 text-[10px] uppercase font-bold tracking-widest text-white rounded-lg px-3 py-2 backdrop-blur-md"
+            aria-label="Selecionar projeto monitorado"
+        >
+            {!projectOptions.some((option) => option.friendlyId === resolvedProjectId) && (
+                <option value={resolvedProjectId}>{project.friendlyId}</option>
+            )}
+            {projectOptions.map((option) => (
+                <option key={option.id} value={option.friendlyId}>{option.friendlyId} — {option.name}</option>
+            ))}
+        </select>
+    );
+
+    // T-05-57: sem credenciais Copernicus, empty state fail-closed. Nenhum
+    // mapa/grafico/metrica numerica e renderizado neste ramo.
+    if (summary.blocked) {
+        return (
+            <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{project.name}</h1>
+                        <p className="text-text-muted flex items-center gap-1 text-sm">
+                            <Navigation className="w-3 h-3" /> {project.location.city}, {project.location.state}
+                        </p>
+                    </div>
+                    {projectSelector}
+                </div>
+                <div className="bg-sinarca-deep border border-sinarca-border rounded-3xl p-8 text-center">
+                    <CloudFog className="w-10 h-10 text-orange-400 mx-auto mb-4" />
+                    <h2 className="text-2xl font-serif font-bold text-white mb-2">Monitoramento satelital bloqueado.</h2>
+                    <p className="text-text-muted text-sm max-w-xl mx-auto">
+                        Faltam credenciais do provedor Copernicus neste ambiente. Nenhum dado simulado é exibido —
+                        configure <code className="text-sinarca-neon">COPERNICUS_CLIENT_ID</code>/
+                        <code className="text-sinarca-neon">COPERNICUS_CLIENT_SECRET</code> para habilitar.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (reconstructing) {
+        return (
+            <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{project.name}</h1>
+                        <p className="text-text-muted flex items-center gap-1 text-sm">
+                            <Navigation className="w-3 h-3" /> {project.location.city}, {project.location.state}
+                        </p>
+                    </div>
+                    {projectSelector}
+                </div>
+                <div className="bg-sinarca-deep border border-sinarca-border rounded-3xl p-8 text-center">
+                    <Satellite className="w-10 h-10 text-sinarca-neon mx-auto mb-4 animate-pulse" />
+                    <h2 className="text-2xl font-serif font-bold text-white mb-2">Reconstrução histórica em andamento.</h2>
+                    <p className="text-text-muted text-sm max-w-xl mx-auto">
+                        Estamos processando até 5 anos de observações Sentinel-2 para este projeto. A página atualiza
+                        automaticamente quando novos pontos chegam.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    const latest = summary.latestObservation;
+    const openPendencies = pendencies.filter((pendency) => pendency.status === 'OPEN');
+
+    const activityItems = project.timeline.map((item, index) => ({
+        id: `${project.friendlyId}-${index}`,
+        title: item.title,
+        description: item.desc,
+        date: item.date,
+        color: 'text-primary',
+    }));
+
     const metricCards = [
-        { label: 'NDVI Atual', val: baseline.ndviMean.toFixed(3), trend: `${baseline.vegetationCoverPct.toFixed(1)}% veg.`, icon: Leaf, color: 'text-sinarca-neon' },
-        { label: 'Pontos Analisados', val: baseline.pointsAnalyzed.toLocaleString('pt-BR'), trend: 'Sentinel', icon: Info, color: 'text-blue-400' },
-        { label: 'Status Projeto', val: protectedProject ? 'OK' : 'Bloq.', trend: project.status, icon: AlertCircle, color: protectedProject ? 'text-sinarca-neon' : 'text-orange-400' },
-        { label: 'Captura Base', val: formatDateTime(baseline.capturedAt), trend: baseline.sentinelSceneId.slice(0, 4), icon: Calendar, color: 'text-primary' },
+        { label: 'NDVI Atual', val: formatDecimal(latest?.ndviMean), trend: latest?.sceneId ? latest.sceneId.slice(0, 10) : 'Sentinel-2', icon: Leaf, color: 'text-sinarca-neon' },
+        { label: 'Cobertura de Nuvem', val: formatPercent(latest?.cloudCoverage), trend: summary.baselineSource === 'COPERNICUS' ? 'Real' : '—', icon: CloudFog, color: 'text-blue-400' },
+        { label: 'Pontos Analisados', val: summary.observationCount.toLocaleString('pt-BR'), trend: summary.sentinelStatus ?? '—', icon: Info, color: 'text-blue-400' },
+        { label: 'Última Observação', val: formatDateTime(latest?.observedAt), trend: latest?.sceneId ? latest.sceneId.slice(0, 4) : '—', icon: Calendar, color: 'text-primary' },
     ];
 
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6 animate-in fade-in duration-700">
-            
+
+            {openPendencies.length > 0 && (
+                <div className="flex flex-col gap-2">
+                    {openPendencies.map((pendency) => (
+                        <div key={pendency.id} className="flex flex-wrap items-center gap-3 bg-amber-50/5 border border-amber-500/20 rounded-xl px-4 py-3">
+                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Pendência de recálculo de crédito</span>
+                            <span className="text-xs text-amber-200">{pendency.description}</span>
+                            {pendency.affectedAreaHa !== null && (
+                                <span className="text-[10px] text-amber-300 font-mono">{pendency.affectedAreaHa.toFixed(2)} ha afetados</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* 1. HEADER E STATUS RÁPIDO */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                 <div>
@@ -110,14 +299,15 @@ export default function MonitoringNDVI() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {projectSelector}
                     <div className="bg-sinarca-deep border border-sinarca-border rounded-xl p-3 flex flex-col items-end">
                         <span className="text-[10px] text-text-muted uppercase font-bold tracking-tighter">Status da Reserva</span>
-                        <div className={`flex items-center gap-2 ${protectedProject ? 'text-sinarca-neon' : 'text-orange-400'}`}>
+                        <div className={`flex items-center gap-2 ${reserveOnHold ? 'text-orange-400' : 'text-sinarca-neon'}`}>
                             <ShieldCheck className="w-5 h-5" />
-                            <span className="text-lg font-bold uppercase tracking-widest">{protectedProject ? 'Protegido' : 'Bloqueado'}</span>
+                            <span className="text-lg font-bold uppercase tracking-widest">{reserveOnHold ? 'Bloqueado' : 'Protegido'}</span>
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={handleRefresh}
                         className={`p-4 bg-sinarca-forest border border-sinarca-border rounded-xl text-white hover:bg-white/10 transition-all ${isRefreshing ? 'animate-spin' : ''}`}
                     >
@@ -128,71 +318,16 @@ export default function MonitoringNDVI() {
 
             {/* 2. GRADE PRINCIPAL: MAPA + STATS */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
-                {/* MAPA PRINCIPAL (8/12) */}
-                <div className="lg:col-span-8 relative rounded-3xl overflow-hidden border border-sinarca-border bg-[#00120b] h-[500px] lg:h-[650px] group shadow-2xl">
-                    {/* Imagem do Mapa (Simulada) */}
-                    <div className="absolute inset-0">
-                        <img 
-                            src={project.image}
-                            className={`w-full h-full object-cover transition-all duration-1000 ${viewMode === 'ndvi' ? 'hue-rotate-[80deg] saturate-[1.5] brightness-[0.8]' : viewMode === 'thermal' ? 'invert sepia saturate-[2]' : ''}`}
-                            alt="Map View"
-                        />
-                        {/* Overlay de Cerca Virtual */}
-                        <div className="absolute inset-0 border-[4px] border-sinarca-neon/30 m-20 rounded-[4rem] shadow-[inset_0_0_100px_rgba(0,255,148,0.2)] flex items-center justify-center">
-                            <div className="text-sinarca-neon/50 font-mono text-[8px] flex flex-col items-center">
-                                <Maximize2 className="w-4 h-4 mb-1" />
-                                ÁREA SOB CUSTÓDIA
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Controles do Mapa */}
-                    <div className="absolute top-6 left-6 flex flex-col gap-2">
-                        <button 
-                            onClick={() => setViewMode('ndvi')}
-                            className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${viewMode === 'ndvi' ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
-                        >
-                            Índice NDVI
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('natural')}
-                            className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${viewMode === 'natural' ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
-                        >
-                            Cor Natural
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('thermal')}
-                            className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${viewMode === 'thermal' ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
-                        >
-                            Térmico
-                        </button>
-                    </div>
-
-                    {/* Legenda NDVI */}
-                    <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-2xl max-w-[200px]">
-                        <div className="flex justify-between text-[8px] text-gray-400 uppercase font-bold mb-2">
-                            <span>Baixa Vegetação</span>
-                            <span>Densa</span>
-                        </div>
-                        <div className="h-2 w-full bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full mb-3"></div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs text-white font-mono">Médio: {baseline.ndviMean.toFixed(3)}</span>
-                            <span className="text-[10px] text-sinarca-neon font-bold">{baseline.vegetationCoverPct.toFixed(1)}% cobertura</span>
-                        </div>
-                    </div>
-
-                    {/* Info Satélite */}
-                    <div className="absolute top-6 right-6 flex items-center gap-3 bg-black/40 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full">
-                        <div className="w-2 h-2 rounded-full bg-sinarca-neon animate-pulse"></div>
-                        <span className="text-[10px] text-white font-bold uppercase tracking-widest">Sincronizado com Sentinel-2B</span>
-                    </div>
+                {/* MAPA PRINCIPAL (8/12) — placeholder ate a Task 2 portar o Leaflet real */}
+                <div className="lg:col-span-8 relative rounded-3xl overflow-hidden border border-sinarca-border bg-[#00120b] h-[500px] lg:h-[650px] group shadow-2xl flex items-center justify-center">
+                    <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest">Mapa Leaflet — Task 2</span>
                 </div>
 
                 {/* SIDEBAR DE STATS (4/12) */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
-                    
-                    {/* Card de Inviolabilidade (QTAGs) */}
+
+                    {/* Card de QTAGs — agora alimentado por dossier.tags (persistidos), nunca simulado */}
                     <div className="bg-sinarca-deep border border-sinarca-border rounded-3xl p-6 shadow-xl">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-white font-bold text-sm uppercase tracking-widest flex items-center gap-2">
@@ -201,18 +336,18 @@ export default function MonitoringNDVI() {
                             <span className="text-[10px] text-sinarca-neon font-bold px-2 py-0.5 rounded bg-sinarca-neon/10">Inviolável</span>
                         </div>
                         <div className="space-y-4">
-                            {monitoring.tags.map(tag => (
-                                <div key={tag.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                            {dossier.tags.map((tag) => (
+                                <div key={String(tag.id)} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-sinarca-forest flex items-center justify-center">
                                             <Navigation className="w-4 h-4 text-sinarca-neon" />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-bold text-white">{tag.id} ({tag.position})</p>
-                                            <p className="text-[10px] text-text-muted">{formatDateTime(tag.lastSeenAt)}</p>
+                                            <p className="text-xs font-bold text-white">Vértice {String(tag.vertex)}</p>
+                                            <p className="text-[10px] text-text-muted">{tag.hasQtag ? (tag.tagUid || 'UID não registrado') : 'Sem QTAG física'}</p>
                                         </div>
                                     </div>
-                                    <div className="w-2 h-2 rounded-full bg-sinarca-neon shadow-[0_0_8px_rgba(0,255,148,0.5)]"></div>
+                                    <div className={`w-2 h-2 rounded-full ${tag.status === 'ACTIVE' ? 'bg-sinarca-neon shadow-[0_0_8px_rgba(0,255,148,0.5)]' : 'bg-gray-600'}`} />
                                 </div>
                             ))}
                         </div>
@@ -227,19 +362,16 @@ export default function MonitoringNDVI() {
                             <History className="w-4 h-4 text-primary" /> Atividades Recentes
                         </h3>
                         <div className="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-px before:bg-white/10">
-                            {activityItems.map((item) => {
-                                const Icon = item.icon;
-                                return (
-                                    <div key={item.id} className="relative pl-8">
-                                        <div className={`absolute left-0 top-1 w-6 h-6 rounded-full bg-sinarca-deep border border-current flex items-center justify-center z-10 ${item.color}`}>
-                                            <Icon className="w-3 h-3" />
-                                        </div>
-                                        <p className="text-xs font-bold text-white">{item.title}</p>
-                                        <p className="text-[10px] text-text-muted mb-1">{item.description}</p>
-                                        <span className="text-[9px] text-gray-600 font-mono">{item.date}</span>
+                            {activityItems.map((item) => (
+                                <div key={item.id} className="relative pl-8">
+                                    <div className={`absolute left-0 top-1 w-6 h-6 rounded-full bg-sinarca-deep border border-current flex items-center justify-center z-10 ${item.color}`}>
+                                        <Info className="w-3 h-3" />
                                     </div>
-                                );
-                            })}
+                                    <p className="text-xs font-bold text-white">{item.title}</p>
+                                    <p className="text-[10px] text-text-muted mb-1">{item.description}</p>
+                                    <span className="text-[9px] text-gray-600 font-mono">{item.date}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -253,7 +385,7 @@ export default function MonitoringNDVI() {
                             <div className={`p-3 rounded-xl bg-white/5 group-hover:scale-110 transition-transform ${stat.color}`}>
                                 <stat.icon className="w-5 h-5" />
                             </div>
-                            <span className={`text-[10px] font-bold px-2 py-1 rounded bg-white/5 ${stat.trend.includes('+') ? 'text-green-400' : stat.trend.includes('-') ? 'text-red-400' : 'text-gray-400'}`}>
+                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-gray-400">
                                 {stat.trend}
                             </span>
                         </div>
