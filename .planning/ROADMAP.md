@@ -207,8 +207,8 @@ Plans:
 - [x] 05-05-PLAN.md — Persistência idempotente, reconstrução histórica de 5 anos mensal, primeiro lifespan FastAPI + APScheduler e enfileiramento em `create_project` (SATM-05/07/10).
 - [x] 05-06-PLAN.md — Monitoramento contínuo incremental, `SatelliteAnomaly`/`ProjectEvent` `DETECTED → ANALYZED` e evidência before/after com hash SHA-256 (SATM-06/10).
 - [x] 05-07-PLAN.md — API `/api/v1` satelital, decisão humana `CONFIRMED`/`DISMISSED`, Auto Hold via recálculo, `credit_adjustment_pendencies`, desbloqueio auditável e bloco satélite no dossiê público (SATM-06/07/08/09).
-- [ ] 05-08-PLAN.md — UI de auditoria de campo (upload real, badge de assinatura, NFC fail-closed) e dossiê público com baseline condicional (SATM-01/02/03/04/07).
-- [ ] 05-09-PLAN.md — Dashboard satelital real: rota por projeto, mapa Leaflet com camadas, série temporal SVG, anomalias com decisão humana e slider before/after (SATM-06/07/08/09/10).
+- [x] 05-08-PLAN.md — UI de auditoria de campo (upload real, badge de assinatura, NFC fail-closed) e dossiê público com baseline condicional (SATM-01/02/03/04/07).
+- [x] 05-09-PLAN.md — Dashboard satelital real: rota por projeto, mapa Leaflet com camadas, série temporal SVG, anomalias com decisão humana e slider before/after (SATM-06/07/08/09/10).
 
 ### Phase 05.1: integrity-review-and-external-registries (INSERTED)
 **Goal**: Fechar o P1 do Sinarca Integrity Layer: Integrity Review Console com regra de four-eyes para risco HIGH+ (nenhum ator único pode submeter, validar e aprovar o mesmo projeto), e verificação de registros oficiais (ONR/CNM, SIGEF/INCRA, CAR/SICAR) via uma interface `ExternalRegistryProvider` desacoplada — análoga em desenho ao `SatelliteProvider` da Phase 5. O Sinarca hoje **não tem acesso a nenhum provedor desse tipo** (ex.: geoportal InfoTerras-like); a primeira entrega desta fase é a decisão de build vs. buy documentada, não a integração em si.
