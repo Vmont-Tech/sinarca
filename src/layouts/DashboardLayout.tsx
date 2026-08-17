@@ -137,7 +137,7 @@ export default function DashboardLayout() {
                         {isProducer && (
                             <>
                                 <SidebarItem to="/painel/projetos" icon={TreePine} label="Meus Projetos" active={location.pathname === '/painel/projetos'} theme={sidebarTheme} />
-                                <SidebarItem to="/painel/monitoramento" icon={ShieldCheck} label="Certificações" active={location.pathname === '/painel/monitoramento'} theme={sidebarTheme} />
+                                <SidebarItem to="/painel/monitoramento" icon={Globe} label="Geo-Monitoramento" active={location.pathname === '/painel/monitoramento'} theme={sidebarTheme} />
                                 <SidebarItem to="/painel/relatorios" icon={BarChart3} label="Relatórios" active={location.pathname === '/painel/relatorios'} theme={sidebarTheme} />
                             </>
                         )}

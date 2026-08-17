@@ -23,6 +23,8 @@ import { Link } from 'react-router-dom';
 import { apiGet, apiPatch } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { database, type MonitoringProjectResponse } from '../../services/database';
+import { AUDIT_EVIDENCE_ACCEPT, AUDIT_EVIDENCE_MAX_BYTES, uploadAuditEvidence } from '../../services/auditEvidence';
+import { detectFieldCapabilities, getNfcCaptureStatus } from '../../services/fieldCapture';
 
 type AuditItem = {
     id: string;
@@ -42,12 +44,18 @@ type AuditItem = {
 type AuditDecision = 'APPROVED' | 'BLOCKED' | 'RECALCULATED';
 type AuditCheckKey = 'tagsLocated' | 'tagsIntact' | 'coordinatesMatch' | 'areaPreserved' | 'noDeforestation' | 'noFire' | 'producerControl';
 
+type AuditEvidenceUploadState = 'uploading' | 'success' | 'error';
+
 type AuditEvidenceFile = {
-    id: string;
+    id: string;              // chave local estável (não é o Document.id)
     name: string;
     size: number;
     type: string;
-    localUrl: string;
+    state: AuditEvidenceUploadState;
+    documentId?: string;     // Document.id devolvido pelo backend (D-02)
+    sha256?: string;
+    error?: string;
+    file?: File;             // guardado apenas para permitir "Tentar novamente"
 };
 
 type AuditDraft = {
@@ -56,17 +64,32 @@ type AuditDraft = {
     latitude: string;
     longitude: string;
     evidenceFiles: AuditEvidenceFile[];
-    signature: string;
     checks: Record<AuditCheckKey, boolean>;
+};
+
+type AuditVerifyResponse = {
+    success: boolean;
+    project_id: string;
+    new_status: string;
+    assinatura_digital: string;
+    assinatura_tipo: string;
+    assinatura_verificavel_em: string;
+    evidencias_url: string[];
+};
+
+type AuditSignatureResult = {
+    hash: string;
+    kind: string;
+    signedAt: string;
 };
 
 const formatNumber = (value: number | null | undefined) => (value ?? 0).toLocaleString('pt-BR');
 const getAreaHa = (project: AuditItem) => project.metrics?.totalAreaHa ?? project.area_hectares;
 const getCarbonStock = (project: AuditItem) => project.metrics?.carbonStock ?? project.carbonStock;
 const pageSize = 5;
-const MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const MAX_AUDIT_EVIDENCE_FILE_LIMIT_TEXT = 'Limite máximo: 10 MB por arquivo';
-const MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX = 'Arquivos acima de 10 MB não foram anexados';
+const MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES = AUDIT_EVIDENCE_MAX_BYTES;
+const MAX_AUDIT_EVIDENCE_FILE_LIMIT_TEXT = 'Limite máximo: 50 MB por arquivo (foto, vídeo ou PDF)';
+const MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX = 'Arquivos acima de 50 MB não foram anexados';
 const checkLabels: Record<AuditCheckKey, string> = {
     tagsLocated: 'QTAGs NFC 424 DNA localizadas em campo',
     tagsIntact: 'Tags intactas e funcionais',
@@ -77,13 +100,12 @@ const checkLabels: Record<AuditCheckKey, string> = {
     producerControl: 'Produtor mantém controle da área',
 };
 
-const createDefaultDraft = (auditorName?: string): AuditDraft => ({
+const createDefaultDraft = (): AuditDraft => ({
     observations: '',
     conclusion: 'Projeto em conformidade. Recomenda-se desbloqueio e disponibilização dos créditos ambientais.',
     latitude: '',
     longitude: '',
     evidenceFiles: [],
-    signature: auditorName ? `Assinado digitalmente por ${auditorName}` : 'Assinado digitalmente pelo auditor responsável',
     checks: {
         tagsLocated: false,
         tagsIntact: false,
@@ -122,12 +144,20 @@ const buildAuditReport = (
     monitoring: MonitoringProjectResponse | undefined,
     draft: AuditDraft,
     status: AuditDecision,
+    nfcManuallyConfirmed: boolean,
 ) => {
     const tagLines = (monitoring?.tags || []).map((tag) =>
         `- Tag ${tag.position}: ${tag.status} em ${tag.latitude.toFixed(4)}, ${tag.longitude.toFixed(4)} ${statusMark(draft.checks.tagsLocated && draft.checks.tagsIntact)}`
     );
     const baseline = monitoring?.baseline;
-    const evidenceLines = draft.evidenceFiles.map((file) => `- ${file.name} (${file.type || 'arquivo'}) -> ${file.localUrl}`);
+    const evidenceLines = draft.evidenceFiles.map((file) => {
+        const status = file.state === 'success'
+            ? `enviado, sha256:${file.sha256 ? file.sha256.slice(0, 16) : '—'}…`
+            : file.state === 'uploading'
+                ? 'enviando…'
+                : 'falha no envio';
+        return `- ${file.name} (${file.type || 'arquivo'}) -> ${status}`;
+    });
 
     return [
         `RELATÓRIO DE AUDITORIA - PROJETO ${project.friendlyId}`,
@@ -136,6 +166,7 @@ const buildAuditReport = (
         '',
         'VERIFICAÇÃO DE TAGS:',
         ...(tagLines.length ? tagLines : ['- Tags NFC 424 DNA ainda sem leitura de monitoramento vinculada.']),
+        `- QTAG/NFC: releitura automática indisponível; verificação física confirmada manualmente pelo auditor: ${nfcManuallyConfirmed ? 'Sim' : 'Não'}.`,
         '',
         'ESTADO DA ÁREA:',
         `- Cobertura Vegetal: ${baseline ? `${baseline.vegetationCoverPct.toFixed(1)}%` : 'não informado'} ${statusMark(draft.checks.areaPreserved)}`,
@@ -152,7 +183,7 @@ const buildAuditReport = (
         '',
         `CONCLUSÃO: ${draft.conclusion}`,
         `DECISÃO: ${status}`,
-        `Assinado: ${draft.signature}`,
+        'Assinatura: gerada pelo servidor ao registrar a auditoria (stub SHA-256).',
     ].join('\n');
 };
 
@@ -168,8 +199,16 @@ export default function AuditorReview() {
     const [monitoringByProject, setMonitoringByProject] = React.useState<Record<string, MonitoringProjectResponse>>({});
     const [evidenceLoading, setEvidenceLoading] = React.useState<string | null>(null);
     const [evidenceError, setEvidenceError] = React.useState('');
-    const [draft, setDraft] = React.useState<AuditDraft>(() => createDefaultDraft(user?.name));
+    const [draft, setDraft] = React.useState<AuditDraft>(() => createDefaultDraft());
     const [copiedProjectId, setCopiedProjectId] = React.useState<string | null>(null);
+    const [nfcManuallyConfirmed, setNfcManuallyConfirmed] = React.useState(false);
+    const [signatureResult, setSignatureResult] = React.useState<AuditSignatureResult | null>(null);
+    const [copiedSignature, setCopiedSignature] = React.useState(false);
+    // getNfcCaptureStatus() nunca devolve 'available' — o tipo de retorno nao tem esse
+    // estado (fieldCapture.ts). Na pratica isso significa que o banner fail-closed
+    // abaixo aparece em 100% dos dispositivos hoje, ate existir hardware NFC real (D-04).
+    const nfcStatus = React.useMemo(() => getNfcCaptureStatus(), []);
+    const fieldCapabilities = React.useMemo(() => detectFieldCapabilities(), []);
 
     const loadQueue = React.useCallback(async () => {
         setLoading(true);
@@ -200,8 +239,10 @@ export default function AuditorReview() {
         }
 
         setActiveProjectId(projectKey);
-        setDraft(createDefaultDraft(user?.name));
+        setDraft(createDefaultDraft());
         setEvidenceError('');
+        setNfcManuallyConfirmed(false);
+        setSignatureResult(null);
         if (monitoringByProject[projectKey]) return;
 
         setEvidenceLoading(projectKey);
@@ -223,35 +264,56 @@ export default function AuditorReview() {
         setDraft((current) => ({ ...current, checks: { ...current.checks, [key]: checked } }));
     };
 
-    const addEvidenceFiles = (project: AuditItem, files: FileList | null) => {
+    const addEvidenceFiles = async (project: AuditItem, files: FileList | null) => {
         if (!files || files.length === 0) return;
-        const projectKey = project.friendlyId || project.id;
-        const timestamp = Date.now();
-        const selectedFiles = Array.from(files);
-        const acceptedFiles = selectedFiles.filter((file) => file.size <= MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES);
-        const rejectedFiles = selectedFiles.filter((file) => file.size > MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES);
-        const evidenceFiles = acceptedFiles.map((file, index) => ({
-            id: `${timestamp}-${index}-${file.name}`,
+        const selected = Array.from(files);
+        const accepted = selected.filter((file) => file.size <= MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES);
+        const rejected = selected.filter((file) => file.size > MAX_AUDIT_EVIDENCE_FILE_SIZE_BYTES);
+        setEvidenceError(rejected.length > 0
+            ? `${MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX}: ${rejected.map((file) => file.name).join(', ')}.`
+            : '');
+
+        const pending: AuditEvidenceFile[] = accepted.map((file, index) => ({
+            id: `${Date.now()}-${index}-${file.name}`,
             name: file.name,
             size: file.size,
-            type: file.type || 'arquivo local',
-            localUrl: `local://auditoria/${projectKey}/${encodeURIComponent(file.name)}`,
+            type: file.type || 'arquivo',
+            state: 'uploading',
+            file,
         }));
-        setEvidenceError(
-            rejectedFiles.length > 0
-                ? `${MAX_AUDIT_EVIDENCE_FILE_REJECTION_PREFIX}: ${rejectedFiles.map((file) => file.name).join(', ')}.`
-                : ''
-        );
-        setDraft((current) => ({
-            ...current,
-            evidenceFiles: [...current.evidenceFiles, ...evidenceFiles],
-        }));
+        setDraft((current) => ({ ...current, evidenceFiles: [...current.evidenceFiles, ...pending] }));
+
+        // Uploads sao sequenciais de proposito: o backend valida magic bytes e faz IO de
+        // Storage por arquivo; disparar N em paralelo de campo com rede ruim piora o sucesso.
+        for (const row of pending) {
+            await uploadOneEvidence(project, row.id, row.file as File);
+        }
+    };
+
+    const uploadOneEvidence = async (project: AuditItem, rowId: string, file: File) => {
+        const patch = (next: Partial<AuditEvidenceFile>) =>
+            setDraft((current) => ({
+                ...current,
+                evidenceFiles: current.evidenceFiles.map((row) => (row.id === rowId ? { ...row, ...next } : row)),
+            }));
+        patch({ state: 'uploading', error: undefined });
+        try {
+            const uploaded = await uploadAuditEvidence(project.id, file);
+            patch({ state: 'success', documentId: uploaded.id, sha256: uploaded.sha256 });
+        } catch (error) {
+            patch({
+                state: 'error',
+                error: error instanceof Error
+                    ? error.message
+                    : 'Não foi possível enviar esta evidência. O arquivo não foi salvo — verifique a conexão e tente novamente.',
+            });
+        }
     };
 
     const removeEvidenceFile = (fileId: string) => {
         setDraft((current) => ({
             ...current,
-            evidenceFiles: current.evidenceFiles.filter((file) => file.id !== fileId),
+            evidenceFiles: current.evidenceFiles.filter((file) => file.id !== fileId || file.state === 'uploading'),
         }));
     };
 
@@ -277,27 +339,52 @@ export default function AuditorReview() {
         const monitoring = monitoringByProject[projectKey];
         const latitude = draft.latitude ? Number(draft.latitude) : undefined;
         const longitude = draft.longitude ? Number(draft.longitude) : undefined;
-        const evidenceUrls = [
-            ...(monitoring?.baseline.evidenceUri ? [monitoring.baseline.evidenceUri] : []),
-            ...draft.evidenceFiles.map((file) => file.localUrl),
-        ];
+        const uploadedIds = draft.evidenceFiles
+            .filter((row) => row.state === 'success' && row.documentId)
+            .map((row) => row.documentId as string);
 
-        await apiPatch(`/audit/verify/${encodeURIComponent(project.id)}`, {
+        const pendingUploads = draft.evidenceFiles.some((row) => row.state === 'uploading');
+        if (pendingUploads) {
+            setEvidenceError('Aguarde a conclusão do envio das evidências antes de registrar a auditoria.');
+            return;
+        }
+        // getNfcCaptureStatus() (fieldCapture.ts) nunca devolve sucesso — o gate abaixo e
+        // sempre a confirmacao manual explicita do auditor, nunca uma releitura simulada (D-04).
+        if (!nfcManuallyConfirmed) {
+            setEvidenceError('Confirme manualmente a verificação física das QTAGs antes de registrar a auditoria.');
+            return;
+        }
+
+        const response = await apiPatch<AuditVerifyResponse>(`/audit/verify/${encodeURIComponent(project.id)}`, {
             status,
-            laudo_texto: buildAuditReport(project, monitoring, draft, status),
+            laudo_texto: buildAuditReport(project, monitoring, draft, status, nfcManuallyConfirmed),
             latitude,
             longitude,
-            evidencias_url: evidenceUrls,
-            assinatura_digital: draft.signature,
-            auditor_id: 'aud-005',
+            evidencias_url: uploadedIds,
+            auditor_id: user?.id ?? 'aud-005',
         });
+        setSignatureResult(response ? {
+            hash: response.assinatura_digital,
+            kind: response.assinatura_tipo,
+            signedAt: response.assinatura_verificavel_em,
+        } : null);
         setMessage(`Auditoria registrada: ${status}`);
         await loadQueue();
     };
 
+    const copySignature = async (hash: string) => {
+        try {
+            await navigator.clipboard.writeText(hash);
+            setCopiedSignature(true);
+            window.setTimeout(() => setCopiedSignature(false), 1800);
+        } catch {
+            setEvidenceError('Não foi possível copiar a assinatura para a área de transferência.');
+        }
+    };
+
     const copyReportPreview = async (project: AuditItem) => {
         const projectKey = project.friendlyId || project.id;
-        const reportPreview = buildAuditReport(project, monitoringByProject[projectKey], draft, 'APPROVED');
+        const reportPreview = buildAuditReport(project, monitoringByProject[projectKey], draft, 'APPROVED', nfcManuallyConfirmed);
         try {
             await navigator.clipboard.writeText(reportPreview);
             setCopiedProjectId(projectKey);
@@ -492,6 +579,36 @@ export default function AuditorReview() {
                                     </>
                                 )}
 
+                                {/* getNfcCaptureStatus() (Phase 3) nunca devolve 'available' — o tipo de retorno
+                                    nao possui esse estado — entao este banner aparece em 100% dos dispositivos
+                                    hoje. Esse e o comportamento fail-closed correto de D-04: o sistema nunca
+                                    finge que a releitura NFC aconteceu. */}
+                                {nfcStatus !== 'available' && (
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                                        <div className="flex items-center gap-2">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <span>Leitor NFC indisponível neste dispositivo.</span>
+                                        </div>
+                                        <p className="mt-1 text-xs font-medium text-amber-700">
+                                            Confirme manualmente que a tag foi localizada e está fisicamente íntegra antes de prosseguir.
+                                        </p>
+                                        {fieldCapabilities.nfc === 'unsupported' && (
+                                            <p className="mt-1 text-xs font-medium text-amber-700">
+                                                Este navegador não expõe a Web NFC API.
+                                            </p>
+                                        )}
+                                        <label className="mt-3 flex items-center gap-2 text-xs font-bold text-amber-800">
+                                            <input
+                                                type="checkbox"
+                                                checked={nfcManuallyConfirmed}
+                                                onChange={(event) => setNfcManuallyConfirmed(event.target.checked)}
+                                                className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                            />
+                                            Confirmo a verificação física das QTAGs em campo
+                                        </label>
+                                    </div>
+                                )}
+
                                 <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-gray-500">
@@ -517,14 +634,15 @@ export default function AuditorReview() {
                                             <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center transition hover:border-blue-300 hover:bg-blue-50">
                                                 <FileUp className="h-6 w-6 text-blue-600" />
                                                 <span className="mt-2 text-sm font-bold text-gray-800">Selecionar arquivos</span>
-                                                <span className="mt-1 text-xs text-gray-500">Evidência local até o envio definitivo</span>
+                                                <span className="mt-1 text-xs text-gray-500">Envio direto e seguro — hash SHA-256 é gerado automaticamente ao concluir o envio.</span>
                                                 <input
                                                     type="file"
                                                     multiple
-                                                    accept="image/*,.pdf,.doc,.docx,.heic"
+                                                    accept={AUDIT_EVIDENCE_ACCEPT}
+                                                    capture="environment"
                                                     className="sr-only"
                                                     onChange={(event) => {
-                                                        addEvidenceFiles(project, event.currentTarget.files);
+                                                        void addEvidenceFiles(project, event.currentTarget.files);
                                                         event.currentTarget.value = '';
                                                     }}
                                                 />
@@ -533,16 +651,52 @@ export default function AuditorReview() {
                                                 <div className="space-y-2">
                                                     <p className="text-xs font-bold uppercase text-gray-400">Arquivos selecionados</p>
                                                     {draft.evidenceFiles.map((file) => (
-                                                        <div key={file.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2">
-                                                            <div className="min-w-0">
-                                                                <p className="truncate text-sm font-bold text-gray-800">{file.name}</p>
+                                                        <div
+                                                            key={file.id}
+                                                            className={
+                                                                file.state === 'error'
+                                                                    ? 'flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2'
+                                                                    : 'flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2'
+                                                            }
+                                                        >
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="truncate text-sm font-bold text-gray-800">{file.name}</p>
+                                                                    {file.state === 'uploading' && <Loader2 className="h-3 w-3 shrink-0 animate-spin text-blue-600" />}
+                                                                    {file.state === 'success' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
+                                                                </div>
                                                                 <p className="text-xs text-gray-500">Tamanho: {formatFileSize(file.size)}</p>
-                                                                <p className="break-all text-xs text-gray-500">{file.localUrl}</p>
+                                                                {file.state === 'uploading' && (
+                                                                    <>
+                                                                        <p className="mt-1 text-xs font-semibold text-blue-600">Enviando…</p>
+                                                                        <div className="mt-1 h-1 rounded-full bg-blue-100">
+                                                                            <div className="h-1 w-1/2 animate-pulse rounded-full bg-blue-600" />
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                                {file.state === 'success' && (
+                                                                    <p className="mt-1 truncate text-[10px] font-mono text-emerald-700">
+                                                                        Enviado · {file.sha256?.slice(0, 16)}…
+                                                                    </p>
+                                                                )}
+                                                                {file.state === 'error' && (
+                                                                    <div className="mt-1 space-y-1">
+                                                                        <p className="text-xs font-semibold text-red-700">{file.error}</p>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => uploadOneEvidence(project, file.id, file.file as File)}
+                                                                            className="text-xs font-bold text-red-700 underline hover:text-red-800"
+                                                                        >
+                                                                            Tentar novamente
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => removeEvidenceFile(file.id)}
-                                                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                                                                disabled={file.state === 'uploading'}
+                                                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                                                                 title="Remover arquivo"
                                                                 aria-label={`Remover ${file.name}`}
                                                             >
@@ -581,10 +735,32 @@ export default function AuditorReview() {
                                             <span className="text-xs font-bold uppercase text-gray-400">Conclusão</span>
                                             <textarea value={draft.conclusion} onChange={(event) => updateDraft('conclusion', event.target.value)} rows={2} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" />
                                         </label>
-                                        <label className="block space-y-1">
-                                            <span className="text-xs font-bold uppercase text-gray-400">Assinatura digital</span>
-                                            <input value={draft.signature} onChange={(event) => updateDraft('signature', event.target.value)} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                                        </label>
+                                        <div className="space-y-1">
+                                            <span className="text-xs font-bold uppercase text-gray-400">Assinatura verificável (stub SHA-256)</span>
+                                            {signatureResult ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                                                        <Fingerprint className="h-3.5 w-3.5" />
+                                                        <span className="font-mono">{signatureResult.hash.slice(0, 16)}…</span>
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copySignature(signatureResult.hash)}
+                                                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-gray-200 px-2 text-xs font-bold text-gray-600 transition hover:bg-gray-50"
+                                                        aria-label="Copiar assinatura verificável"
+                                                    >
+                                                        <Copy className="h-3.5 w-3.5" /> {copiedSignature ? 'Copiado' : 'Copiar'}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <p className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                                                    Gerada automaticamente pelo servidor ao registrar a auditoria.
+                                                </p>
+                                            )}
+                                            <p className="text-xs text-gray-500">
+                                                Gerada pelo servidor a partir do laudo e das evidências desta sessão de auditoria — não é uma assinatura biométrica.
+                                            </p>
+                                        </div>
                                     </div>
                                 </section>
 
@@ -603,7 +779,7 @@ export default function AuditorReview() {
                                         {copiedProjectId === (project.friendlyId || project.id) ? 'Relatório copiado' : 'Copiar relatório'}
                                     </button>
                                     <pre className="max-h-72 overflow-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                        {buildAuditReport(project, monitoringByProject[project.friendlyId || project.id], draft, 'APPROVED')}
+                                        {buildAuditReport(project, monitoringByProject[project.friendlyId || project.id], draft, 'APPROVED', nfcManuallyConfirmed)}
                                     </pre>
                                 </div>
 

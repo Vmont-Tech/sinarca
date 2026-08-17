@@ -11,6 +11,7 @@ from backend_app.modules.inventory.routes import router as inventory_router
 from backend_app.modules.marketplace.routes import router as marketplace_router
 from backend_app.modules.monitoring.routes import router as monitoring_router
 from backend_app.modules.projects.routes import router as projects_router
+from backend_app.modules.satellite.routes import router as satellite_router
 from backend_app.modules.treasury.routes import router as treasury_router
 
 api_router = APIRouter(prefix="/api/v1")
@@ -24,3 +25,4 @@ api_router.include_router(inventory_router)
 api_router.include_router(blockchain_router)
 api_router.include_router(treasury_router)
 api_router.include_router(monitoring_router)
+api_router.include_router(satellite_router)

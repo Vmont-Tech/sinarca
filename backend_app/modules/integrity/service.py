@@ -9,7 +9,16 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.config import Settings, get_settings
-from backend_app.db.models import Claim, Conflict, Document, Evidence, Project, ProjectRiskAssessment, RiskSignal
+from backend_app.db.models import (
+    Claim,
+    Conflict,
+    Document,
+    Evidence,
+    Project,
+    ProjectEvent,
+    ProjectRiskAssessment,
+    RiskSignal,
+)
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.integrity.constants import (
     CLAIM_CONFIDENCE_DECLARED,
@@ -25,6 +34,7 @@ from backend_app.modules.integrity.constants import (
 from backend_app.modules.integrity.risk_engine import (
     ClaimSnapshot,
     ConflictSnapshot,
+    ProjectEventSnapshot,
     compute_signals,
     integrity_status_for,
     risk_class_for_score,
@@ -731,6 +741,17 @@ class IntegrityService:
         conflicts = (
             await self.session.execute(select(Conflict).where(Conflict.project_id == project.id))
         ).scalars().all()
+        # Phase 05 / D-20: quarta fonte de sinal. Le so os CONFIRMED -- os
+        # estados DETECTED/ANALYZED sao trabalho em andamento e nao influenciam
+        # o risco ate a decisao humana (D-18).
+        project_events = (
+            await self.session.execute(
+                select(ProjectEvent).where(
+                    ProjectEvent.project_id == project.id,
+                    ProjectEvent.status == "CONFIRMED",
+                )
+            )
+        ).scalars().all()
 
         evidence_by_claim: dict[uuid.UUID, list[Evidence]] = {}
         for item in evidence:
@@ -757,8 +778,21 @@ class IntegrityService:
             )
             for c in conflicts
         ]
+        satellite_event_snapshots = [
+            ProjectEventSnapshot(
+                type=event.type,
+                status=event.status,
+                severity=event.severity,
+                cleared=event.cleared_at is not None,
+            )
+            for event in project_events
+        ]
 
-        signals = compute_signals(claim_snapshots, conflict_snapshots)
+        signals = compute_signals(
+            claim_snapshots,
+            conflict_snapshots,
+            satellite_events=satellite_event_snapshots,
+        )
         score = score_from_signals(signals)
         risk_class = risk_class_for_score(score)
         integrity_status = integrity_status_for(claim_snapshots, risk_class=risk_class)
@@ -787,6 +821,7 @@ class IntegrityService:
                 "claim_count": len(claims),
                 "conflict_count": open_conflict_count,
                 "evidence_count": len(evidence),
+                "satellite_event_count": len(satellite_event_snapshots),
             },
         )
         self.session.add(assessment)
