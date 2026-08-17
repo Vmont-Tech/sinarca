@@ -69,6 +69,16 @@ async def run_pending_satellite_jobs(settings: Settings | None = None) -> None:
             # projetos em paralelo estouraria a quota mesmo com o semaforo do
             # adapter, porque cada projeto ja faz 2 chamadas.
             for job in jobs:
+                # BUGFIX (validacao critica pos-checkpoint 05-09): session.rollback()
+                # dentro do handler de um job anterior (ver historical_reconstruction.py/
+                # monitoring.py) expira TODOS os objetos da identity map desta sessao
+                # compartilhada -- nao so o job que falhou. Sem este refresh, o proximo
+                # `job.job_type` do lote dispara um lazy-load sincrono fora de contexto
+                # greenlet (sqlalchemy.exc.MissingGreenlet), reproduzido de forma
+                # deterministica com lote >= 2 jobs e QUALQUER falha no primeiro.
+                # refresh() e seguro pos-rollback porque usa a identity key ja
+                # conhecida, sem precisar ler um atributo expirado primeiro.
+                await session.refresh(job)
                 handler = JOB_DISPATCH.get(job.job_type)
                 if handler is None:
                     await SatelliteService(session).finish_job(
