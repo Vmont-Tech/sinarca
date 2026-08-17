@@ -1543,6 +1543,14 @@ class ProjectsService:
             allowed = organization_id in {project.producer_organization_id, project.developer_organization_id}
         elif organization_id is not None and actor_role == "certifier":
             allowed = organization_id == project.certifier_organization_id
+        elif organization_id is not None and actor_role == "auditor":
+            # Phase 05 / SATM-06..09: rotas satelitais sao as primeiras a combinar
+            # require_role(..., "auditor", ...) com este guard compartilhado (nenhuma
+            # rota existente ate a Phase 04.2 fazia essa combinacao -- confirmado por
+            # grep antes desta mudanca). Sem este branch, todo ator auditor cairia no
+            # 403 abaixo mesmo estando corretamente vinculado ao projeto (mesma classe
+            # de bug documentada em 05-02-SUMMARY.md para get_editable_project_model).
+            allowed = organization_id == project.auditor_organization_id
 
         if not allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seu perfil não pode editar este projeto")
