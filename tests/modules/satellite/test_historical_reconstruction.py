@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -9,7 +10,7 @@ from sqlalchemy import select
 
 from backend_app.adapters.satellite import IndexStatisticsDTO, SceneDTO
 from backend_app.core.config import Settings
-from backend_app.db.models import Project, SatelliteObservation
+from backend_app.db.models import Project, SatelliteJob, SatelliteObservation
 from backend_app.db.session import get_sessionmaker
 from backend_app.main import app
 from backend_app.modules.satellite.historical_reconstruction import (
@@ -99,6 +100,22 @@ def _create_project_without_boundary(prefix: str) -> str:
     response = client.post("/api/v1/projects", json=payload, headers=auth_headers(*PRODUCER))
     assert response.status_code == 201, response.text
     return response.json()["project"]["friendlyId"]
+
+
+async def _fetch_pending_job(session, project: Project, job_type: str = "HISTORICAL_RECONSTRUCTION") -> SatelliteJob:
+    """POST /api/v1/projects (Task 3 / D-14) ja enfileira o job
+    HISTORICAL_RECONSTRUCTION dentro de create_project -- os testes de
+    integracao buscam esse job auto-criado em vez de chamar enqueue_job de
+    novo (que devolveria None, ja existe um job ativo)."""
+    return (
+        await session.execute(
+            select(SatelliteJob).where(
+                SatelliteJob.project_id == project.id,
+                SatelliteJob.job_type == job_type,
+                SatelliteJob.status == "PENDING",
+            )
+        )
+    ).scalars().one()
 
 
 def _months_range(start_year: int, start_month: int, count: int) -> list[tuple[int, int]]:
@@ -270,8 +287,8 @@ def test_reconstruction_persists_sixty_monthly_observations() -> None:
             project = (
                 await session.execute(select(Project).where(Project.friendly_id == friendly_id))
             ).scalars().one()
-            job = await SatelliteService(session).enqueue_job(project, job_type="HISTORICAL_RECONSTRUCTION")
-            await session.commit()
+            # create_project (Task 3 / D-14) ja enfileirou este job.
+            job = await _fetch_pending_job(session, project)
 
             provider = FakeProvider(scenes, statistics)
             await HistoricalReconstructionService(session, provider).run(job)
@@ -295,19 +312,31 @@ def test_reconstruction_is_idempotent_on_second_run() -> None:
     scenes = [_make_scene(year, month, 8.0) for year, month in months]
     statistics = [_make_statistics(year, month) for year, month in months]
 
-    async def run_job() -> int:
+    async def run_first_job() -> int:
         async with get_sessionmaker()() as session:
             project = (
                 await session.execute(select(Project).where(Project.friendly_id == friendly_id))
             ).scalars().one()
+            # create_project (Task 3 / D-14) ja enfileirou este primeiro job.
+            job = await _fetch_pending_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await HistoricalReconstructionService(session, provider).run(job)
+            return job.observations_persisted
+
+    async def run_second_job() -> int:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            # O primeiro job ja esta COMPLETED -- enqueue_job aceita um novo.
             job = await SatelliteService(session).enqueue_job(project, job_type="HISTORICAL_RECONSTRUCTION")
             await session.commit()
             provider = FakeProvider(scenes, statistics)
             await HistoricalReconstructionService(session, provider).run(job)
             return job.observations_persisted
 
-    first = asyncio.run(run_job())
-    second = asyncio.run(run_job())
+    first = asyncio.run(run_first_job())
+    second = asyncio.run(run_second_job())
 
     assert first == 12
     assert second == 0
@@ -327,8 +356,8 @@ def test_reconstruction_fails_closed_without_provider_credentials() -> None:
             # sessao (nao so `job`) -- ler project.id depois exigiria um
             # lazy-load sincrono que o AsyncSession nao suporta fora de um
             # contexto greenlet.
-            job = await SatelliteService(session).enqueue_job(project, job_type="HISTORICAL_RECONSTRUCTION")
-            await session.commit()
+            # create_project (Task 3 / D-14) ja enfileirou este job.
+            job = await _fetch_pending_job(session, project)
 
             provider = FakeProvider(
                 [],
@@ -361,8 +390,10 @@ def test_reconstruction_without_active_boundary_never_calls_provider() -> None:
             project = (
                 await session.execute(select(Project).where(Project.friendly_id == friendly_id))
             ).scalars().one()
-            job = await SatelliteService(session).enqueue_job(project, job_type="HISTORICAL_RECONSTRUCTION")
-            await session.commit()
+            # create_project (Task 3 / D-14) enfileira o job independente da
+            # presenca de active_boundary -- a checagem acontece dentro de
+            # run(), nao no enqueue.
+            job = await _fetch_pending_job(session, project)
 
             provider = ExplodingProvider([], [])
             await HistoricalReconstructionService(session, provider).run(job)
@@ -386,8 +417,8 @@ def test_reconstruction_marks_baseline_source_as_copernicus() -> None:
             project = (
                 await session.execute(select(Project).where(Project.friendly_id == friendly_id))
             ).scalars().one()
-            job = await SatelliteService(session).enqueue_job(project, job_type="HISTORICAL_RECONSTRUCTION")
-            await session.commit()
+            # create_project (Task 3 / D-14) ja enfileirou este job.
+            job = await _fetch_pending_job(session, project)
 
             provider = FakeProvider(scenes, statistics)
             await HistoricalReconstructionService(session, provider).run(job)
@@ -399,3 +430,91 @@ def test_reconstruction_marks_baseline_source_as_copernicus() -> None:
     baseline_source, sentinel_status = asyncio.run(run_reconstruction())
     assert baseline_source == "COPERNICUS"
     assert sentinel_status != "BLOCKED_MISSING_PROVIDER_CREDENTIALS"
+
+
+# ----------------------------------------------------------------------
+# SATM-10 -- create_project enfileira sem bloquear (Task 3, D-14)
+# ----------------------------------------------------------------------
+
+
+def test_create_project_enqueues_job_without_calling_provider(monkeypatch) -> None:
+    def _explode(*args, **kwargs):
+        raise AssertionError("build_copernicus_provider nao deveria ser chamado durante create_project")
+
+    # create_project nunca deveria construir um provider Copernicus -- ele
+    # apenas enfileira. Este monkeypatch prova isso: se o codigo do request
+    # tentasse chamar o provider (regressao), o teste explodiria aqui.
+    monkeypatch.setattr("backend_app.adapters.copernicus.build_copernicus_provider", _explode)
+    monkeypatch.setattr("backend_app.modules.satellite.scheduler.build_copernicus_provider", _explode)
+
+    prefix = f"reconenqueue-{uuid_hex()}"
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    assert response.status_code == 201, response.text
+    friendly_id = response.json()["project"]["friendlyId"]
+
+    async def count_pending_jobs() -> int:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            jobs = (
+                await session.execute(
+                    select(SatelliteJob).where(
+                        SatelliteJob.project_id == project.id,
+                        SatelliteJob.job_type == "HISTORICAL_RECONSTRUCTION",
+                        SatelliteJob.status == "PENDING",
+                    )
+                )
+            ).scalars().all()
+            return len(jobs)
+
+    assert asyncio.run(count_pending_jobs()) == 1
+
+
+def test_create_project_response_time_is_not_blocked_by_reconstruction() -> None:
+    prefix = f"recontime-{uuid_hex()}"
+    started = time.perf_counter()
+
+    response = client.post(
+        "/api/v1/projects",
+        json=project_payload(prefix, tags=tag_payload(prefix)),
+        headers=auth_headers(*PRODUCER),
+    )
+    elapsed = time.perf_counter() - started
+
+    assert response.status_code == 201, response.text
+    # Se a reconstrucao rodasse sincrona dentro do request, este teste
+    # falharia por timeout muito antes de chegar a 5s.
+    assert elapsed < 5.0
+
+
+def test_enqueue_is_idempotent_for_active_job() -> None:
+    prefix = f"reconidemenq-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)  # create_project ja enfileira 1 job PENDING
+
+    async def enqueue_again_and_count_active() -> tuple[bool, int]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            second = await SatelliteService(session).enqueue_job(project, job_type="HISTORICAL_RECONSTRUCTION")
+            await session.commit()
+
+            active_jobs = (
+                await session.execute(
+                    select(SatelliteJob).where(
+                        SatelliteJob.project_id == project.id,
+                        SatelliteJob.job_type == "HISTORICAL_RECONSTRUCTION",
+                        SatelliteJob.status.in_(("PENDING", "PROCESSING")),
+                    )
+                )
+            ).scalars().all()
+            return second is None, len(active_jobs)
+
+    second_was_none, active_count = asyncio.run(enqueue_again_and_count_active())
+    assert second_was_none is True
+    assert active_count == 1

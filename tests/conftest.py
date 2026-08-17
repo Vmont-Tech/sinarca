@@ -24,6 +24,11 @@ SUPABASE_STORAGE_ENV_KEYS = (
 def isolate_optional_storage_env(monkeypatch: pytest.MonkeyPatch):
     for key in SUPABASE_STORAGE_ENV_KEYS:
         monkeypatch.setenv(key, "")
+    # Phase 05: nenhum teste deve iniciar o scheduler in-process. Os testes
+    # atuais usam TestClient(app) no nivel de modulo (sem context manager),
+    # entao o lifespan nao roda; esta linha e a blindagem para qualquer teste
+    # futuro que use `with TestClient(app)`.
+    monkeypatch.setenv("SATELLITE_SCHEDULER_ENABLED", "false")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

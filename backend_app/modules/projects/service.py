@@ -39,6 +39,7 @@ from backend_app.db.models import (
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.audit.signature import AUDIT_SIGNATURE_KIND
 from backend_app.modules.integrity.constants import PUBLIC_RISK_SIGNAL_CODES
+from backend_app.modules.satellite.service import SatelliteService
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
     BlockchainData,
@@ -846,6 +847,10 @@ class ProjectsService:
         registry = await self._get_first_organization_by_role("registry")
         auditor = await self._get_first_organization_by_role("auditor")
         friendly_id = await self._next_friendly_id()
+        # D-07/SATM-07: placeholder de criacao. O job satelital enfileirado
+        # abaixo (apos a boundary existir) dispara a reconstrucao real;
+        # apply_baseline_from_observations() sobrescreve estes valores quando
+        # ela concluir.
         baseline = deterministic_baseline(payload)
         now = datetime.now(timezone.utc)
         source_hash = "baseline-" + baseline.baseline_hash
@@ -932,6 +937,14 @@ class ProjectsService:
 
         await self.session.flush()
         await self.persist_project_boundary(project, payload.tags)
+
+        # D-14/SATM-10: enfileira a reconstrucao historica e responde o HTTP
+        # imediatamente. NENHUMA chamada ao Copernicus acontece dentro deste
+        # request -- o poller do APScheduler consome satellite_jobs fora do
+        # ciclo request/response.
+        await SatelliteService(self.session).enqueue_job(
+            project, job_type="HISTORICAL_RECONSTRUCTION"
+        )
 
         # Phase 04.2 / INTG-01 (D-01): a submissao de originacao gera Claims
         # DECLARED. Nao promove projects.status nem depende de nada do payload
