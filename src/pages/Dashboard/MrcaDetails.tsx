@@ -11,6 +11,7 @@ import {
     Download,
     FileCheck2,
     FileText,
+    Fingerprint,
     Hash,
     Layers,
     Leaf,
@@ -133,7 +134,35 @@ const technicalStatusLabel = (value?: string) => ({
     BLOCKED_MISSING_PROVIDER_CREDENTIALS: 'Sentinel bloqueado por credenciais ausentes',
     BLOCKED_MISSING_CREDENTIALS: 'Bloqueado por credenciais ausentes',
     RECORDED_DECLARED_VALUE: 'Valor declarado registrado',
+    COPERNICUS: 'Copernicus Sentinel-2 (observação real)',
+    ACTIVE_COPERNICUS_SENTINEL_2: 'Monitoramento Sentinel-2 ativo',
 }[value || ''] || value || 'Não informado');
+
+/** Plan 07's public_satellite_item() shape (dossiê público, D-25/SATM-07) — minimized, no
+ * geometry/series/cloud-coverage/storage-path/internal-events (that's Surface B, Plan 09). */
+type PublicSatelliteItem = {
+    baselineSource: string | null;
+    sentinelStatus: string | null;
+    blocked: boolean;
+    ndviMean: number | null;
+    pointsAnalyzed: number | null;
+    referenceHash: string | null;
+    sentinelSceneId: string | null;
+    lastObservedAt: string | null;
+};
+
+/** Plan 02's public_audit_item() shape (dossiê público) — existence/status/conclusion/date
+ * only; reportText/latitude/longitude/evidenceUrls/full signature never appear here. */
+type PublicAuditItem = {
+    id: string;
+    status: string;
+    conclusion: string;
+    auditedAt: string | null;
+    createdAt: string;
+    evidenceCount: number;
+    signatureKind: string | null;
+    signaturePreview: string | null;
+};
 
 const EmptyState = ({ text }: { text: string }) => (
     <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6 text-sm font-medium text-gray-500">
@@ -231,6 +260,15 @@ export default function MrcaDetails() {
         project.entities.registry,
     ];
     const metadata = (project as any).metadata || {};
+    const satellite = (dossier as unknown as { satellite?: PublicSatelliteItem | null }).satellite;
+    const baselineIsReal = (satellite?.baselineSource ?? metadata.baseline_source) === 'COPERNICUS';
+    const tileClass = baselineIsReal
+        ? 'p-5 rounded-xl bg-gray-50 border border-gray-100'
+        : 'p-5 rounded-xl bg-amber-50 border border-amber-100';
+    const tileLabelClass = baselineIsReal
+        ? 'text-[10px] uppercase font-bold text-gray-400'
+        : 'text-[10px] uppercase font-bold text-amber-700';
+    const tileValueClass = baselineIsReal ? 'font-bold text-gray-900 mt-1' : 'font-bold text-amber-900 mt-1';
     const qtagDrafts: ProjectTagDraft[] = dossier.tags
         .map((tag) => ({
             vertex_label: String(tag.vertex) as VertexLabel,
@@ -459,19 +497,52 @@ export default function MrcaDetails() {
                                                 <p className="text-[10px] uppercase font-bold text-gray-400">Pontos analisados</p>
                                                 <p className="font-black text-xl mt-1">{dossier.baseline.pointsAnalyzed?.toLocaleString('pt-BR')}</p>
                                             </div>
-                                            <div className="p-5 rounded-xl bg-amber-50 border border-amber-100">
-                                                <p className="text-[10px] uppercase font-bold text-amber-700">Fonte do baseline</p>
-                                                <p className="font-bold text-amber-900 mt-1">{technicalStatusLabel(metadata.baseline_source || metadata.baseline_adapter)}</p>
+                                            <div className={tileClass}>
+                                                <p className={tileLabelClass}>Fonte do baseline</p>
+                                                <p className={tileValueClass}>{technicalStatusLabel(satellite?.baselineSource || metadata.baseline_source || metadata.baseline_adapter)}</p>
                                             </div>
-                                            <div className="p-5 rounded-xl bg-amber-50 border border-amber-100">
-                                                <p className="text-[10px] uppercase font-bold text-amber-700">Status Sentinel</p>
-                                                <p className="font-bold text-amber-900 mt-1">{technicalStatusLabel(metadata.sentinel_status)}</p>
+                                            <div className={tileClass}>
+                                                <p className={tileLabelClass}>Status Sentinel</p>
+                                                <p className={tileValueClass}>{technicalStatusLabel(satellite?.sentinelStatus || metadata.sentinel_status)}</p>
                                             </div>
                                         </div>
                                     ) : (
                                         <EmptyState text="Baseline público ainda não registrado." />
                                     )}
                                 </div>
+
+                                {satellite && (
+                                    <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                                        <h4 className="text-[10px] uppercase font-bold tracking-widest text-gray-400 mb-3">Monitoramento por satélite</h4>
+                                        {satellite.blocked ? (
+                                            <div className="p-5 rounded-xl bg-amber-50 border border-amber-100">
+                                                <p className="font-bold text-amber-900">Monitoramento satelital bloqueado.</p>
+                                                <p className="text-sm text-amber-800 mt-1">
+                                                    Faltam credenciais do provedor Copernicus neste ambiente. Nenhum dado simulado é exibido.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">NDVI médio</p>
+                                                    <p className="font-black text-xl mt-1">{satellite.ndviMean?.toFixed(3) ?? '—'}</p>
+                                                </div>
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Pontos analisados</p>
+                                                    <p className="font-black text-xl mt-1">{satellite.pointsAnalyzed?.toLocaleString('pt-BR') ?? '—'}</p>
+                                                </div>
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Hash do satélite</p>
+                                                    <p className="font-mono break-all mt-1 text-primary">{satellite.referenceHash ?? '—'}</p>
+                                                </div>
+                                                <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">Última observação</p>
+                                                    <p className="font-bold mt-1">{satellite.lastObservedAt ? formatDate(satellite.lastObservedAt) : '—'}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </section>
                         )}
 
@@ -559,19 +630,30 @@ export default function MrcaDetails() {
                                     <h3 className="text-sm font-bold text-black uppercase tracking-widest mb-6">Auditorias e laudos</h3>
                                     {dossier.audits.length > 0 ? (
                                         <div className="space-y-4">
-                                            {dossier.audits.map((audit) => (
+                                            {(dossier.audits as unknown as PublicAuditItem[]).map((audit) => (
                                                 <div key={audit.id} className="p-5 rounded-xl border border-gray-100 bg-gray-50">
                                                     <div className="flex items-center justify-between gap-4">
-                                                        <p className="text-sm font-black uppercase">{audit.status}</p>
+                                                        <p className="text-sm font-black uppercase">{audit.conclusion}</p>
                                                         <p className="text-[10px] text-gray-400 font-bold uppercase">{formatDate(audit.auditedAt || audit.createdAt)}</p>
                                                     </div>
-                                                    <p className="text-sm text-gray-500 mt-4">{audit.reportText || 'Laudo público não informado.'}</p>
-                                                    <p className="text-[10px] font-mono text-primary mt-4 break-all">{audit.digitalSignature || 'Assinatura não registrada'}</p>
+                                                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs font-bold text-gray-600">
+                                                            {audit.evidenceCount} evidência{audit.evidenceCount === 1 ? '' : 's'} anexada{audit.evidenceCount === 1 ? '' : 's'}
+                                                        </span>
+                                                        {audit.signatureKind && (
+                                                            <>
+                                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
+                                                                    <Fingerprint className="h-3 w-3" /> Assinatura verificável (stub SHA-256)
+                                                                </span>
+                                                                <span className="font-mono text-xs text-gray-500">{audit.signaturePreview}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <EmptyState text="Nenhuma auditoria pública registrada." />
+                                        <EmptyState text="Nenhuma auditoria de campo registrada até o momento." />
                                     )}
                                 </div>
 
