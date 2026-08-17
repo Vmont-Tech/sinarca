@@ -58,6 +58,42 @@ class Settings(BaseSettings):
     integrity_risk_weight_claim_evidence_pending: float = 10.0
     integrity_risk_weight_possession_without_title: float = 10.0
 
+    # Phase 05 / D-20: peso do sinal de anomalia satelital confirmada
+    # (mesmo padrao configuravel dos demais sinais de D-13/Phase 04.2).
+    integrity_risk_weight_satellite_anomaly_critical: float = 50.0
+    integrity_risk_weight_satellite_anomaly_high: float = 30.0
+
+    # Phase 05 / D-12: janela da reconstrucao historica (anos anteriores a
+    # projects.created_at), granularidade mensal (~60 pontos em 5 anos).
+    satellite_historical_years: int = 5
+
+    # Phase 05 / D-13: maxCloudCoverage bloqueia observacoes acima do limite;
+    # preferencia documentada por cenas abaixo de satellite_preferred_cloud_coverage_pct.
+    satellite_max_cloud_coverage_pct: float = 20.0
+    satellite_preferred_cloud_coverage_pct: float = 10.0
+
+    # Phase 05 / D-17: queda relativa de NDVI entre observacoes mensais
+    # consecutivas que dispara SatelliteAnomaly (0.15 = queda de 15%).
+    satellite_ndvi_drop_threshold: float = 0.15
+    satellite_ndvi_recovery_threshold: float = 0.15
+    # Queda relativa de NBR que caracteriza assinatura de fogo (POSSIBLE_FIRE).
+    satellite_nbr_fire_threshold: float = 0.27
+
+    # Phase 05 / D-14: scheduler in-process (APScheduler). O poller consome a
+    # fila persistida em satellite_jobs; o job periodico enfileira monitoramento.
+    satellite_scheduler_enabled: bool = True
+    satellite_job_poll_seconds: int = 30
+    satellite_monitoring_interval_hours: int = 24
+    # D-11: quota gratuita CDSE permite 2 requests concorrentes; o lote de
+    # projetos por ciclo nunca dispara mais que isso em paralelo.
+    satellite_monitoring_batch_size: int = 5
+    copernicus_max_concurrent_requests: int = 2
+    copernicus_request_timeout_seconds: float = 30.0
+
+    # COPERNICUS_CLIENT_ID/COPERNICUS_CLIENT_SECRET NAO ficam em Settings:
+    # sao lidos por os.getenv em CopernicusAdapterConfig.from_env() (Plan 03),
+    # mesmo padrao fail-closed de backend_app/adapters/stellar.py.
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: object) -> list[str] | object:
