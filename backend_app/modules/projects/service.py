@@ -37,6 +37,7 @@ from backend_app.db.models import (
     TreasuryAuthorization,
 )
 from backend_app.db.repositories import create_audit_event
+from backend_app.modules.audit.signature import AUDIT_SIGNATURE_KIND
 from backend_app.modules.integrity.constants import PUBLIC_RISK_SIGNAL_CODES
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
@@ -166,6 +167,15 @@ REQUIRED_CERTIFICATION_VERTEX_COUNT = 4
 CERTIFICATION_CERTIFICATE_DOCUMENT_TYPE = "CERTIFICATION_CERTIFICATE"
 PUBLIC_DOCUMENT_TYPES: frozenset[str] = frozenset({CERTIFICATION_CERTIFICATE_DOCUMENT_TYPE})
 
+# D-05: conclusao publica fixa por decisao. O texto do laudo interno NUNCA
+# chega ao dossie publico (mesmo principio de project.timeline na Phase 4,
+# que usa descricao publica fixa em vez das notes do certificador).
+AUDIT_PUBLIC_CONCLUSION_LABELS: dict[str, str] = {
+    "APPROVED": "Auditoria de campo aprovada",
+    "BLOCKED": "Projeto bloqueado por auditoria de campo",
+    "RECALCULATED": "Recálculo solicitado pela auditoria de campo",
+}
+
 CERTIFICATION_HISTORY_ACTIONS: tuple[str, ...] = (
     "CERTIFICATION_REVIEW_OPENED",
     "CERTIFICATION_PENDENCY_CREATED",
@@ -284,6 +294,27 @@ class ProjectsService:
         await self._assert_project_edit_permission(project, actor_id=actor_id, actor_role=actor_role)
         return project
 
+    async def get_project_for_auditor(self, project_id: str, *, actor_id: str | None, actor_role: str | None) -> Project:
+        """Guard org-scoped para auditoria de campo (Phase 05 / SATM-01, T-05-10).
+
+        get_editable_project_model() nao serve para auditoria: seu status gate
+        (EDITABLE_PROJECT_STATUSES) exclui justamente os status em que uma
+        auditoria acontece (AWAITING_AUDIT/BLOCKED_AUDIT_REQUIRED/
+        CERTIFIED_AWAITING_TREASURY -- o mesmo filtro usado por GET /audit/queue),
+        e _assert_project_edit_permission() nao tem branch para o papel auditor
+        (so produtor/certificadora). Este metodo aplica o mesmo principio de
+        guard org-scoped (nunca so require_role) usando auditor_organization_id
+        como organizacao de referencia, sem o gate de status de edicao.
+        """
+        project = await self._get_project_model(project_id)
+        if actor_role == "admin":
+            return project
+        if actor_role == "auditor":
+            profile = await self._actor_profile(actor_id)
+            if profile.organization_id is not None and profile.organization_id == project.auditor_organization_id:
+                return project
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seu perfil não pode auditar este projeto")
+
     async def get_public_dossier(self, project_id: str) -> ProjectPublicDossierResponse:
         project = await self._get_project_model(project_id)
         project_dto = await self.project_to_mrca(project)
@@ -350,7 +381,7 @@ class ProjectsService:
             boundary=public_boundary_item(await self.boundary_item(str(project.id))),
             integrity=public_integrity_item(await self.integrity.integrity_summary(project)),
             certifications=[public_certification_item(item) for item in certifications],
-            audits=[audit_item(item) for item in audits],
+            audits=[public_audit_item(item) for item in audits],
             documents=[
                 public_document_item(item) for item in documents if item.document_type.upper() in PUBLIC_DOCUMENT_TYPES
             ],
@@ -2253,6 +2284,11 @@ def public_document_item(document: Document) -> dict[str, Any]:
     }
 
 
+# Serializador INTERNO da auditoria de campo (laudo completo, coordenadas do
+# auditor, assinatura inteira). Nunca usar no dossie publico -- ver
+# public_audit_item logo abaixo (Phase 05 / D-05). Sem consumidor autenticado
+# ainda nesta fase (a bancada de auditoria via GET /audit/queue fica para o
+# Plan 08); mantido exportado como o serializador interno de referencia.
 def audit_item(audit: Audit) -> dict[str, Any]:
     return {
         "id": str(audit.id),
@@ -2264,6 +2300,28 @@ def audit_item(audit: Audit) -> dict[str, Any]:
         "digitalSignature": audit.digital_signature,
         "auditedAt": audit.audited_at.isoformat() if audit.audited_at else None,
         "createdAt": audit.created_at.isoformat(),
+    }
+
+
+def public_audit_item(audit: Audit) -> dict[str, Any]:
+    """Auditoria minimizada para o dossie publico (Phase 05 / D-05).
+
+    Expoe apenas EXISTENCIA, DATA e CONCLUSAO da auditoria. Nunca o laudo
+    interno completo (report_text), nunca as coordenadas do auditor, nunca a
+    assinatura inteira e nunca caminho/hash de storage das evidencias.
+    Mesmo principio de minimizacao de public_document_item/PUBLIC_DOCUMENT_TYPES
+    (Phase 4) e do bloco integrity publico (Phase 04.2 / D-16).
+    """
+    signature = audit.digital_signature or ""
+    return {
+        "id": str(audit.id),
+        "status": audit.status,
+        "conclusion": AUDIT_PUBLIC_CONCLUSION_LABELS.get(audit.status, "Auditoria registrada"),
+        "auditedAt": audit.audited_at.isoformat() if audit.audited_at else None,
+        "createdAt": audit.created_at.isoformat(),
+        "evidenceCount": len(audit.evidence_urls or []),
+        "signatureKind": AUDIT_SIGNATURE_KIND if signature else None,
+        "signaturePreview": f"{signature[:12]}…" if signature else None,
     }
 
 

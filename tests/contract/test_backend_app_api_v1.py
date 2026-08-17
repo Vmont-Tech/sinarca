@@ -371,7 +371,13 @@ def test_audit_queue_verify_and_monitoring_anomaly_block_project() -> None:
             "laudo_texto": "Auditoria aprovada no teste de contrato",
             "latitude": -10.70,
             "longitude": -48.41,
-            "evidencias_url": ["https://example.test/evidencia.jpg"],
+            # Phase 05 / D-02: evidencias_url passa a referenciar Document.id reais
+            # de AUDIT_EVIDENCE (POST /audit/{project_id}/evidence), nunca mais
+            # strings livres como URL. Lista vazia continua valida (auditoria sem
+            # anexo) -- este teste cobre o pipeline queue->verify->anomaly, nao a
+            # cobertura de evidencia, que tem arquivo dedicado
+            # (tests/test_audit_field_evidence.py).
+            "evidencias_url": [],
             "assinatura_digital": "assinatura-auditor",
         },
         headers=auth_headers("auditor@sinarca.com.br", "auditor"),
