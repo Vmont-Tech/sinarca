@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
 from backend_app.main import app
+from backend_app.modules.audit.signature import compute_audit_signature
 
 client = TestClient(app)
 
@@ -251,3 +253,136 @@ def test_audit_evidence_response_never_contains_local_scheme() -> None:
     body = json.dumps(response.json())
     assert "local://" not in body
     assert "mock://" not in body
+
+
+# ---------------------------------------------------------------------------
+# Task 2: compute_audit_signature (pure) + PATCH /audit/verify/{project_id}
+# ---------------------------------------------------------------------------
+
+
+def test_signature_stub_deterministic() -> None:
+    signed_at = datetime(2026, 8, 16, 12, 0, 0, tzinfo=timezone.utc)
+
+    def _sig(auditor_id="aud-1", project_id="proj-1", report_text="laudo", ts=signed_at, evidence_ids=("b", "a")):
+        return compute_audit_signature(
+            auditor_id=auditor_id, project_id=project_id, report_text=report_text, signed_at=ts, evidence_ids=list(evidence_ids)
+        )
+
+    first = _sig()
+    second = _sig()
+    assert first == second
+    assert len(first) == 64
+    assert all(char in "0123456789abcdef" for char in first)
+
+    # ordem invertida da lista de evidence_ids nao altera o hash
+    reordered = _sig(evidence_ids=("a", "b"))
+    assert first == reordered
+
+    # mudar qualquer um dos 5 componentes muda o hash
+    assert first != _sig(auditor_id="aud-2")
+    assert first != _sig(project_id="proj-2")
+    assert first != _sig(report_text="outro laudo")
+    assert first != _sig(ts=datetime(2026, 8, 17, 12, 0, 0, tzinfo=timezone.utc))
+    assert first != _sig(evidence_ids=("a", "b", "c"))
+
+
+def _verify(friendly_id: str, headers: dict[str, str], **overrides: object) -> object:
+    payload: dict[str, object] = {
+        "status": "APPROVED",
+        "laudo_texto": "Auditoria de campo realizada sem pendências.",
+        "evidencias_url": [],
+        "assinatura_digital": "assinatura-digital-pendente",
+    }
+    payload.update(overrides)
+    return client.patch(f"/api/v1/audit/verify/{friendly_id}", json=payload, headers=headers)
+
+
+def test_verify_rejects_local_scheme_evidence() -> None:
+    project = create_project()
+    friendly_id = str(project["friendlyId"])
+    response = _verify(friendly_id, auth_headers(*ADMIN), evidencias_url=["local://auditoria/foto.png"])
+    assert response.status_code == 400
+
+
+def test_verify_rejects_unknown_document_id() -> None:
+    project = create_project()
+    friendly_id = str(project["friendlyId"])
+    response = _verify(friendly_id, auth_headers(*ADMIN), evidencias_url=[str(uuid.uuid4())])
+    assert response.status_code == 400
+
+
+def test_verify_rejects_document_from_other_project() -> None:
+    admin_headers = auth_headers(*ADMIN)
+
+    other_project = create_project()
+    other_friendly_id = str(other_project["friendlyId"])
+    other_upload = upload_evidence(
+        other_friendly_id, filename="outro.png", content=PNG_BYTES, content_type="image/png", headers=admin_headers
+    )
+    assert other_upload.status_code == 201, other_upload.text
+    foreign_document_id = other_upload.json()["id"]
+
+    project = create_project()
+    friendly_id = str(project["friendlyId"])
+    response = _verify(friendly_id, admin_headers, evidencias_url=[foreign_document_id])
+    assert response.status_code == 400
+
+
+def test_verify_persists_document_ids_and_server_signature() -> None:
+    admin_headers = auth_headers(*ADMIN)
+    project = create_project()
+    friendly_id = str(project["friendlyId"])
+
+    upload_response = upload_evidence(
+        friendly_id, filename="evidencia.pdf", content=PDF_BYTES, content_type="application/pdf", headers=admin_headers
+    )
+    assert upload_response.status_code == 201, upload_response.text
+    document_id = upload_response.json()["id"]
+
+    response = _verify(
+        friendly_id,
+        admin_headers,
+        evidencias_url=[document_id],
+        assinatura_digital="assinatura-falsa-do-cliente",
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["evidencias_url"] == [document_id]
+    assert body["assinatura_tipo"] == "STUB_SHA256"
+    assert len(body["assinatura_digital"]) == 64
+    assert body["assinatura_digital"] != "assinatura-falsa-do-cliente"
+
+
+def test_verify_signature_is_reproducible_from_response() -> None:
+    admin_headers = auth_headers(*ADMIN)
+    project = create_project()
+    friendly_id = str(project["friendlyId"])
+
+    upload_response = upload_evidence(
+        friendly_id, filename="evidencia.pdf", content=PDF_BYTES, content_type="application/pdf", headers=admin_headers
+    )
+    document_id = upload_response.json()["id"]
+
+    response = _verify(
+        friendly_id,
+        admin_headers,
+        evidencias_url=[document_id],
+        laudo_texto="Laudo reproduzivel de teste.",
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    recomputed = compute_audit_signature(
+        auditor_id=_admin_actor_id(),
+        project_id=friendly_id,
+        report_text="Laudo reproduzivel de teste.",
+        signed_at=datetime.fromisoformat(body["assinatura_verificavel_em"]),
+        evidence_ids=[document_id],
+    )
+    assert recomputed == body["assinatura_digital"]
+
+
+def _admin_actor_id() -> str:
+    response = client.get("/api/v1/auth/me", headers=auth_headers(*ADMIN))
+    assert response.status_code == 200, response.text
+    return str(response.json()["id"])

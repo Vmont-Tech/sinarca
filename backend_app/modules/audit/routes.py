@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import PurePath
@@ -16,6 +17,7 @@ from backend_app.core.security import AuthenticatedUser
 from backend_app.db.models import Audit, Document, EnvironmentalCredit, Project
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
+from backend_app.modules.audit.signature import AUDIT_SIGNATURE_KIND, compute_audit_signature
 from backend_app.modules.integrity.service import IntegrityService
 from backend_app.modules.inventory.routes import validate_magic_bytes
 from backend_app.modules.projects.schemas import QueueResponse
@@ -213,6 +215,49 @@ async def audit_queue(
     return QueueResponse(total=len(projects), projects=projects)
 
 
+async def _resolve_audit_evidence_documents(
+    session: AsyncSession, project: Project, raw_ids: list[str]
+) -> list[Document]:
+    """Resolve e valida evidencias de auditoria (D-02, T-05-10).
+
+    Cada item precisa ser um Document.id (UUID) real, do tipo AUDIT_EVIDENCE,
+    pertencente a ESTE projeto. Nunca aceita string livre (ex. local://...)
+    nem Document.id de outro projeto -- HTTP 400 em ambos os casos.
+    """
+    if not raw_ids:
+        return []
+
+    parsed_ids: list[uuid.UUID] = []
+    for raw_id in raw_ids:
+        try:
+            parsed_ids.append(uuid.UUID(str(raw_id)))
+        except (ValueError, AttributeError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Evidência de auditoria inválida: {raw_id}",
+            )
+
+    documents = (
+        await session.execute(
+            select(Document).where(
+                Document.id.in_(parsed_ids),
+                Document.project_id == project.id,
+                Document.document_type == AUDIT_EVIDENCE_DOCUMENT_TYPE,
+            )
+        )
+    ).scalars().all()
+
+    found_ids = {document.id for document in documents}
+    missing = [str(item) for item in parsed_ids if item not in found_ids]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Evidência de auditoria não encontrada para este projeto: {missing}",
+        )
+
+    return sorted(documents, key=lambda document: str(document.id))
+
+
 @router.patch("/audit/verify/{project_id}")
 async def verify_project(
     project_id: str,
@@ -223,6 +268,8 @@ async def verify_project(
     service = ProjectsService(session)
     project = await service._get_project_model(project_id)
     previous_status = project.status
+
+    documents = await _resolve_audit_evidence_documents(session, project, payload.evidencias_url)
 
     if payload.status == "APPROVED":
         project.status = "ACTIVE"
@@ -238,15 +285,30 @@ async def verify_project(
     audit.report_text = payload.laudo_texto
     audit.latitude = Decimal(str(payload.latitude)) if payload.latitude is not None else None
     audit.longitude = Decimal(str(payload.longitude)) if payload.longitude is not None else None
-    audit.evidence_urls = payload.evidencias_url
-    audit.digital_signature = payload.assinatura_digital
-    audit.audited_at = datetime.now(timezone.utc)
+
+    signed_at = datetime.now(timezone.utc)
+    evidence_ids = [str(document.id) for document in documents]
+    audit.evidence_urls = evidence_ids
+    # D-03: assinatura sempre recalculada no servidor; payload.assinatura_digital
+    # (entrada do cliente) e descartado. project_id usa friendly_id (nao o uuid
+    # interno project.id) porque e o mesmo identificador ja devolvido em
+    # "project_id" nesta resposta -- o cliente precisa dele para reproduzir o
+    # hash (ver <behavior> deste plano); o uuid interno nunca e exposto por
+    # nenhuma rota publica.
+    audit.digital_signature = compute_audit_signature(
+        auditor_id=str(payload.auditor_id or current_user.id),
+        project_id=project.friendly_id,
+        report_text=payload.laudo_texto,
+        signed_at=signed_at,
+        evidence_ids=evidence_ids,
+    )
+    audit.audited_at = signed_at
 
     project.timeline = [
         *(project.timeline or []),
         {
             "title": _audit_title(payload.status),
-            "date": datetime.now(timezone.utc).date().isoformat(),
+            "date": signed_at.date().isoformat(),
             "status": "completed" if payload.status == "APPROVED" else "active",
             "desc": payload.laudo_texto or "Verificação registrada pelo auditor.",
         },
@@ -259,14 +321,24 @@ async def verify_project(
         actor_role=current_user.role,
         before_data={"status": previous_status},
         after_data={"status": project.status},
-        metadata={"actor_external_id": current_user.id, "evidence_count": len(payload.evidencias_url)},
+        metadata={
+            "actor_external_id": current_user.id,
+            "evidence_count": len(evidence_ids),
+            "signature_kind": AUDIT_SIGNATURE_KIND,
+            "signed_at": signed_at.isoformat(),
+            "evidence_ids": evidence_ids,
+        },
     )
     await session.commit()
     return {
         "success": True,
         "project_id": project.friendly_id,
         "new_status": project.status,
-        "audit_date": datetime.now(timezone.utc).isoformat(),
+        "audit_date": signed_at.isoformat(),
+        "assinatura_digital": audit.digital_signature,
+        "assinatura_tipo": AUDIT_SIGNATURE_KIND,
+        "assinatura_verificavel_em": signed_at.isoformat(),
+        "evidencias_url": evidence_ids,
     }
 
 
