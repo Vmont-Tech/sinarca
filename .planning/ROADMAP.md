@@ -197,7 +197,18 @@ Plans:
   8. Anomalias confirmadas bloqueiam projeto automaticamente, notificam papéis envolvidos e liberam desbloqueio após auditoria aprovada.
   9. Recálculo de créditos após incidente ajusta disponibilidade e prepara ajuste de tokens quando aplicável.
   10. Job de monitoramento roda periodicamente sem bloquear requests HTTP, respeita `maxCloudCoverage` configurável e é idempotente por `projectId + satellite + sceneId + processingVersion`.
-**Plans**: Not planned yet
+**Plans**: 9 plans em 6 waves
+
+Plans:
+- [ ] 05-01-PLAN.md — Fundação: `httpx`/APScheduler, thresholds em `Settings`, vocabulário satelital, 7 tabelas (RLS sem policy, idempotência D-15) e task `[BLOCKING]` de schema push (SATM-05/06/09/10).
+- [ ] 05-02-PLAN.md — Auditoria de campo no backend: upload real de evidência, assinatura stub SHA-256 recalculada no servidor e minimização do laudo no dossiê público (SATM-01/02/03).
+- [ ] 05-03-PLAN.md — `SatelliteProvider` + `CopernicusProvider` fail-closed sobre `httpx.AsyncClient`: OAuth2 cacheado, semáforo de 2 requests, STAC/Statistical/Process e consumo em `copernicus_api_usage` (SATM-05/10).
+- [ ] 05-04-PLAN.md — `AnomalyDetector` puro (nunca `DEFORESTATION`) e sinal `SATELLITE_ANOMALY_CONFIRMED_*` no Risk Engine da Phase 04.2 (SATM-06/08).
+- [ ] 05-05-PLAN.md — Persistência idempotente, reconstrução histórica de 5 anos mensal, primeiro lifespan FastAPI + APScheduler e enfileiramento em `create_project` (SATM-05/07/10).
+- [ ] 05-06-PLAN.md — Monitoramento contínuo incremental, `SatelliteAnomaly`/`ProjectEvent` `DETECTED → ANALYZED` e evidência before/after com hash SHA-256 (SATM-06/10).
+- [ ] 05-07-PLAN.md — API `/api/v1` satelital, decisão humana `CONFIRMED`/`DISMISSED`, Auto Hold via recálculo, `credit_adjustment_pendencies`, desbloqueio auditável e bloco satélite no dossiê público (SATM-06/07/08/09).
+- [ ] 05-08-PLAN.md — UI de auditoria de campo (upload real, badge de assinatura, NFC fail-closed) e dossiê público com baseline condicional (SATM-01/02/03/04/07).
+- [ ] 05-09-PLAN.md — Dashboard satelital real: rota por projeto, mapa Leaflet com camadas, série temporal SVG, anomalias com decisão humana e slider before/after (SATM-06/07/08/09/10).
 
 ### Phase 05.1: integrity-review-and-external-registries (INSERTED)
 **Goal**: Fechar o P1 do Sinarca Integrity Layer: Integrity Review Console com regra de four-eyes para risco HIGH+ (nenhum ator único pode submeter, validar e aprovar o mesmo projeto), e verificação de registros oficiais (ONR/CNM, SIGEF/INCRA, CAR/SICAR) via uma interface `ExternalRegistryProvider` desacoplada — análoga em desenho ao `SatelliteProvider` da Phase 5. O Sinarca hoje **não tem acesso a nenhum provedor desse tipo** (ex.: geoportal InfoTerras-like); a primeira entrega desta fase é a decisão de build vs. buy documentada, não a integração em si.
@@ -314,7 +325,7 @@ Plans:
 | 4. certification-workbench | 0/0 | Not planned | - |
 | 4.1. geospatial-foundation | 0/0 | Not planned | - |
 | 4.2. integrity-layer-foundation | 5/5 | Complete | 2026-08-16 |
-| 5. satellite-monitoring-and-field-audit | 0/0 | Not planned | - |
+| 5. satellite-monitoring-and-field-audit | 0/9 | Planned | - |
 | 5.1. integrity-review-and-external-registries | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |
 | 7. emissions-inventory-and-compensation | 0/0 | Not planned | - |
