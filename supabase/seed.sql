@@ -408,6 +408,714 @@ values
   ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.908394, -44.511870, 'N', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB')),
   ((select id from projects where friendly_id = 'PRC-2026-077'), false, null, null, -19.907302, -44.511814, 'O', 'ACTIVE', '2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z', jsonb_build_object('source', 'INFOTERRAS relatório MG-3126000-4A5F440A95394810A3531AEB447BCBAB'));
 
+-- Vertices sintéticos para os projetos do seed que ainda não tinham QTAGs/geofence
+-- (todos exceto PRC-2024-002 e PRC-2026-077). Gerados deterministicamente a partir
+-- do centroide (latitude/longitude) já seedado de cada projeto: polígono irregular
+-- de 4 a 7 vértices, ângulo-ordenado (garante geometria simples/não-autointersectante),
+-- com raio limitado a 40% da distância ao vizinho mais próximo entre TODOS os projetos
+-- (existentes + novos) -- garante matematicamente que nenhum par de geofences se
+-- sobrepõe, mesmo quando isso significa não atingir a área alvo de `seeded_area_hectares`
+-- (ex.: PRC-2024-882/Novo Aripuanã fica perto de PRC-2026-024, mesma cidade).
+-- Sem tag_uid (sem NFC físico), mesmo padrão de PRC-2026-077.
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2023-555');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2023-555'), false, null, null, -26.294478, -48.831953, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2023-555'), false, null, null, -26.306959, -48.834903, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2023-555'), false, null, null, -26.308803, -48.845465, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2023-555'), false, null, null, -26.299007, -48.850622, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2023-555'), false, null, null, -26.291615, -48.844353, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2024-882');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2024-882'), false, null, null, -7.189051, -60.351359, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2024-882'), false, null, null, -7.200716, -60.342805, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2024-882'), false, null, null, -7.224862, -60.342688, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2024-882'), false, null, null, -7.226625, -60.375104, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2024-882'), false, null, null, -7.194260, -60.379609, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2025-001');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2025-001'), false, null, null, -3.196073, -52.199394, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-001'), false, null, null, -3.200135, -52.196632, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-001'), false, null, null, -3.203347, -52.198558, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-001'), false, null, null, -3.202988, -52.202386, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-001'), false, null, null, -3.200414, -52.203481, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2025-002');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.274708, -35.969806, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.276868, -35.965349, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.279619, -35.964562, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.285278, -35.968525, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.284700, -35.972554, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.280457, -35.975865, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2025-002'), false, null, null, -8.275456, -35.973555, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-008');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-008'), false, null, null, -9.317348, -50.344813, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-008'), false, null, null, -9.328153, -50.333687, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-008'), false, null, null, -9.344105, -50.346012, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-008'), false, null, null, -9.329221, -50.363839, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-009');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-009'), false, null, null, -13.533643, -52.265650, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-009'), false, null, null, -13.544048, -52.257395, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-009'), false, null, null, -13.561863, -52.276402, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-009'), false, null, null, -13.557024, -52.285241, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-010');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.731833, -47.535876, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.741229, -47.529213, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.752906, -47.523046, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.764528, -47.534836, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.762791, -47.546537, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.758268, -47.556862, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-010'), false, null, null, -10.742657, -47.552392, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-011');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-011'), false, null, null, -9.267464, -49.932663, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-011'), false, null, null, -9.282794, -49.941389, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-011'), false, null, null, -9.278424, -49.962493, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-011'), false, null, null, -9.268024, -49.966406, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-011'), false, null, null, -9.251160, -49.951299, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-012');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-012'), false, null, null, -6.641046, -51.974876, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-012'), false, null, null, -6.652079, -51.981409, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-012'), false, null, null, -6.654425, -51.993716, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-012'), false, null, null, -6.641320, -52.006133, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-012'), false, null, null, -6.624757, -51.991738, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-013');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.240571, -47.293436, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.253232, -47.282722, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.261898, -47.282789, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.279047, -47.294968, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.274971, -47.314425, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.258795, -47.321172, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-013'), false, null, null, -23.248296, -47.314663, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-014');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.511657, -52.169266, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.516169, -52.156199, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.534836, -52.149338, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.546082, -52.165899, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.542584, -52.180743, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.530144, -52.188017, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-014'), false, null, null, -22.521339, -52.185786, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-015');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-015'), false, null, null, -19.480778, -41.044514, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-015'), false, null, null, -19.507275, -41.050045, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-015'), false, null, null, -19.505167, -41.071227, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-015'), false, null, null, -19.490967, -41.081729, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-015'), false, null, null, -19.474850, -41.067384, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-016');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-016'), false, null, null, -22.846626, -46.298269, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-016'), false, null, null, -22.855694, -46.301271, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-016'), false, null, null, -22.871944, -46.327192, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-016'), false, null, null, -22.855889, -46.343753, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-016'), false, null, null, -22.839065, -46.334223, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-016'), false, null, null, -22.828436, -46.322508, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-017');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-017'), false, null, null, -19.922698, -40.599509, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-017'), false, null, null, -19.927408, -40.593476, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-017'), false, null, null, -19.932667, -40.593274, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-017'), false, null, null, -19.937813, -40.602518, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-017'), false, null, null, -19.933408, -40.607501, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-017'), false, null, null, -19.928333, -40.607218, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-018');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-018'), false, null, null, -7.222501, -39.407105, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-018'), false, null, null, -7.230820, -39.399825, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-018'), false, null, null, -7.238775, -39.407609, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-018'), false, null, null, -7.237175, -39.413411, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-018'), false, null, null, -7.230550, -39.417781, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-019');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-019'), false, null, null, -8.849030, -38.758957, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-019'), false, null, null, -8.859108, -38.768613, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-019'), false, null, null, -8.846556, -38.778130, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-019'), false, null, null, -8.838723, -38.772037, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-020');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.186091, -55.959947, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.195619, -55.959129, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.199850, -55.968316, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.197843, -55.975092, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.190239, -55.980342, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.182427, -55.977946, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-020'), false, null, null, -16.178109, -55.972610, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-021');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-021'), false, null, null, -16.257508, -56.606747, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-021'), false, null, null, -16.270666, -56.615892, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-021'), false, null, null, -16.262465, -56.632664, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-021'), false, null, null, -16.246828, -56.623716, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-022');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-022'), false, null, null, -20.227254, -56.366117, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-022'), false, null, null, -20.237102, -56.355967, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-022'), false, null, null, -20.249849, -56.358439, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-022'), false, null, null, -20.252802, -56.368939, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-022'), false, null, null, -20.246006, -56.383824, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-022'), false, null, null, -20.235388, -56.384302, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-023');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-023'), false, null, null, -7.186679, -59.884692, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-023'), false, null, null, -7.199036, -59.878027, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-023'), false, null, null, -7.213312, -59.882827, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-023'), false, null, null, -7.197561, -59.903705, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-024');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.136927, -60.378435, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.145476, -60.368565, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.155440, -60.367483, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.161122, -60.371193, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.163877, -60.384251, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.155033, -60.394244, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-024'), false, null, null, -7.139424, -60.388696, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-025');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.258115, -55.979198, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.275230, -55.974438, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.282623, -55.986991, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.282524, -55.997461, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.275432, -56.004181, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.260069, -56.003419, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-025'), false, null, null, -4.256695, -55.993656, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-026');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-026'), false, null, null, -3.196159, -52.209472, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-026'), false, null, null, -3.199324, -52.206469, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-026'), false, null, null, -3.201529, -52.207435, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-026'), false, null, null, -3.203368, -52.208787, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-026'), false, null, null, -3.200590, -52.213627, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-026'), false, null, null, -3.199205, -52.213607, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-027');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -2.983816, -47.337037, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -2.998607, -47.334880, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -3.007420, -47.347286, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -3.004111, -47.362283, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -2.999096, -47.366416, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -2.982426, -47.367324, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-027'), false, null, null, -2.972341, -47.353885, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-028');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.243231, -64.788561, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.251745, -64.775797, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.262458, -64.774939, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.271691, -64.781444, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.275570, -64.800293, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.264962, -64.808842, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-028'), false, null, null, -7.253418, -64.804754, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-029');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-029'), false, null, null, -10.634984, -68.495357, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-029'), false, null, null, -10.647628, -68.485190, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-029'), false, null, null, -10.656192, -68.483018, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-029'), false, null, null, -10.669867, -68.498180, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-029'), false, null, null, -10.656824, -68.515742, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-029'), false, null, null, -10.637811, -68.510807, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-030');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-030'), false, null, null, -9.822896, -67.931891, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-030'), false, null, null, -9.833556, -67.942384, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-030'), false, null, null, -9.809675, -67.967104, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-030'), false, null, null, -9.803497, -67.957981, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-031');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-031'), false, null, null, -11.436133, -61.420199, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-031'), false, null, null, -11.447142, -61.435158, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-031'), false, null, null, -11.436028, -61.455863, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-031'), false, null, null, -11.411807, -61.447106, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-032');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-032'), false, null, null, -8.743002, -63.892227, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-032'), false, null, null, -8.750408, -63.884737, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-032'), false, null, null, -8.769191, -63.884812, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-032'), false, null, null, -8.775094, -63.908750, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-032'), false, null, null, -8.744826, -63.916604, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-033');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.786164, -49.513466, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.806283, -49.508203, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.816695, -49.526668, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.813149, -49.541039, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.799198, -49.549426, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.788176, -49.543392, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-033'), false, null, null, -11.782917, -49.532957, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-034');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-034'), false, null, null, -9.351112, -49.853043, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-034'), false, null, null, -9.356833, -49.858975, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-034'), false, null, null, -9.346258, -49.867750, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-034'), false, null, null, -9.341477, -49.860375, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-035');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-035'), false, null, null, -17.566619, -52.540546, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-035'), false, null, null, -17.576391, -52.542447, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-035'), false, null, null, -17.577344, -52.551064, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-035'), false, null, null, -17.575715, -52.556078, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-035'), false, null, null, -17.565502, -52.556488, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-035'), false, null, null, -17.562125, -52.552484, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-036');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-036'), false, null, null, -13.798342, -47.441572, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-036'), false, null, null, -13.807014, -47.443705, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-036'), false, null, null, -13.806474, -47.455636, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-036'), false, null, null, -13.796177, -47.458909, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-036'), false, null, null, -13.790904, -47.453724, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-037');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-037'), false, null, null, -14.470847, -46.115241, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-037'), false, null, null, -14.477412, -46.109844, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-037'), false, null, null, -14.490157, -46.118562, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-037'), false, null, null, -14.482072, -46.131655, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-038');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.485262, -44.349652, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.495341, -44.348547, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.502297, -44.354704, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.500474, -44.363688, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.489965, -44.370362, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.481030, -44.366320, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-038'), false, null, null, -15.477333, -44.361735, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-039');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-039'), false, null, null, -12.361301, -44.955010, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-039'), false, null, null, -12.370527, -44.964937, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-039'), false, null, null, -12.371448, -44.977820, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-039'), false, null, null, -12.355431, -44.980924, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-039'), false, null, null, -12.349824, -44.973866, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-040');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-040'), false, null, null, -8.588122, -38.565982, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-040'), false, null, null, -8.592871, -38.559562, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-040'), false, null, null, -8.613909, -38.562705, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-040'), false, null, null, -8.610216, -38.575636, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-040'), false, null, null, -8.590915, -38.581845, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-041');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-041'), false, null, null, -6.556159, -40.118327, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-041'), false, null, null, -6.567145, -40.104247, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-041'), false, null, null, -6.579986, -40.107521, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-041'), false, null, null, -6.584404, -40.125503, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-041'), false, null, null, -6.568517, -40.132740, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-042');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-042'), false, null, null, -8.976481, -39.897935, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-042'), false, null, null, -8.981899, -39.887272, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-042'), false, null, null, -9.000244, -39.887633, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-042'), false, null, null, -9.004281, -39.899794, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-042'), false, null, null, -8.996010, -39.912944, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-042'), false, null, null, -8.982286, -39.915480, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-043');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.191824, -39.319075, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.200283, -39.306778, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.216322, -39.306379, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.227543, -39.316196, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.224548, -39.328221, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.216971, -39.332156, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-043'), false, null, null, -7.201167, -39.332335, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-044');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-044'), false, null, null, -22.278119, -44.840714, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-044'), false, null, null, -22.289457, -44.843225, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-044'), false, null, null, -22.296338, -44.866477, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-044'), false, null, null, -22.270241, -44.872479, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-044'), false, null, null, -22.263562, -44.866010, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-045');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-045'), false, null, null, -22.450453, -44.448033, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-045'), false, null, null, -22.479502, -44.431567, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-045'), false, null, null, -22.485858, -44.454911, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-045'), false, null, null, -22.460773, -44.466881, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-046');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.420919, -48.694459, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.435411, -48.692451, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.449103, -48.702688, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.448550, -48.714710, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.438853, -48.727577, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.418994, -48.721826, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-046'), false, null, null, -25.414090, -48.711197, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-047');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-047'), false, null, null, -25.454723, -48.828282, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-047'), false, null, null, -25.462893, -48.812453, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-047'), false, null, null, -25.479666, -48.814213, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-047'), false, null, null, -25.486358, -48.823457, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-047'), false, null, null, -25.476533, -48.847075, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-047'), false, null, null, -25.458775, -48.849487, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-048');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-048'), false, null, null, -26.222731, -48.637285, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-048'), false, null, null, -26.237159, -48.617793, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-048'), false, null, null, -26.258943, -48.650665, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-048'), false, null, null, -26.248022, -48.660701, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-049');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -27.997727, -49.576453, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -28.017944, -49.568579, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -28.025866, -49.585143, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -28.028695, -49.600859, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -28.013232, -49.611319, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -28.000926, -49.609259, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-049'), false, null, null, -27.989592, -49.595799, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-050');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-050'), false, null, null, -29.320111, -49.727728, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-050'), false, null, null, -29.330310, -49.713649, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-050'), false, null, null, -29.346094, -49.708615, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-050'), false, null, null, -29.359373, -49.728328, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-050'), false, null, null, -29.348495, -49.752189, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-050'), false, null, null, -29.330856, -49.753672, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-051');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-051'), false, null, null, -31.329509, -54.091855, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-051'), false, null, null, -31.337084, -54.097321, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-051'), false, null, null, -31.331479, -54.109195, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-051'), false, null, null, -31.322987, -54.101673, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-052');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.553730, -53.371730, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.560579, -53.371089, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.568234, -53.373886, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.565714, -53.385733, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.564305, -53.390239, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.556848, -53.388418, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-052'), false, null, null, -32.552250, -53.380922, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-053');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.751583, -52.339872, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.755252, -52.329586, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.762522, -52.329302, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.769337, -52.335409, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.766891, -52.347363, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.763864, -52.352712, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-053'), false, null, null, -31.753724, -52.349914, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-054');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-054'), false, null, null, -22.640963, -42.387635, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-054'), false, null, null, -22.643633, -42.378696, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-054'), false, null, null, -22.657861, -42.379422, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-054'), false, null, null, -22.657174, -42.399434, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-054'), false, null, null, -22.647252, -42.399754, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-055');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-055'), false, null, null, -22.449840, -42.649875, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-055'), false, null, null, -22.456751, -42.637510, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-055'), false, null, null, -22.468877, -42.643667, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-055'), false, null, null, -22.468215, -42.656638, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-055'), false, null, null, -22.452082, -42.659565, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-056');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.157639, -46.399604, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.158779, -46.391316, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.170746, -46.383966, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.180325, -46.395672, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.180418, -46.404155, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.170356, -46.414263, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-056'), false, null, null, -23.161038, -46.408678, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-057');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-057'), false, null, null, -19.393332, -40.047574, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-057'), false, null, null, -19.402962, -40.063489, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-057'), false, null, null, -19.387049, -40.076070, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-057'), false, null, null, -19.376803, -40.067673, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-058');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-058'), false, null, null, -20.356921, -40.645229, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-058'), false, null, null, -20.363684, -40.646488, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-058'), false, null, null, -20.375703, -40.656002, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-058'), false, null, null, -20.371462, -40.671591, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-058'), false, null, null, -20.350588, -40.669055, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-058'), false, null, null, -20.347345, -40.664479, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-059');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-059'), false, null, null, -21.119677, -56.469076, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-059'), false, null, null, -21.134890, -56.463877, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-059'), false, null, null, -21.143685, -56.484787, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-059'), false, null, null, -21.139710, -56.492652, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-059'), false, null, null, -21.121929, -56.492199, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-059'), false, null, null, -21.114469, -56.486180, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-060');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.459163, -55.781329, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.474557, -55.776334, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.482351, -55.781878, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.484454, -55.800587, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.474354, -55.804655, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.463471, -55.807222, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-060'), false, null, null, -20.455847, -55.790004, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-061');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.832211, -48.956167, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.841727, -48.947244, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.850680, -48.944086, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.862630, -48.950180, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.863671, -48.967674, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.850949, -48.978246, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-061'), false, null, null, -15.835205, -48.972112, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-062');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-062'), false, null, null, -5.640145, -48.109102, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-062'), false, null, null, -5.662115, -48.109005, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-062'), false, null, null, -5.667877, -48.124608, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-062'), false, null, null, -5.651781, -48.134230, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-062'), false, null, null, -5.635821, -48.123451, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-063');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-063'), false, null, null, -7.321661, -47.454731, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-063'), false, null, null, -7.344448, -47.461577, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-063'), false, null, null, -7.345848, -47.477319, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-063'), false, null, null, -7.326060, -47.485794, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-063'), false, null, null, -7.313983, -47.474000, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-064');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-064'), false, null, null, -11.732811, -49.048788, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-064'), false, null, null, -11.747757, -49.070137, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-064'), false, null, null, -11.720349, -49.088615, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-064'), false, null, null, -11.710175, -49.076462, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-065');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-065'), false, null, null, -1.687209, -50.462670, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-065'), false, null, null, -1.696494, -50.476307, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-065'), false, null, null, -1.679371, -50.500168, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-065'), false, null, null, -1.663480, -50.484576, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-066');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-066'), false, null, null, 0.041800, -51.040144, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-066'), false, null, null, 0.026307, -51.045145, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-066'), false, null, null, 0.021313, -51.071956, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-066'), false, null, null, 0.049539, -51.078097, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-066'), false, null, null, 0.060652, -51.063933, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-067');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.841000, -60.663906, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.831926, -60.657224, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.812207, -60.650587, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.802646, -60.655906, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.807101, -60.682141, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.815861, -60.692050, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-067'), false, null, null, 2.838058, -60.683404, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-068');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.007410, -57.643028, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.010492, -57.641491, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.016328, -57.647176, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.016106, -57.654814, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.011222, -57.657269, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.003330, -57.655969, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-068'), false, null, null, -19.003170, -57.651805, 'G', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-069');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-069'), false, null, null, -12.999351, -41.361044, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-069'), false, null, null, -13.004381, -41.363475, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-069'), false, null, null, -13.006890, -41.376236, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-069'), false, null, null, -12.999586, -41.378261, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-069'), false, null, null, -12.991836, -41.373511, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-070');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-070'), false, null, null, -2.743139, -42.824101, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-070'), false, null, null, -2.754686, -42.821644, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-070'), false, null, null, -2.759798, -42.832689, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-070'), false, null, null, -2.755516, -42.839754, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-070'), false, null, null, -2.742603, -42.836224, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-070'), false, null, null, -2.739879, -42.833469, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-071');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-071'), false, null, null, -16.840479, -42.068908, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-071'), false, null, null, -16.842479, -42.063236, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-071'), false, null, null, -16.855040, -42.061964, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-071'), false, null, null, -16.859667, -42.071196, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-071'), false, null, null, -16.855848, -42.078498, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-071'), false, null, null, -16.847788, -42.080942, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-072');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-072'), false, null, null, -11.607745, -46.815995, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-072'), false, null, null, -11.615396, -46.810898, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-072'), false, null, null, -11.626136, -46.810471, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-072'), false, null, null, -11.626464, -46.829066, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-072'), false, null, null, -11.615842, -46.832234, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-073');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-073'), false, null, null, -9.096774, -45.926132, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-073'), false, null, null, -9.104236, -45.918599, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-073'), false, null, null, -9.117740, -45.920867, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-073'), false, null, null, -9.123929, -45.931503, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-073'), false, null, null, -9.117036, -45.940089, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-073'), false, null, null, -9.105153, -45.940152, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-074');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-074'), false, null, null, -21.706093, -43.879732, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-074'), false, null, null, -21.716459, -43.865157, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-074'), false, null, null, -21.732015, -43.869445, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-074'), false, null, null, -21.731659, -43.888740, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-074'), false, null, null, -21.713654, -43.892314, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-075');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-075'), false, null, null, -19.169130, -43.692682, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-075'), false, null, null, -19.182299, -43.705182, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-075'), false, null, null, -19.176695, -43.721016, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-075'), false, null, null, -19.166924, -43.722935, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-075'), false, null, null, -19.158464, -43.713552, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
+delete from project_tags where project_id = (select id from projects where friendly_id = 'PRC-2026-076');
+insert into project_tags (project_id, has_qtag, tag_uid, cmac, latitude, longitude, vertex_label, status, first_seen_at, last_seen_at, metadata)
+values
+  ((select id from projects where friendly_id = 'PRC-2026-076'), false, null, null, -2.901697, -41.755268, 'A', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-076'), false, null, null, -2.920881, -41.757674, 'B', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-076'), false, null, null, -2.923228, -41.768712, 'C', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-076'), false, null, null, -2.919786, -41.779259, 'D', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-076'), false, null, null, -2.905504, -41.785127, 'E', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)')),
+  ((select id from projects where friendly_id = 'PRC-2026-076'), false, null, null, -2.896146, -41.771223, 'F', 'ACTIVE', '2026-08-17T00:00:00Z', '2026-08-17T00:00:00Z', jsonb_build_object('source', 'seed synthetic geofence (nearest-neighbor safe radius)'));
+
 -- Phase 04.1 / GEOF-02: `npx supabase db reset` applies every migration in
 -- supabase/migrations/ BEFORE running this seed file, so the backfill
 -- migration (202608150004_backfill_declared_boundaries.sql) runs against an
