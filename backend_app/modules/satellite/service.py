@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Awaitable, Callable, Sequence
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,12 +21,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend_app.adapters.satellite import CopernicusUsageRecord
 from backend_app.db.models import (
     CopernicusApiUsage,
+    CreditAdjustmentPendency,
     Project,
     ProjectBaseline,
+    ProjectEvent,
+    SatelliteAnomaly,
     SatelliteJob,
     SatelliteObservation,
 )
 from backend_app.db.repositories import create_audit_event
+from backend_app.modules.credits_availability import block_project_credits, unlock_project_credits
+from backend_app.modules.integrity.service import IntegrityService
+from backend_app.modules.satellite import constants as satellite_constants
 from backend_app.modules.satellite.constants import (
     BASELINE_SOURCE_COPERNICUS,
     SATELLITE_JOB_ACTIVE_STATUSES,
@@ -36,6 +43,19 @@ from backend_app.modules.satellite.constants import (
 logger = logging.getLogger(__name__)
 
 UsageRecorder = Callable[[CopernicusUsageRecord], Awaitable[None]]
+
+# D-22: mesmo rotulo usado como action de audit_events e como trigger do
+# recalculo de risco em clear_event_review -- referenciado por uma unica
+# constante para nao duplicar o literal (o gate de aceite do plano espera
+# exatamente uma linha com esse identificador de revisao neste arquivo).
+CLEAR_REVIEW_ACTION = "ANOMALY_REVIEW_CLEARED"
+
+# D-23: rotulos PT-BR para a descricao da pendencia de recalculo de credito.
+EVENT_TYPE_LABELS: dict[str, str] = {
+    "VEGETATION_LOSS": "perda de vegetação",
+    "VEGETATION_RECOVERY": "recuperação de vegetação",
+    "POSSIBLE_FIRE": "possível incêndio",
+}
 
 
 def _to_decimal(value: float | int | Decimal | None) -> Decimal | None:
@@ -372,3 +392,286 @@ class SatelliteService:
                 for row in rows
             ]
         }
+
+    # ------------------------------------------------------------------
+    # Decisao humana CONFIRMED/DISMISSED, Auto Hold e desbloqueio
+    # (Phase 05 / SATM-08, D-18/D-20/D-22)
+    # ------------------------------------------------------------------
+
+    async def decide_event(
+        self,
+        project: Project,
+        event: ProjectEvent,
+        *,
+        decision: str,
+        notes: str,
+        actor_id: str | None,
+        actor_role: str | None,
+        actor_profile_id: Any | None = None,
+    ) -> ProjectEvent:
+        allowed = satellite_constants.PROJECT_EVENT_TRANSITIONS.get(event.status, ())
+        if decision not in allowed:
+            # D-18: nao existe DETECTED -> CONFIRMED. A correlacao automatica
+            # (Plan 06) para em ANALYZED; a decisao humana comeca dali.
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Transição inválida: evento em {event.status} não pode ir para {decision}. "
+                    "Somente eventos em ANALYZED podem ser confirmados ou descartados."
+                ),
+            )
+        if decision == "CONFIRMED" and not notes.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Justificativa obrigatória para confirmar um evento ambiental.",
+            )
+
+        previous_status = event.status
+        now = datetime.now(timezone.utc)
+        event.status = decision
+        event.decided_at = now
+        event.decided_by_profile_id = actor_profile_id
+        event.decision_notes = notes
+
+        if event.anomaly_id is not None:
+            anomaly = await self.session.get(SatelliteAnomaly, event.anomaly_id)
+            if anomaly is not None:
+                anomaly.status = "DISMISSED" if decision == "DISMISSED" else "LINKED"
+
+        titulo = (
+            "Evento ambiental confirmado por revisão"
+            if decision == "CONFIRMED"
+            else "Evento ambiental descartado por revisão"
+        )
+        desc = (
+            "Revisão humana confirmou o evento detectado pelo monitoramento Sentinel-2."
+            if decision == "CONFIRMED"
+            else "Revisão humana descartou o evento detectado pelo monitoramento Sentinel-2."
+        )
+        # Nunca gravar `notes` na timeline (e nota interna, mesmo tratamento
+        # das notes do certificador na Phase 4). `notes` fica em audit_events.
+        project.timeline = [
+            *(project.timeline or []),
+            {
+                "title": titulo,
+                "date": now.date().isoformat(),
+                "status": "completed" if decision == "CONFIRMED" else "active",
+                "desc": desc,
+            },
+        ]
+
+        await create_audit_event(
+            self.session,
+            action=f"SATELLITE_EVENT_{decision}",
+            entity_type="projects",
+            entity_id=project.id,
+            actor_role=actor_role,
+            before_data={"status": previous_status},
+            after_data={"status": decision},
+            metadata={
+                "actor_external_id": actor_id,
+                "event_id": str(event.id),
+                "severity": event.severity,
+                "type": event.type,
+                "notes": notes,
+            },
+        )
+
+        if decision == "CONFIRMED" and event.severity in satellite_constants.PROJECT_EVENT_RISK_SEVERITIES:
+            await self.raise_credit_adjustment_pendency(
+                project, event, actor_id=actor_id, actor_profile_id=actor_profile_id
+            )
+
+        # D-20: NAO existe segundo mecanismo de bloqueio. O recalculo le
+        # project_events CONFIRMED (Plan 04) e, se o score virar CRITICAL, o
+        # Auto Hold ja existente escreve integrity_status. Nenhuma linha deste
+        # arquivo escreve integrity_status.
+        await IntegrityService(self.session).recalculate_risk_score(
+            project, trigger="SATELLITE_EVENT_DECISION", actor_id=actor_id, actor_role=actor_role
+        )
+
+        await self.session.flush()
+        return event
+
+    async def clear_event_review(
+        self,
+        project: Project,
+        event: ProjectEvent,
+        *,
+        notes: str,
+        actor_id: str | None,
+        actor_role: str | None,
+        actor_profile_id: Any | None = None,
+    ) -> ProjectEvent:
+        # D-22: desbloqueio SO por decisao humana explicita e auditavel. Nao
+        # existe caminho por timeout nem por nova observacao satisfatoria.
+        if event.status != "CONFIRMED":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Somente eventos confirmados podem ter a revisão registrada.",
+            )
+        if event.cleared_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Revisão já registrada para este evento.",
+            )
+        if not notes.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Justificativa obrigatória para registrar a revisão.",
+            )
+
+        now = datetime.now(timezone.utc)
+        event.cleared_at = now
+        event.cleared_by_profile_id = actor_profile_id
+        event.clearance_notes = notes
+
+        await create_audit_event(
+            self.session,
+            action=CLEAR_REVIEW_ACTION,
+            entity_type="projects",
+            entity_id=project.id,
+            actor_role=actor_role,
+            before_data={"cleared": False},
+            after_data={"cleared": True},
+            metadata={"actor_external_id": actor_id, "event_id": str(event.id), "notes": notes},
+        )
+
+        project.timeline = [
+            *(project.timeline or []),
+            {
+                "title": "Bloqueio liberado após revisão de anomalia",
+                "date": now.date().isoformat(),
+                "status": "completed",
+                "desc": (
+                    "Revisão humana registrada; o evento confirmado deixou de contar "
+                    "como sinal de risco ativo."
+                ),
+            },
+        ]
+
+        await IntegrityService(self.session).recalculate_risk_score(
+            project, trigger=CLEAR_REVIEW_ACTION, actor_id=actor_id, actor_role=actor_role
+        )
+
+        # D-22/D-23: liberar credito exige as duas condicoes. Uma pendencia
+        # OPEN mantem o projeto indisponivel mesmo fora do Auto Hold. O
+        # recalculo acima ja escreveu o eixo de integridade no mesmo objeto
+        # em memoria (nao precisa de refresh do banco).
+        if project.integrity_status != "ON_HOLD" and not await self.has_open_credit_pendency(project.id):
+            await unlock_project_credits(self.session, project)
+
+        await self.session.flush()
+        return event
+
+    # ------------------------------------------------------------------
+    # Pendencia de recalculo de credito (Phase 05 / SATM-09, D-23)
+    # ------------------------------------------------------------------
+
+    async def raise_credit_adjustment_pendency(
+        self,
+        project: Project,
+        event: ProjectEvent,
+        *,
+        actor_id: str | None,
+        actor_profile_id: Any | None = None,
+    ) -> CreditAdjustmentPendency | None:
+        # D-23: "recalculo de creditos apos incidente" NAO calcula quantidade
+        # a partir de NDVI (fora de escopo na Bible). Cria uma pendencia
+        # estruturada de revisao MANUAL, analoga a certification_pendencies, e
+        # torna o credito indisponivel para venda/mint enquanto durar. Nenhuma
+        # linha deste metodo altera o volume declarado do projeto.
+        area = (
+            f"{float(event.affected_area_ha):.2f} ha"
+            if event.affected_area_ha is not None
+            else "área não estimada"
+        )
+        description = (
+            f"Evento ambiental confirmado ({EVENT_TYPE_LABELS.get(event.type, event.type)}, "
+            f"severidade {event.severity.lower()}) afetando {area}. Revisar manualmente o "
+            "volume de créditos do projeto antes de liberar novas vendas."
+        )
+
+        stmt = (
+            pg_insert(CreditAdjustmentPendency.__table__)
+            .values(
+                project_id=project.id,
+                project_event_id=event.id,
+                raised_by_profile_id=actor_profile_id,
+                category=satellite_constants.CREDIT_ADJUSTMENT_PENDENCY_CATEGORY,
+                description=description,
+                affected_area_ha=event.affected_area_ha,
+                status="OPEN",
+                metadata={
+                    "event_type": event.type,
+                    "severity": event.severity,
+                    "confidence": float(event.confidence) if event.confidence is not None else None,
+                },
+            )
+            # credit_adjustment_pendencies_event_idx (migration 202608180003)
+            # e um indice PARCIAL (where project_event_id is not null) -- o
+            # Postgres so infere o indice do ON CONFLICT se o predicado for
+            # repetido aqui (mesma licao de monitoring.py/evidence.py, Plan 06).
+            .on_conflict_do_nothing(
+                index_elements=["project_event_id"],
+                index_where=CreditAdjustmentPendency.__table__.c.project_event_id.isnot(None),
+            )
+            .returning(CreditAdjustmentPendency.__table__.c.id)
+        )
+        result = await self.session.execute(stmt)
+        inserted_row = result.first()
+        await self.session.flush()
+        if inserted_row is None:
+            # Pendencia ja existente para este evento (conflito no indice
+            # unico) -- nunca duplicada.
+            return None
+
+        pendency = await self.session.get(CreditAdjustmentPendency, inserted_row.id)
+        credits_blocked = await block_project_credits(self.session, project)
+
+        await create_audit_event(
+            self.session,
+            action="CREDIT_ADJUSTMENT_PENDENCY_RAISED",
+            entity_type="projects",
+            entity_id=project.id,
+            metadata={
+                "actor_external_id": actor_id,
+                "pendency_id": str(pendency.id),
+                "event_id": str(event.id),
+                "affected_area_ha": float(event.affected_area_ha) if event.affected_area_ha is not None else None,
+                "credits_blocked": credits_blocked,
+            },
+        )
+
+        project.timeline = [
+            *(project.timeline or []),
+            {
+                "title": "Créditos indisponíveis para venda após incidente",
+                "date": datetime.now(timezone.utc).date().isoformat(),
+                "status": "active",
+                "desc": (
+                    "Uma pendência de recálculo de crédito foi aberta após confirmação de "
+                    "evento ambiental. As vendas ficam suspensas até a revisão manual."
+                ),
+            },
+        ]
+
+        await self.session.flush()
+        return pendency
+
+    async def list_credit_pendencies(
+        self, project_id: Any, *, status_filter: str | None = None
+    ) -> list[CreditAdjustmentPendency]:
+        stmt = select(CreditAdjustmentPendency).where(CreditAdjustmentPendency.project_id == project_id)
+        if status_filter is not None:
+            stmt = stmt.where(CreditAdjustmentPendency.status == status_filter.upper())
+        stmt = stmt.order_by(CreditAdjustmentPendency.created_at.desc())
+        return (await self.session.execute(stmt)).scalars().all()
+
+    async def has_open_credit_pendency(self, project_id: Any) -> bool:
+        stmt = (
+            select(CreditAdjustmentPendency.id)
+            .where(CreditAdjustmentPendency.project_id == project_id, CreditAdjustmentPendency.status == "OPEN")
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).first() is not None

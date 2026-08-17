@@ -1698,3 +1698,74 @@ def test_public_dossier_on_hold_project_does_not_show_bare_certified() -> None:
     dossier_response = client.get(f"/api/v1/projects/{project_b['friendlyId']}/public-dossier")
     assert dossier_response.status_code == 200, dossier_response.text
     assert dossier_response.json()["project"]["status"] != integrity_b["publicStatus"]
+
+
+# ----------------------------------------------------------------------
+# Phase 05 Plan 07: bloco satellite minimizado no dossie publico (SATM-07/D-25)
+# ----------------------------------------------------------------------
+
+
+async def _apply_real_satellite_baseline(friendly_id: str) -> None:
+    from datetime import datetime, timezone
+
+    from backend_app.modules.satellite.service import SatelliteService
+
+    async with get_sessionmaker()() as session:
+        project = (await session.execute(select(Project).where(Project.friendly_id == friendly_id))).scalars().one()
+        service = SatelliteService(session)
+        await service.persist_observations(
+            project,
+            [
+                {
+                    "scene_id": f"S2_TEST_{uuid.uuid4().hex[:8]}",
+                    "processing_version": "v1",
+                    "observed_at": datetime.now(timezone.utc),
+                    "cloud_coverage": 5.0,
+                    "ndvi_mean": 0.62,
+                    "ndvi_min": 0.50,
+                    "ndvi_max": 0.70,
+                    "ndmi_mean": 0.30,
+                    "nbr_mean": 0.20,
+                    "valid_pixel_percentage": 95.0,
+                }
+            ],
+        )
+        await service.apply_baseline_from_observations(project)
+        await session.commit()
+
+
+def test_public_dossier_exposes_real_satellite_baseline() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+    asyncio.run(_apply_real_satellite_baseline(friendly_id))
+
+    response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert response.status_code == 200, response.text
+    satellite = response.json()["satellite"]
+    assert satellite is not None
+    assert satellite["baselineSource"] == "COPERNICUS"
+    assert satellite["blocked"] is False
+    assert satellite["ndviMean"] is not None
+    assert satellite["pointsAnalyzed"] >= 1
+    assert satellite["referenceHash"]
+    assert satellite["sentinelSceneId"]
+
+
+def test_public_dossier_satellite_block_is_minimized() -> None:
+    project = create_integrity_test_project()
+    friendly_id = project["friendlyId"]
+
+    response = client.get(f"/api/v1/projects/{friendly_id}/public-dossier")
+    assert response.status_code == 200, response.text
+    satellite = response.json()["satellite"]
+    assert satellite is not None
+    # Sem observacao real ainda aplicada: baseline continua deterministico
+    # (SATM-07/D-25) -- o bloco publico so muda quando o job real roda.
+    assert satellite["baselineSource"] == "deterministic_baseline"
+    assert satellite["blocked"] is True
+
+    serialized = json.dumps(satellite)
+    assert "supabase://" not in serialized
+    assert "cloudCoverage" not in serialized
+    assert "geometry" not in serialized
+    assert "coordinates" not in serialized

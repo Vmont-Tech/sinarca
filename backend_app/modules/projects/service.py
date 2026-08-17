@@ -34,11 +34,13 @@ from backend_app.db.models import (
     ProjectDraft,
     ProjectDraftDocument,
     ProjectTag,
+    SatelliteObservation,
     TreasuryAuthorization,
 )
 from backend_app.db.repositories import create_audit_event
 from backend_app.modules.audit.signature import AUDIT_SIGNATURE_KIND
 from backend_app.modules.integrity.constants import PUBLIC_RISK_SIGNAL_CODES
+from backend_app.modules.satellite.constants import BASELINE_SOURCE_COPERNICUS
 from backend_app.modules.satellite.service import SatelliteService
 from backend_app.modules.projects.schemas import (
     BaselineDTO,
@@ -374,6 +376,12 @@ class ProjectsService:
             actions=PUBLIC_CERTIFICATION_HISTORY_ACTIONS,
             include_metadata=False,
         )
+        # Phase 05 / D-25/SATM-07: baseline (ja carregado acima) traz
+        # ndviMean/pointsAnalyzed/baselineHash reais assim que ha observacao
+        # Copernicus (apply_baseline_from_observations, Plan 05) -- so
+        # latest_observation e uma query extra, leve (LIMIT 1).
+        latest_satellite_observation = await SatelliteService(self.session).latest_observation(project.id)
+        project_metadata = project.metadata_ or {}
 
         return ProjectPublicDossierResponse(
             project=project_dto,
@@ -381,6 +389,14 @@ class ProjectsService:
             baseline=baseline_item(baseline),
             boundary=public_boundary_item(await self.boundary_item(str(project.id))),
             integrity=public_integrity_item(await self.integrity.integrity_summary(project)),
+            satellite=public_satellite_item(
+                latest=latest_satellite_observation,
+                observation_count=baseline.points_analyzed if baseline is not None else 0,
+                ndvi_mean=float(baseline.ndvi_mean) if baseline is not None else None,
+                reference_hash=baseline.baseline_hash if baseline is not None else None,
+                baseline_source=project_metadata.get("baseline_source"),
+                sentinel_status=project_metadata.get("sentinel_status"),
+            ),
             certifications=[public_certification_item(item) for item in certifications],
             audits=[public_audit_item(item) for item in audits],
             documents=[
@@ -1543,6 +1559,14 @@ class ProjectsService:
             allowed = organization_id in {project.producer_organization_id, project.developer_organization_id}
         elif organization_id is not None and actor_role == "certifier":
             allowed = organization_id == project.certifier_organization_id
+        elif organization_id is not None and actor_role == "auditor":
+            # Phase 05 / SATM-06..09: rotas satelitais sao as primeiras a combinar
+            # require_role(..., "auditor", ...) com este guard compartilhado (nenhuma
+            # rota existente ate a Phase 04.2 fazia essa combinacao -- confirmado por
+            # grep antes desta mudanca). Sem este branch, todo ator auditor cairia no
+            # 403 abaixo mesmo estando corretamente vinculado ao projeto (mesma classe
+            # de bug documentada em 05-02-SUMMARY.md para get_editable_project_model).
+            allowed = organization_id == project.auditor_organization_id
 
         if not allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seu perfil não pode editar este projeto")
@@ -2280,6 +2304,34 @@ def public_integrity_item(summary: dict[str, Any] | None) -> dict[str, Any] | No
         "conflictCount": summary["conflictCount"],
         "assessedAt": summary["assessedAt"],
         "signals": signals,
+    }
+
+
+def public_satellite_item(
+    *,
+    latest: SatelliteObservation | None,
+    observation_count: int,
+    ndvi_mean: float | None,
+    reference_hash: str | None,
+    baseline_source: str | None,
+    sentinel_status: str | None,
+) -> dict[str, Any]:
+    """Bloco satelital minimizado do dossie publico (Phase 05 / D-25).
+
+    Mesma disciplina de public_document_item/public_integrity_item: expoe
+    apenas o suficiente para o cidadao verificar a existencia de observacao
+    real. NUNCA expoe geometria, serie completa, cloud coverage por cena,
+    caminho de storage nem eventos internos (esses ficam em /api/v1 interno).
+    """
+    return {
+        "baselineSource": baseline_source,
+        "sentinelStatus": sentinel_status,
+        "blocked": baseline_source != BASELINE_SOURCE_COPERNICUS,
+        "ndviMean": ndvi_mean,
+        "pointsAnalyzed": observation_count,
+        "referenceHash": reference_hash,
+        "sentinelSceneId": latest.scene_id if latest is not None else None,
+        "lastObservedAt": latest.observed_at.isoformat() if latest is not None else None,
     }
 
 
