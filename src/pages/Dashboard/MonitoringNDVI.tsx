@@ -195,6 +195,9 @@ export default function MonitoringNDVI() {
 
     const [projectOptions, setProjectOptions] = useState<ProjectMRCA[]>([]);
     const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(routeProjectId ?? null);
+    const [projectQuery, setProjectQuery] = useState('');
+    const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+    const projectPickerRef = useRef<HTMLDivElement | null>(null);
 
     const [dossier, setDossier] = useState<ProjectPublicDossier | null>(null);
     const [summary, setSummary] = useState<SatelliteSummary | null>(null);
@@ -248,6 +251,19 @@ export default function MonitoringNDVI() {
             setResolvedProjectId(projectOptions[0].friendlyId);
         }
     }, [routeProjectId, projectOptions]);
+
+    // Combobox de busca do seletor de projeto (item A do checkpoint 05-09):
+    // fecha ao clicar fora, sem lib nova.
+    useEffect(() => {
+        if (!projectPickerOpen) return undefined;
+        const handleOutsideClick = (event: MouseEvent) => {
+            if (projectPickerRef.current && !projectPickerRef.current.contains(event.target as Node)) {
+                setProjectPickerOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, [projectPickerOpen]);
 
     const loadAll = useCallback(async (id: string) => {
         setLoadError('');
@@ -572,20 +588,73 @@ export default function MonitoringNDVI() {
     const effectivePublicStatus = integrityOverride?.publicStatus ?? dossier.integrity?.publicStatus;
     const reserveOnHold = effectivePublicStatus === 'ON_HOLD' || confirmedCount > 0;
 
+    // Combobox com busca client-side (item A, checkpoint 05-09): o <select>
+    // HTML puro listando todos os projetos do seed (~900) era inutilizavel.
+    // projectOptions ja esta carregado; filtro por friendlyId ou name, sem
+    // lib nova, seguindo o padrao visual escuro do resto da pagina.
+    const normalizedProjectQuery = projectQuery.trim().toLowerCase();
+    const filteredProjectOptions = normalizedProjectQuery
+        ? projectOptions.filter((option) => (
+            option.friendlyId.toLowerCase().includes(normalizedProjectQuery)
+            || option.name.toLowerCase().includes(normalizedProjectQuery)
+        ))
+        : projectOptions;
+
+    const selectProject = (friendlyId: string) => {
+        setProjectPickerOpen(false);
+        setProjectQuery('');
+        navigate(`/painel/monitoramento/${encodeURIComponent(friendlyId)}`);
+    };
+
     const projectSelector = (
-        <select
-            value={resolvedProjectId}
-            onChange={(event) => navigate(`/painel/monitoramento/${encodeURIComponent(event.target.value)}`)}
-            className="bg-black/50 border border-white/10 text-[10px] uppercase font-bold tracking-widest text-white rounded-lg px-3 py-2 backdrop-blur-md"
-            aria-label="Selecionar projeto monitorado"
-        >
-            {!projectOptions.some((option) => option.friendlyId === resolvedProjectId) && (
-                <option value={resolvedProjectId}>{project.friendlyId}</option>
+        <div className="relative" ref={projectPickerRef}>
+            <button
+                type="button"
+                onClick={() => setProjectPickerOpen((current) => !current)}
+                aria-haspopup="listbox"
+                aria-expanded={projectPickerOpen}
+                aria-label="Selecionar projeto monitorado"
+                className="bg-black/50 border border-white/10 text-[10px] uppercase font-bold tracking-widest text-white rounded-lg px-3 py-2 backdrop-blur-md min-w-[220px] flex items-center justify-between gap-2"
+            >
+                <span className="truncate">{project.friendlyId} — {project.name}</span>
+                <span className="text-text-muted" aria-hidden="true">▾</span>
+            </button>
+            {projectPickerOpen && (
+                <div className="absolute right-0 z-[1100] mt-2 w-80 max-h-80 overflow-y-auto rounded-xl border border-white/10 bg-sinarca-deep shadow-2xl">
+                    <div className="sticky top-0 bg-sinarca-deep border-b border-white/10 p-2">
+                        <input
+                            type="text"
+                            value={projectQuery}
+                            onChange={(event) => setProjectQuery(event.target.value)}
+                            placeholder="Buscar por ID ou nome do projeto"
+                            aria-label="Buscar projeto por ID ou nome"
+                            autoFocus
+                            className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-text-muted focus:outline-none focus:border-sinarca-neon"
+                        />
+                    </div>
+                    <ul role="listbox" aria-label="Projetos disponíveis para monitoramento">
+                        {filteredProjectOptions.length === 0 ? (
+                            <li className="px-3 py-3 text-[10px] text-text-muted uppercase font-bold tracking-widest">Nenhum projeto encontrado.</li>
+                        ) : (
+                            filteredProjectOptions.slice(0, 50).map((option) => (
+                                <li key={option.id}>
+                                    <button
+                                        type="button"
+                                        role="option"
+                                        aria-selected={option.friendlyId === resolvedProjectId}
+                                        onClick={() => selectProject(option.friendlyId)}
+                                        className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-white/5 ${option.friendlyId === resolvedProjectId ? 'text-sinarca-neon' : 'text-white'}`}
+                                    >
+                                        <span className="block font-mono text-[10px]">{option.friendlyId}</span>
+                                        <span className="block truncate text-[10px] text-text-muted">{option.name}</span>
+                                    </button>
+                                </li>
+                            ))
+                        )}
+                    </ul>
+                </div>
             )}
-            {projectOptions.map((option) => (
-                <option key={option.id} value={option.friendlyId}>{option.friendlyId} — {option.name}</option>
-            ))}
-        </select>
+        </div>
     );
 
     // T-05-57: sem credenciais Copernicus, empty state fail-closed. Nenhum
