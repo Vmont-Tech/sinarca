@@ -32,11 +32,14 @@ from backend_app.db.models import (
     SatelliteObservation,
 )
 from backend_app.db.session import get_session
+from backend_app.modules.integrity.service import IntegrityService
 from backend_app.modules.satellite.constants import SENTINEL_STATUS_BLOCKED
 from backend_app.modules.satellite.evidence import SatelliteEvidenceService
 from backend_app.modules.satellite.schemas import (
     CopernicusUsageResponse,
     CreditAdjustmentPendenciesResponse,
+    ProjectEventClearRequest,
+    ProjectEventDecisionRequest,
     ProjectEventDetailResponse,
     ProjectEventsResponse,
     SatelliteObservationsResponse,
@@ -48,6 +51,17 @@ from backend_app.modules.projects.service import ProjectsService
 router = APIRouter(tags=["satellite"])
 
 SATELLITE_ACCESS_ROLES = ("producer", "certifier", "auditor", "admin")
+# D-18/T-05-42: produtor NAO decide sobre o proprio incidente -- mesmo
+# principio de verify_project, que restringe a auditor/admin.
+SATELLITE_DECISION_ROLES = ("auditor", "certifier", "admin")
+
+
+async def _actor_profile_id(session: AsyncSession, actor_id: str | None) -> Any | None:
+    try:
+        profile = await ProjectsService(session)._actor_profile(actor_id)
+        return profile.id
+    except HTTPException:
+        return None
 
 
 def observation_item(row: SatelliteObservation) -> dict[str, Any]:
@@ -310,6 +324,83 @@ async def get_environmental_event(
     event = await _get_project_event(session, project.id, event_id)
     items = await _events_with_relations(session, [event])
     return ProjectEventDetailResponse(project_id=project.friendly_id, event=items[0])
+
+
+@router.patch(
+    "/projects/{project_id}/environmental-events/{event_id}/decision",
+    response_model=ProjectEventDetailResponse,
+)
+async def decide_environmental_event(
+    project_id: str,
+    event_id: str,
+    payload: ProjectEventDecisionRequest,
+    current_user: AuthenticatedUser = Depends(require_role(*SATELLITE_DECISION_ROLES)),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectEventDetailResponse:
+    """Decisao humana CONFIRMED/DISMISSED sobre um evento ANALYZED (D-18).
+
+    Produtor nao decide sobre o proprio incidente (T-05-42). Evento resolvido
+    filtrando por project_id -- 404 se nao pertencer a este projeto (T-05-41).
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+
+    event = await _get_project_event(session, project.id, event_id)
+    actor_profile_id = await _actor_profile_id(session, current_user.id)
+
+    await SatelliteService(session).decide_event(
+        project,
+        event,
+        decision=payload.decision,
+        notes=payload.notes,
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        actor_profile_id=actor_profile_id,
+    )
+    await session.commit()
+
+    items = await _events_with_relations(session, [event])
+    integrity = await IntegrityService(session).integrity_summary(project)
+    return ProjectEventDetailResponse(project_id=project.friendly_id, event=items[0], integrity=integrity)
+
+
+@router.patch(
+    "/projects/{project_id}/environmental-events/{event_id}/clear",
+    response_model=ProjectEventDetailResponse,
+)
+async def clear_environmental_event_review(
+    project_id: str,
+    event_id: str,
+    payload: ProjectEventClearRequest,
+    current_user: AuthenticatedUser = Depends(require_role(*SATELLITE_DECISION_ROLES)),
+    session: AsyncSession = Depends(get_session),
+) -> ProjectEventDetailResponse:
+    """Desbloqueio auditavel de um evento CONFIRMED (D-22).
+
+    Sempre humano e explicito: nunca por timeout nem por nova observacao
+    satisfatoria sozinha.
+    """
+    service = ProjectsService(session)
+    project = await service._get_project_model(project_id)
+    await service._assert_project_edit_permission(project, actor_id=current_user.id, actor_role=current_user.role)
+
+    event = await _get_project_event(session, project.id, event_id)
+    actor_profile_id = await _actor_profile_id(session, current_user.id)
+
+    await SatelliteService(session).clear_event_review(
+        project,
+        event,
+        notes=payload.notes,
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        actor_profile_id=actor_profile_id,
+    )
+    await session.commit()
+
+    items = await _events_with_relations(session, [event])
+    integrity = await IntegrityService(session).integrity_summary(project)
+    return ProjectEventDetailResponse(project_id=project.friendly_id, event=items[0], integrity=integrity)
 
 
 @router.get("/projects/{project_id}/environmental-events/{event_id}/evidence/{evidence_id}/image")
