@@ -672,3 +672,162 @@ class RiskSignal(Base):
     public_safe: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = created_at_column()
+
+
+class SatelliteObservation(Base):
+    __tablename__ = "satellite_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id", "satellite", "scene_id", "processing_version", name="satellite_observations_idempotency_idx"
+        ),
+        Index("satellite_observations_project_observed_idx", "project_id", "observed_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    provider: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'COPERNICUS'"))
+    satellite: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'SENTINEL_2'"))
+    product: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'L2A'"))
+    scene_id: Mapped[str] = mapped_column(String, nullable=False)
+    processing_version: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'v1'"))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    cloud_coverage: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    ndvi_mean: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    ndvi_min: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    ndvi_max: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    ndmi_mean: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    nbr_mean: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    valid_pixel_percentage: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    source: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'STATISTICAL_API'"))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class SatelliteAnomaly(Base):
+    __tablename__ = "satellite_anomalies"
+    __table_args__ = (
+        UniqueConstraint("project_id", "observation_id", "index_name", name="satellite_anomalies_idempotency_idx"),
+        Index("satellite_anomalies_project_status_idx", "project_id", "status", "detected_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    observation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("satellite_observations.id"), nullable=False)
+    previous_observation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("satellite_observations.id"))
+    index_name: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'NDVI'"))
+    value_before: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    value_after: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    drop_ratio: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    severity: Mapped[str] = mapped_column(String, nullable=False)
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    affected_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'PENDING_ANALYSIS'"))
+    reason: Mapped[str | None] = mapped_column(Text)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class ProjectEvent(Base):
+    __tablename__ = "project_events"
+    __table_args__ = (Index("project_events_project_status_idx", "project_id", "status", "detected_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("satellite_anomalies.id"))
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DETECTED'"))
+    severity: Mapped[str] = mapped_column(String, nullable=False)
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    affected_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    ndvi_before: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    ndvi_after: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    summary: Mapped[str | None] = mapped_column(Text)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    decision_notes: Mapped[str | None] = mapped_column(Text)
+    cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cleared_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    clearance_notes: Mapped[str | None] = mapped_column(Text)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class SatelliteEvidence(Base):
+    __tablename__ = "satellite_evidence"
+    __table_args__ = (Index("satellite_evidence_project_idx", "project_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    project_event_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("project_events.id"))
+    anomaly_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("satellite_anomalies.id"))
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    storage_bucket: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'projects'"))
+    storage_object_path: Mapped[str | None] = mapped_column(String)
+    storage_path: Mapped[str | None] = mapped_column(String)
+    sha256_hash: Mapped[str] = mapped_column(String, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'image/png'"))
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class SatelliteJob(Base):
+    __tablename__ = "satellite_jobs"
+    __table_args__ = (Index("satellite_jobs_status_created_idx", "status", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    job_type: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'PENDING'"))
+    attempts: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    observations_persisted: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    anomalies_detected: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    window_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    window_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class CopernicusApiUsage(Base):
+    __tablename__ = "copernicus_api_usage"
+    __table_args__ = (Index("copernicus_api_usage_endpoint_idx", "endpoint", "outcome", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    satellite_job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("satellite_jobs.id"))
+    endpoint: Mapped[str] = mapped_column(String, nullable=False)
+    outcome: Mapped[str] = mapped_column(String, nullable=False)
+    http_status: Mapped[int | None] = mapped_column()
+    processing_units: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    duration_ms: Mapped[int | None] = mapped_column()
+    error_code: Mapped[str | None] = mapped_column(String)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
+
+
+class CreditAdjustmentPendency(Base):
+    __tablename__ = "credit_adjustment_pendencies"
+    __table_args__ = (Index("credit_adjustment_pendencies_project_status_idx", "project_id", "status", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    project_event_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("project_events.id"))
+    raised_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    category: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'SATELLITE_INCIDENT'"))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    affected_area_ha: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'OPEN'"))
+    producer_response: Mapped[str | None] = mapped_column(Text)
+    responded_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = created_at_column()
