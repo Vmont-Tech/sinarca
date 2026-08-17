@@ -304,13 +304,17 @@ async def verify_project(
     )
     audit.audited_at = signed_at
 
+    # project.timeline e exposto publicamente (mesmo serializador do dossie
+    # publico e da revisao interna, Phase 4/certifier/service.py::_append_timeline)
+    # -- nunca ecoar laudo_texto aqui (D-05/SATM-03). O laudo completo fica
+    # restrito ao serializador interno audit_item.
     project.timeline = [
         *(project.timeline or []),
         {
             "title": _audit_title(payload.status),
             "date": signed_at.date().isoformat(),
             "status": "completed" if payload.status == "APPROVED" else "active",
-            "desc": payload.laudo_texto or "Verificação registrada pelo auditor.",
+            "desc": _audit_public_timeline_desc(payload.status),
         },
     ]
     await create_audit_event(
@@ -373,3 +377,13 @@ def _audit_title(status: str) -> str:
     if status == "BLOCKED":
         return "Projeto bloqueado por auditoria"
     return "Recálculo solicitado pelo auditor"
+
+
+def _audit_public_timeline_desc(status: str) -> str:
+    # D-05/SATM-03: descricao publica fixa por status, nunca o laudo interno
+    # (mesmo padrao de certifier/service.py::_append_timeline).
+    if status == "APPROVED":
+        return "Auditoria de campo aprovada."
+    if status == "BLOCKED":
+        return "Projeto bloqueado por auditoria de campo."
+    return "Recálculo solicitado pela auditoria de campo."
