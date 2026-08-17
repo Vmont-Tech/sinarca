@@ -389,3 +389,179 @@ def test_monitoring_job_without_active_boundary_never_calls_provider() -> None:
     assert status == "FAILED"
     assert error_message is not None and "active_boundary" in error_message
 
+
+# ----------------------------------------------------------------------
+# Task 2 -- anomalia, evento ANALYZED, trilha auditavel
+# ----------------------------------------------------------------------
+
+
+def test_ndvi_drop_creates_anomaly_and_analyzed_event() -> None:
+    prefix = f"ndvidrop-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]  # queda de 30%
+
+    async def run_job():
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            anomalies = (
+                await session.execute(select(SatelliteAnomaly).where(SatelliteAnomaly.project_id == project.id))
+            ).scalars().all()
+            events = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.project_id == project.id))
+            ).scalars().all()
+            return (
+                job.status,
+                job.anomalies_detected,
+                len(anomalies),
+                anomalies[0].status if anomalies else None,
+                len(events),
+                events[0].status if events else None,
+                events[0].type if events else None,
+            )
+
+    status, anomalies_detected, anomaly_count, anomaly_status, event_count, event_status, event_type = asyncio.run(
+        run_job()
+    )
+    assert status == "COMPLETED"
+    assert anomalies_detected == 1
+    assert anomaly_count == 1
+    assert anomaly_status == "LINKED"
+    assert event_count == 1
+    assert event_status == "ANALYZED"
+    assert event_type == "VEGETATION_LOSS"
+
+
+def test_automatic_pipeline_never_reaches_confirmed() -> None:
+    prefix = f"neverconfirmed-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    # queda severa (CRITICAL) para provar que nem severidade maxima chega a CONFIRMED
+    statistics = [_stats(2026, 1, ndvi_mean=0.80), _stats(2026, 2, ndvi_mean=0.10)]
+
+    async def run_job() -> tuple[str, int]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            confirmed = (
+                await session.execute(
+                    select(ProjectEvent).where(
+                        ProjectEvent.project_id == project.id, ProjectEvent.status == "CONFIRMED"
+                    )
+                )
+            ).scalars().all()
+            events = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.project_id == project.id))
+            ).scalars().all()
+            return events[0].severity if events else None, len(confirmed)
+
+    severity, confirmed_count = asyncio.run(run_job())
+    assert severity == "CRITICAL"
+    assert confirmed_count == 0
+
+
+def test_no_project_event_is_ever_deforestation() -> None:
+    async def query_deforestation_count() -> int:
+        async with get_sessionmaker()() as session:
+            rows = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.type == "DEFORESTATION"))
+            ).scalars().all()
+            return len(rows)
+
+    assert asyncio.run(query_deforestation_count()) == 0
+
+
+def test_event_appends_single_public_timeline_entry() -> None:
+    prefix = f"timeline-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]
+
+    async def run_job() -> tuple[int, int, str]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            timeline_before = len(project.timeline or [])
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            await session.refresh(project)
+            timeline_after = len(project.timeline or [])
+            desc = (project.timeline or [])[-1]["desc"]
+            return timeline_before, timeline_after, desc
+
+    before, after, desc = asyncio.run(run_job())
+    assert after == before + 1
+    assert "PRC-" not in desc
+    assert "nota interna" not in desc.lower()
+
+
+def test_second_run_does_not_duplicate_anomaly_event_or_timeline() -> None:
+    prefix = f"nodup-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]
+
+    async def run_once() -> tuple[int, int, int]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            anomalies = (
+                await session.execute(select(SatelliteAnomaly).where(SatelliteAnomaly.project_id == project.id))
+            ).scalars().all()
+            events = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.project_id == project.id))
+            ).scalars().all()
+            await session.refresh(project)
+            return len(anomalies), len(events), len(project.timeline or [])
+
+    first = asyncio.run(run_once())
+    second = asyncio.run(run_once())
+    assert first == second
+
+
+def test_vegetation_recovery_is_low_severity() -> None:
+    prefix = f"recovery-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.40), _stats(2026, 2, ndvi_mean=0.55)]  # recuperacao de 37.5%
+
+    async def run_job():
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            events = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.project_id == project.id))
+            ).scalars().all()
+            return events[0].type if events else None, events[0].severity if events else None, events[
+                0
+            ].status if events else None
+
+    event_type, severity, status = asyncio.run(run_job())
+    assert event_type == "VEGETATION_RECOVERY"
+    assert severity == "LOW"
+    assert status == "ANALYZED"
+
