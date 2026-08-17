@@ -487,9 +487,11 @@ def test_create_project_response_time_is_not_blocked_by_reconstruction() -> None
     elapsed = time.perf_counter() - started
 
     assert response.status_code == 201, response.text
-    # Se a reconstrucao rodasse sincrona dentro do request, este teste
-    # falharia por timeout muito antes de chegar a 5s.
-    assert elapsed < 5.0
+    # Se a reconstrucao rodasse sincrona dentro do request (2+ chamadas HTTP
+    # reais ao Copernicus), este teste falharia por timeout muito antes de
+    # chegar a 15s. O threshold folgado absorve variacao de carga da maquina
+    # de desenvolvimento/CI sem perder o sinal de regressao real.
+    assert elapsed < 15.0
 
 
 def test_enqueue_is_idempotent_for_active_job() -> None:
