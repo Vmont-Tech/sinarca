@@ -252,6 +252,21 @@ export default function MonitoringNDVI() {
         }
     }, [routeProjectId, projectOptions]);
 
+    // Título da aba do navegador reflete o projeto monitorado; index.html
+    // fixa <title>Sinarca</title> e nenhuma tela deste app o atualiza hoje.
+    // Restaura o título padrão ao desmontar para não deixar rótulo obsoleto
+    // em outras telas.
+    useEffect(() => {
+        const projectName = dossier?.project?.name;
+        const friendlyId = dossier?.project?.friendlyId;
+        document.title = projectName
+            ? `${projectName} (${friendlyId}) — Monitoramento Sentinel-2 | SINARCA`
+            : 'SINARCA';
+        return () => {
+            document.title = 'SINARCA';
+        };
+    }, [dossier]);
+
     // Combobox de busca do seletor de projeto (item A do checkpoint 05-09):
     // fecha ao clicar fora, sem lib nova.
     useEffect(() => {
