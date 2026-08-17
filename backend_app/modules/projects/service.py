@@ -284,6 +284,27 @@ class ProjectsService:
         await self._assert_project_edit_permission(project, actor_id=actor_id, actor_role=actor_role)
         return project
 
+    async def get_project_for_auditor(self, project_id: str, *, actor_id: str | None, actor_role: str | None) -> Project:
+        """Guard org-scoped para auditoria de campo (Phase 05 / SATM-01, T-05-10).
+
+        get_editable_project_model() nao serve para auditoria: seu status gate
+        (EDITABLE_PROJECT_STATUSES) exclui justamente os status em que uma
+        auditoria acontece (AWAITING_AUDIT/BLOCKED_AUDIT_REQUIRED/
+        CERTIFIED_AWAITING_TREASURY -- o mesmo filtro usado por GET /audit/queue),
+        e _assert_project_edit_permission() nao tem branch para o papel auditor
+        (so produtor/certificadora). Este metodo aplica o mesmo principio de
+        guard org-scoped (nunca so require_role) usando auditor_organization_id
+        como organizacao de referencia, sem o gate de status de edicao.
+        """
+        project = await self._get_project_model(project_id)
+        if actor_role == "admin":
+            return project
+        if actor_role == "auditor":
+            profile = await self._actor_profile(actor_id)
+            if profile.organization_id is not None and profile.organization_id == project.auditor_organization_id:
+                return project
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Seu perfil não pode auditar este projeto")
+
     async def get_public_dossier(self, project_id: str) -> ProjectPublicDossierResponse:
         project = await self._get_project_model(project_id)
         project_dto = await self.project_to_mrca(project)
