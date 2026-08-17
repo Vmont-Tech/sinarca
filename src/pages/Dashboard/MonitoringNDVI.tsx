@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
     Leaf,
     Satellite,
@@ -22,6 +24,8 @@ import {
     type SatelliteSummary,
     type SatelliteObservation,
     type EnvironmentalEvent,
+    type EnvironmentalEventStatus,
+    type EnvironmentalEventType,
     type CreditAdjustmentPendency,
 } from '../../services/satelliteMonitoring';
 
@@ -29,6 +33,123 @@ import {
 // real (baselineSource === 'COPERNICUS'). Qualquer valor sem essa origem
 // renderiza '—', nunca um numero plausivel de deterministic_baseline().
 const RECONSTRUCTION_POLL_INTERVAL_MS = 30_000;
+
+type BaseLayerKey = 'RGB' | 'NDVI' | 'NDMI' | 'NBR';
+type ChartIndex = 'NDVI' | 'NDMI' | 'NBR';
+type OverlayKey = 'BOUNDARY' | 'ANOMALIES' | 'EVENTS';
+type LatLngPair = [number, number];
+
+const RGB_TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const RGB_TILE_ATTRIBUTION = 'Tiles &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+
+const EVENT_TYPE_LABELS: Record<EnvironmentalEventType, string> = {
+    VEGETATION_LOSS: 'Perda de vegetação',
+    VEGETATION_RECOVERY: 'Recuperação de vegetação',
+    POSSIBLE_FIRE: 'Possível incêndio',
+};
+
+// UI-SPEC (Surface B): vocabulario de cor por status de evento. ANALYZED
+// reusa a mesma cor de NBR/atencao de proposito (nao e coincidencia).
+const EVENT_STATUS_COLORS: Record<EnvironmentalEventStatus, string> = {
+    DETECTED: '#60A5FA',
+    ANALYZED: '#FB923C',
+    CONFIRMED: '#F87171',
+    DISMISSED: '#9CBA9C',
+};
+const EVENT_CLEARED_COLOR = '#00ff94';
+
+// D-24: Anomalies = ainda sem decisao humana (DETECTED/ANALYZED); Events =
+// ja decididos (CONFIRMED/DISMISSED) — os 3 estados restantes de status nao
+// tem geometria propria, entao o marcador representa o evento sobre a AOI.
+const ANOMALY_LAYER_STATUSES: EnvironmentalEventStatus[] = ['DETECTED', 'ANALYZED'];
+
+const CHART_INDEX_COLORS: Record<ChartIndex, string> = {
+    NDVI: '#00ff94',
+    NDMI: '#38BDF8',
+    NBR: '#FB923C',
+};
+const CHART_INDEX_GETTERS: Record<ChartIndex, (obs: SatelliteObservation) => number | null> = {
+    NDVI: (obs) => obs.ndviMean,
+    NDMI: (obs) => obs.ndmiMean,
+    NBR: (obs) => obs.nbrMean,
+};
+
+const INDEX_LEGEND_LABELS: Record<ChartIndex, { left: string; right: string }> = {
+    NDVI: { left: 'Baixa Vegetação', right: 'Densa' },
+    NDMI: { left: 'Seco', right: 'Úmido' },
+    NBR: { left: 'Queimado', right: 'Intacto' },
+};
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+// Rampa red-yellow-green identica a legenda existente
+// (from-red-500 via-yellow-400 to-green-500) — nunca uma segunda paleta.
+const indexColor = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '#6b7280';
+    const t = clamp01(value);
+    const stops: [[number, number, number], [number, number, number]] = t < 0.5
+        ? [[239, 68, 68], [250, 204, 21]]
+        : [[250, 204, 21], [34, 197, 94]];
+    const localT = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+    const [r1, g1, b1] = stops[0];
+    const [r2, g2, b2] = stops[1];
+    const r = Math.round(r1 + (r2 - r1) * localT);
+    const g = Math.round(g1 + (g2 - g1) * localT);
+    const b = Math.round(b1 + (b2 - b1) * localT);
+    return `rgb(${r}, ${g}, ${b})`;
+};
+
+// Normalizacao pura testavel por leitura (UI-SPEC): x = index/(n-1)*100,
+// y = 100 - ((valor-min)/(max-min))*100. Pontos nulos quebram o path em um
+// novo segmento M — nunca interpolar por cima de dado ausente.
+const buildIndexPath = (
+    observations: SatelliteObservation[],
+    getValue: (obs: SatelliteObservation) => number | null,
+    min: number,
+    max: number,
+): { d: string; dots: Array<{ x: number; y: number; id: string }> } => {
+    const span = Math.max(max - min, 0.000001);
+    const count = observations.length;
+    let d = '';
+    let segmentOpen = false;
+    const dots: Array<{ x: number; y: number; id: string }> = [];
+    observations.forEach((obs, index) => {
+        const value = getValue(obs);
+        const x = count > 1 ? (index / (count - 1)) * 100 : 50;
+        if (value === null || value === undefined) {
+            segmentOpen = false;
+            return;
+        }
+        const y = 100 - ((value - min) / span) * 100;
+        dots.push({ x, y, id: obs.id });
+        d += `${segmentOpen ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)} `;
+        segmentOpen = true;
+    });
+    return { d: d.trim(), dots };
+};
+
+const computeChartBounds = (observations: SatelliteObservation[], activeIndices: ChartIndex[]): { min: number; max: number } => {
+    const values: number[] = [];
+    observations.forEach((obs) => {
+        activeIndices.forEach((index) => {
+            const value = CHART_INDEX_GETTERS[index](obs);
+            if (value !== null && value !== undefined) values.push(value);
+        });
+    });
+    if (values.length === 0) return { min: 0, max: 1 };
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return min === max ? { min: min - 0.1, max: max + 0.1 } : { min, max };
+};
+
+const anomalyMonthsFrom = (events: EnvironmentalEvent[]): Set<string> => {
+    const set = new Set<string>();
+    events.forEach((event) => {
+        if (!event.detectedAt) return;
+        set.add(event.detectedAt.slice(0, 7));
+    });
+    return set;
+};
 
 const formatDateTime = (value?: string | null) => {
     if (!value) return 'Sem registro';
@@ -64,6 +185,15 @@ export default function MonitoringNDVI() {
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadError, setLoadError] = useState('');
+
+    const [baseLayer, setBaseLayer] = useState<BaseLayerKey>('RGB');
+    const [overlays, setOverlays] = useState<Record<OverlayKey, boolean>>({ BOUNDARY: true, ANOMALIES: true, EVENTS: false });
+    const [chartIndices, setChartIndices] = useState<ChartIndex[]>(['NDVI']);
+
+    const mapContainerRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<L.Map | null>(null);
+    const baseLayerRef = useRef<L.TileLayer | null>(null);
+    const overlayRef = useRef<L.LayerGroup | null>(null);
 
     // Lista de projetos visiveis ao usuario, para o seletor do header quando
     // a rota nao traz :projectId (mesmo padrao de apiGet('/projects') ja
@@ -146,6 +276,133 @@ export default function MonitoringNDVI() {
         }, RECONSTRUCTION_POLL_INTERVAL_MS);
         return () => window.clearInterval(interval);
     }, [resolvedProjectId, reconstructing, loadAll]);
+
+    // O card do mapa so existe visualmente no ramo "dashboard completo" (nem
+    // loading, nem erro, nem bloqueado, nem reconstruindo) — mesmo gate
+    // shouldRenderMap de ProjectGeofencePreview.tsx, calculado aqui (antes
+    // dos early returns, hooks nunca podem ser condicionais).
+    const mapReady = !loading && !loadError && Boolean(dossier) && Boolean(summary) && !summary?.blocked && !reconstructing;
+
+    // GEOF-05: GeoJSON e [lon, lat]; Leaflet quer [lat, lng] — inverter aqui,
+    // exatamente como ProjectGeofencePreview.tsx ja faz. O anel vem fechado
+    // (primeiro ponto repetido no fim): slice(0, -1) remove a repeticao.
+    const boundaryLatLngs = useMemo<LatLngPair[]>(() => {
+        const ring = (dossier?.boundary?.active ?? dossier?.boundary?.declared)?.coordinates?.[0];
+        if (!ring || ring.length < 4) return [];
+        return ring.slice(0, -1).map(([lng, lat]) => [lat, lng] as LatLngPair);
+    }, [dossier]);
+
+    const centroid = useMemo<LatLngPair | null>(() => {
+        if (boundaryLatLngs.length === 0) return null;
+        const sum = boundaryLatLngs.reduce((acc, [lat, lng]) => [acc[0] + lat, acc[1] + lng] as LatLngPair, [0, 0] as LatLngPair);
+        return [sum[0] / boundaryLatLngs.length, sum[1] / boundaryLatLngs.length];
+    }, [boundaryLatLngs]);
+
+    // Mount/unmount do mapa (identico a ProjectGeofencePreview.tsx:194-222).
+    useEffect(() => {
+        if (!mapReady) {
+            mapRef.current?.remove();
+            mapRef.current = null;
+            baseLayerRef.current = null;
+            overlayRef.current = null;
+            return undefined;
+        }
+        if (!mapContainerRef.current || mapRef.current) return undefined;
+
+        const map = L.map(mapContainerRef.current, {
+            attributionControl: true,
+            scrollWheelZoom: true,
+            zoomControl: true,
+        });
+        const layer = L.layerGroup().addTo(map);
+        mapRef.current = map;
+        overlayRef.current = layer;
+        window.setTimeout(() => map.invalidateSize(), 0);
+
+        return () => {
+            map.remove();
+            mapRef.current = null;
+            baseLayerRef.current = null;
+            overlayRef.current = null;
+        };
+    }, [mapReady]);
+
+    // Camada base RGB (unica camada base que e um tile real — NDVI/NDMI/NBR
+    // colorem a AOI, D-09, nao existe tile de indice nesta fase).
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!mapReady || !map) return undefined;
+        if (baseLayer !== 'RGB') {
+            if (baseLayerRef.current) {
+                baseLayerRef.current.removeFrom(map);
+                baseLayerRef.current = null;
+            }
+            return undefined;
+        }
+        const tileLayer = L.tileLayer(RGB_TILE_URL, { attribution: RGB_TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+        tileLayer.bringToBack();
+        baseLayerRef.current = tileLayer;
+        return () => {
+            tileLayer.removeFrom(map);
+            if (baseLayerRef.current === tileLayer) baseLayerRef.current = null;
+        };
+    }, [mapReady, baseLayer]);
+
+    // D-09: a Statistical API devolve estatisticas agregadas por AOI, nao tiles.
+    // A camada de indice colore a propria AOI pelo valor agregado da observacao
+    // mais recente — nunca renderiza um raster que o backend nao possui.
+    useEffect(() => {
+        const map = mapRef.current;
+        const layer = overlayRef.current;
+        if (!mapReady || !map || !layer) return;
+        layer.clearLayers();
+
+        const latestObservation = summary?.latestObservation ?? null;
+
+        if (baseLayer !== 'RGB' && boundaryLatLngs.length >= 3) {
+            const value = latestObservation ? CHART_INDEX_GETTERS[baseLayer](latestObservation) : null;
+            const color = indexColor(value);
+            L.polygon(boundaryLatLngs, { color, fillColor: color, fillOpacity: 0.35, opacity: 0.9, weight: 2 }).addTo(layer);
+        }
+
+        if (overlays.BOUNDARY && boundaryLatLngs.length >= 3) {
+            L.polygon(boundaryLatLngs, {
+                color: '#00ff94',
+                fillColor: '#00ff94',
+                fillOpacity: 0.15,
+                opacity: 0.95,
+                weight: 3,
+            }).addTo(layer);
+        }
+
+        // Eventos desta fase nao tem geometria propria (project_events nao
+        // guarda geometry) — o marcador representa o evento sobre a AOI, nao
+        // um poligono de dano.
+        if ((overlays.ANOMALIES || overlays.EVENTS) && centroid) {
+            events.forEach((event, index) => {
+                const isAnomaly = ANOMALY_LAYER_STATUSES.includes(event.status);
+                if (isAnomaly && !overlays.ANOMALIES) return;
+                if (!isAnomaly && !overlays.EVENTS) return;
+                const color = event.clearedAt ? EVENT_CLEARED_COLOR : EVENT_STATUS_COLORS[event.status];
+                const jitter = (index % 7) * 0.00025;
+                const marker = L.circleMarker([centroid[0] + jitter, centroid[1] + jitter], {
+                    radius: 8,
+                    color,
+                    fillColor: color,
+                    fillOpacity: 0.85,
+                    weight: 2,
+                }).addTo(layer);
+                marker.bindTooltip(`${EVENT_TYPE_LABELS[event.type]} · ${event.severity} · ${formatDateTime(event.detectedAt)}`);
+            });
+        }
+
+        if (boundaryLatLngs.length >= 3) {
+            const bounds = L.latLngBounds(boundaryLatLngs);
+            map.fitBounds(bounds.pad(0.25), { animate: false, maxZoom: 15 });
+        } else if (centroid) {
+            map.setView(centroid, 13, { animate: false });
+        }
+    }, [mapReady, baseLayer, overlays, boundaryLatLngs, centroid, events, summary]);
 
     if (loading) {
         return <div className="p-20 text-center text-primary">Carregando monitoramento satelital...</div>;
@@ -266,6 +523,23 @@ export default function MonitoringNDVI() {
         { label: 'Última Observação', val: formatDateTime(latest?.observedAt), trend: latest?.sceneId ? latest.sceneId.slice(0, 4) : '—', icon: Calendar, color: 'text-primary' },
     ];
 
+    const chartBounds = computeChartBounds(observations, chartIndices);
+    const chartPaths = chartIndices.map((index) => ({
+        index,
+        color: CHART_INDEX_COLORS[index],
+        ...buildIndexPath(observations, CHART_INDEX_GETTERS[index], chartBounds.min, chartBounds.max),
+    }));
+    const chartAnomalyMonths = anomalyMonthsFrom(events);
+    const chartDateLabels = observations.length > 0
+        ? [
+            observations[0],
+            observations[Math.floor((observations.length - 1) / 2)],
+            observations[observations.length - 1],
+        ].map((obs) => formatDateTime(obs.observedAt))
+        : [];
+    const legendLabels = baseLayer !== 'RGB' ? INDEX_LEGEND_LABELS[baseLayer] : null;
+    const legendValue = baseLayer !== 'RGB' && latest ? CHART_INDEX_GETTERS[baseLayer](latest) : null;
+
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6 animate-in fade-in duration-700">
 
@@ -319,9 +593,73 @@ export default function MonitoringNDVI() {
             {/* 2. GRADE PRINCIPAL: MAPA + STATS */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                {/* MAPA PRINCIPAL (8/12) — placeholder ate a Task 2 portar o Leaflet real */}
-                <div className="lg:col-span-8 relative rounded-3xl overflow-hidden border border-sinarca-border bg-[#00120b] h-[500px] lg:h-[650px] group shadow-2xl flex items-center justify-center">
-                    <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest">Mapa Leaflet — Task 2</span>
+                {/* MAPA PRINCIPAL (8/12) — Leaflet real, mecanica portada de ProjectGeofencePreview.tsx */}
+                <div className="lg:col-span-8 relative rounded-3xl overflow-hidden border border-sinarca-border bg-[#00120b] h-[500px] lg:h-[650px] group shadow-2xl">
+                    <div ref={mapContainerRef} className="absolute inset-0" aria-label={`Mapa de monitoramento satelital de ${project.name}`} />
+
+                    {/* Controles do Mapa — dois grupos independentes (D-24: nao merge em 7-way exclusivo) */}
+                    <div className="absolute top-6 left-6 flex flex-col gap-4 z-[1000]">
+                        <div role="radiogroup" aria-label="Camada base" className="flex flex-col gap-2">
+                            {(['RGB', 'NDVI', 'NDMI', 'NBR'] as BaseLayerKey[]).map((layer) => (
+                                <button
+                                    key={layer}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={baseLayer === layer}
+                                    onClick={() => setBaseLayer(layer)}
+                                    className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${baseLayer === layer ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
+                                >
+                                    {layer}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-col gap-2" aria-label="Camadas de sobreposição">
+                            <button
+                                type="button"
+                                aria-pressed={overlays.BOUNDARY}
+                                onClick={() => setOverlays((current) => ({ ...current, BOUNDARY: !current.BOUNDARY }))}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${overlays.BOUNDARY ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
+                            >
+                                Boundary
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={overlays.ANOMALIES}
+                                onClick={() => setOverlays((current) => ({ ...current, ANOMALIES: !current.ANOMALIES }))}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${overlays.ANOMALIES ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
+                            >
+                                Anomalies
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={overlays.EVENTS}
+                                onClick={() => setOverlays((current) => ({ ...current, EVENTS: !current.EVENTS }))}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${overlays.EVENTS ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
+                            >
+                                Events
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Legenda — swap de rotulos/valor conforme indice ativo, nunca uma segunda legenda */}
+                    {legendLabels && (
+                        <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-2xl max-w-[200px] z-[1000]">
+                            <div className="flex justify-between text-[8px] text-gray-400 uppercase font-bold mb-2">
+                                <span>{legendLabels.left}</span>
+                                <span>{legendLabels.right}</span>
+                            </div>
+                            <div className="h-2 w-full bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full mb-3"></div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-white font-mono">{baseLayer}: {formatDecimal(legendValue)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Info Satélite */}
+                    <div className="absolute top-6 right-6 flex items-center gap-3 bg-black/40 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full z-[1000]">
+                        <div className="w-2 h-2 rounded-full bg-sinarca-neon animate-pulse"></div>
+                        <span className="text-[10px] text-white font-bold uppercase tracking-widest">Sincronizado com Sentinel-2B</span>
+                    </div>
                 </div>
 
                 {/* SIDEBAR DE STATS (4/12) */}
@@ -375,6 +713,66 @@ export default function MonitoringNDVI() {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* SÉRIE TEMPORAL — SVG inline, sem biblioteca de grafico (UI-SPEC) */}
+            <div className="bg-sinarca-deep border border-sinarca-border rounded-3xl p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <h3 className="text-white font-serif font-bold text-lg">Série temporal de índices</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {(['NDVI', 'NDMI', 'NBR'] as ChartIndex[]).map((index) => (
+                            <button
+                                key={index}
+                                type="button"
+                                aria-pressed={chartIndices.includes(index)}
+                                onClick={() => setChartIndices((current) => (
+                                    current.includes(index) ? current.filter((item) => item !== index) : [...current, index]
+                                ))}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${chartIndices.includes(index) ? 'bg-sinarca-neon text-sinarca-forest border-sinarca-neon' : 'bg-black/50 text-white border-white/10 backdrop-blur-md'}`}
+                            >
+                                {index}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {observations.length < 2 ? (
+                    <p className="text-text-muted text-sm py-10 text-center">Ainda não há pontos suficientes para a série temporal.</p>
+                ) : (
+                    <>
+                        <div className="flex items-center justify-between text-[10px] text-text-muted uppercase font-bold tracking-widest mb-2">
+                            <span>Mín: {chartBounds.min.toFixed(3)}</span>
+                            <span>Máx: {chartBounds.max.toFixed(3)}</span>
+                        </div>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-48">
+                            {observations.map((obs, index) => {
+                                const month = obs.observedAt.slice(0, 7);
+                                if (!chartAnomalyMonths.has(month)) return null;
+                                const x = observations.length > 1 ? (index / (observations.length - 1)) * 100 : 50;
+                                return <circle key={`halo-${obs.id}`} cx={x} cy={98} r="1.6" fill="#F87171" fillOpacity="0.35" />;
+                            })}
+                            {chartPaths.map((path) => (
+                                <g key={path.index}>
+                                    <path d={path.d} stroke={path.color} fill="none" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+                                    {path.dots.map((dot) => (
+                                        <circle key={`${path.index}-${dot.id}`} cx={dot.x} cy={dot.y} r="0.9" fill={path.color} />
+                                    ))}
+                                </g>
+                            ))}
+                        </svg>
+                        <div className="flex items-center justify-between text-[10px] text-text-muted uppercase font-bold tracking-widest mt-2">
+                            {chartDateLabels.map((label, index) => <span key={index}>{label}</span>)}
+                        </div>
+                        <div className="flex flex-wrap gap-4 mt-4">
+                            {chartPaths.map((path) => (
+                                <span key={path.index} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: path.color }} />
+                                    {path.index}
+                                </span>
+                            ))}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* 3. RODAPÉ DE MÉTRICAS DETALHADAS */}
