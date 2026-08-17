@@ -679,7 +679,7 @@ export default function MonitoringNDVI() {
             <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{project.name}</h1>
+                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-950 mb-1">{project.name}</h1>
                         <p className="text-text-muted flex items-center gap-1 text-sm">
                             <Navigation className="w-3 h-3" /> {project.location.city}, {project.location.state}
                         </p>
@@ -704,7 +704,7 @@ export default function MonitoringNDVI() {
             <div className="container mx-auto p-4 md:p-8 max-w-[1400px] flex flex-col gap-6">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{project.name}</h1>
+                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-950 mb-1">{project.name}</h1>
                         <p className="text-text-muted flex items-center gap-1 text-sm">
                             <Navigation className="w-3 h-3" /> {project.location.city}, {project.location.state}
                         </p>
@@ -784,7 +784,7 @@ export default function MonitoringNDVI() {
                         </span>
                         <span className="text-gray-500 text-xs font-mono">{project.friendlyId}</span>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-1">{project.name}</h1>
+                    <h1 className="text-3xl md:text-4xl font-serif font-bold text-gray-950 mb-1">{project.name}</h1>
                     <p className="text-text-muted flex items-center gap-1 text-sm">
                         <Navigation className="w-3 h-3" /> {project.location.city}, {project.location.state}
                     </p>
