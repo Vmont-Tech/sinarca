@@ -22,6 +22,7 @@ from backend_app.core.config import Settings, get_settings
 from backend_app.db.models import Project, SatelliteJob, SatelliteObservation
 from backend_app.db.session import get_sessionmaker
 from backend_app.modules.satellite.historical_reconstruction import HistoricalReconstructionService
+from backend_app.modules.satellite.monitoring import SatelliteMonitoringService
 from backend_app.modules.satellite.service import SatelliteService
 
 logger = logging.getLogger(__name__)
@@ -38,21 +39,9 @@ async def _dispatch_historical_reconstruction(
 async def _dispatch_continuous_monitoring(
     session: AsyncSession, provider: SatelliteProvider, job: SatelliteJob, settings: Settings
 ) -> None:
-    try:
-        from backend_app.modules.satellite.monitoring import SatelliteMonitoringService
-    except ImportError:
-        # Plan 06 ainda nao criou este modulo -- falha fechado, nunca finge
-        # que o monitoramento continuo rodou.
-        await SatelliteService(session).finish_job(
-            job, status="FAILED", error_message="Tipo de job ainda não implementado"
-        )
-        return
     await SatelliteMonitoringService(session, provider, settings).run(job)
 
 
-# Plan 06 apenas substitui/estende a entrada CONTINUOUS_MONITORING quando o
-# modulo satellite/monitoring.py existir -- nenhuma outra parte deste arquivo
-# precisa mudar.
 JOB_DISPATCH: dict[str, JobHandler] = {
     "HISTORICAL_RECONSTRUCTION": _dispatch_historical_reconstruction,
     "CONTINUOUS_MONITORING": _dispatch_continuous_monitoring,
