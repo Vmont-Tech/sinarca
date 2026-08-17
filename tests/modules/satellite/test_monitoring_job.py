@@ -565,3 +565,124 @@ def test_vegetation_recovery_is_low_severity() -> None:
     assert severity == "LOW"
     assert status == "ANALYZED"
 
+
+# ----------------------------------------------------------------------
+# Task 3 -- evidencia visual before/after (D-19)
+# ----------------------------------------------------------------------
+
+
+def test_before_after_is_only_captured_when_event_reaches_analyzed() -> None:
+    prefix_flat = f"evinoevent-{uuid_hex()}"
+    friendly_flat = _create_project_with_boundary(prefix_flat)
+    flat_scenes = [_scene(2026, 1), _scene(2026, 2)]
+    flat_statistics = [_stats(2026, 1, ndvi_mean=0.55), _stats(2026, 2, ndvi_mean=0.56)]  # sem queda relevante
+
+    prefix_drop = f"evidrop-{uuid_hex()}"
+    friendly_drop = _create_project_with_boundary(prefix_drop)
+    drop_scenes = [_scene(2026, 1), _scene(2026, 2)]
+    drop_statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]
+
+    async def run_flat() -> int:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_flat))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(flat_scenes, flat_statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+            return provider.get_image_calls
+
+    async def run_drop() -> int:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_drop))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(drop_scenes, drop_statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+            return provider.get_image_calls
+
+    assert asyncio.run(run_flat()) == 0
+    assert asyncio.run(run_drop()) == 2
+
+
+def test_before_after_capture_is_idempotent() -> None:
+    prefix = f"eviidem-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]
+
+    async def run_and_recapture() -> tuple[int, int]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+            calls_after_first = provider.get_image_calls
+
+            event = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.project_id == project.id))
+            ).scalars().one()
+            evidence_service = SatelliteEvidenceService(session, provider)
+            await evidence_service.capture_before_after(project, event)
+            calls_after_second = provider.get_image_calls
+            return calls_after_first, calls_after_second
+
+    first, second = asyncio.run(run_and_recapture())
+    assert first == 2
+    assert second == 2  # segunda captura nao chama get_image de novo
+
+
+def test_event_survives_image_capture_failure() -> None:
+    prefix = f"evifail-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]
+
+    async def run_job() -> tuple[str, str]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics, image_raises=RuntimeError("Process API indisponível"))
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            event = (
+                await session.execute(select(ProjectEvent).where(ProjectEvent.project_id == project.id))
+            ).scalars().one()
+            return job.status, event.status
+
+    job_status, event_status = asyncio.run(run_job())
+    assert job_status == "COMPLETED"
+    assert event_status == "ANALYZED"
+
+
+def test_satellite_evidence_hash_matches_image_bytes() -> None:
+    prefix = f"evihash-{uuid_hex()}"
+    friendly_id = _create_project_with_boundary(prefix)
+    scenes = [_scene(2026, 1), _scene(2026, 2)]
+    statistics = [_stats(2026, 1, ndvi_mean=0.60), _stats(2026, 2, ndvi_mean=0.42)]
+    expected_hash = hashlib.sha256(FIXED_PNG_BYTES).hexdigest()
+
+    async def run_job() -> list[str]:
+        async with get_sessionmaker()() as session:
+            project = (
+                await session.execute(select(Project).where(Project.friendly_id == friendly_id))
+            ).scalars().one()
+            job = await _enqueue_and_get_monitoring_job(session, project)
+            provider = FakeProvider(scenes, statistics)
+            await SatelliteMonitoringService(session, provider).run(job)
+
+            evidence_rows = (
+                await session.execute(
+                    select(SatelliteEvidence).where(SatelliteEvidence.project_id == project.id)
+                )
+            ).scalars().all()
+            return [row.sha256_hash for row in evidence_rows]
+
+    hashes = asyncio.run(run_job())
+    assert len(hashes) == 2  # BEFORE_IMAGE + AFTER_IMAGE
+    assert all(h == expected_hash for h in hashes)

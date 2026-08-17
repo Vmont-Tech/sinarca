@@ -49,3 +49,12 @@ def user_document_location(profile_id: str, document_type: str, sha256: str, ext
     normalized_type = normalize_document_type(document_type)
     object_path = f"user-documents/{profile_id}/documents/{normalized_type}/{sha256}{extension}"
     return StorageLocation(USER_DOCUMENTS_BUCKET, object_path, storage_uri(USER_DOCUMENTS_BUCKET, object_path))
+
+
+def satellite_evidence_location(
+    project_friendly_id: str, kind: str, sha256: str, extension: str = ".png"
+) -> StorageLocation:
+    """D-19: before.png/after.png de uma anomalia satelital analisada."""
+    normalized_kind = normalize_document_type(kind)
+    object_path = f"projects/{project_friendly_id}/satellite/{normalized_kind}/{sha256}{extension}"
+    return StorageLocation(PROJECTS_BUCKET, object_path, storage_uri(PROJECTS_BUCKET, object_path))
