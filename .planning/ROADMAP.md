@@ -205,7 +205,7 @@ Plans:
 - [x] 05-03-PLAN.md — `SatelliteProvider` + `CopernicusProvider` fail-closed sobre `httpx.AsyncClient`: OAuth2 cacheado, semáforo de 2 requests, STAC/Statistical/Process e consumo em `copernicus_api_usage` (SATM-05/10).
 - [x] 05-04-PLAN.md — `AnomalyDetector` puro (nunca `DEFORESTATION`) e sinal `SATELLITE_ANOMALY_CONFIRMED_*` no Risk Engine da Phase 04.2 (SATM-06/08).
 - [x] 05-05-PLAN.md — Persistência idempotente, reconstrução histórica de 5 anos mensal, primeiro lifespan FastAPI + APScheduler e enfileiramento em `create_project` (SATM-05/07/10).
-- [ ] 05-06-PLAN.md — Monitoramento contínuo incremental, `SatelliteAnomaly`/`ProjectEvent` `DETECTED → ANALYZED` e evidência before/after com hash SHA-256 (SATM-06/10).
+- [x] 05-06-PLAN.md — Monitoramento contínuo incremental, `SatelliteAnomaly`/`ProjectEvent` `DETECTED → ANALYZED` e evidência before/after com hash SHA-256 (SATM-06/10).
 - [ ] 05-07-PLAN.md — API `/api/v1` satelital, decisão humana `CONFIRMED`/`DISMISSED`, Auto Hold via recálculo, `credit_adjustment_pendencies`, desbloqueio auditável e bloco satélite no dossiê público (SATM-06/07/08/09).
 - [ ] 05-08-PLAN.md — UI de auditoria de campo (upload real, badge de assinatura, NFC fail-closed) e dossiê público com baseline condicional (SATM-01/02/03/04/07).
 - [ ] 05-09-PLAN.md — Dashboard satelital real: rota por projeto, mapa Leaflet com camadas, série temporal SVG, anomalias com decisão humana e slider before/after (SATM-06/07/08/09/10).
