@@ -100,6 +100,7 @@ class ProjectPublicDossierResponse(BaseModel):
     baseline: dict[str, Any] | None = None
     boundary: dict[str, Any] | None = None
     integrity: dict[str, Any] | None = None
+    satellite: dict[str, Any] | None = None
     certifications: list[dict[str, Any]]
     audits: list[dict[str, Any]]
     documents: list[dict[str, Any]]

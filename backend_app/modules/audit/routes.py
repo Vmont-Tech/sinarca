@@ -14,10 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend_app.core.roles import require_role
 from backend_app.core.security import AuthenticatedUser
-from backend_app.db.models import Audit, Document, EnvironmentalCredit, Project
+from backend_app.db.models import Audit, Document, Project
 from backend_app.db.repositories import create_audit_event
 from backend_app.db.session import get_session
 from backend_app.modules.audit.signature import AUDIT_SIGNATURE_KIND, compute_audit_signature
+from backend_app.modules.credits_availability import block_project_credits, unlock_project_credits
 from backend_app.modules.integrity.service import IntegrityService
 from backend_app.modules.inventory.routes import validate_magic_bytes
 from backend_app.modules.projects.schemas import QueueResponse
@@ -273,13 +274,13 @@ async def verify_project(
 
     if payload.status == "APPROVED":
         project.status = "ACTIVE"
-        await _unlock_credits(session, project)
+        await unlock_project_credits(session, project)
     elif payload.status == "BLOCKED":
         project.status = "BLOCKED_AUDIT_REQUIRED"
-        await _block_credits(session, project)
+        await block_project_credits(session, project)
     else:
         project.status = "RECALCULATION_REQUIRED"
-        await _block_credits(session, project)
+        await block_project_credits(session, project)
 
     audit = await _get_or_create_audit(session, project, payload.status)
     audit.report_text = payload.laudo_texto
@@ -355,20 +356,6 @@ async def _get_or_create_audit(session: AsyncSession, project: Project, status: 
     session.add(audit)
     await session.flush()
     return audit
-
-
-async def _unlock_credits(session: AsyncSession, project: Project) -> None:
-    result = await session.execute(select(EnvironmentalCredit).where(EnvironmentalCredit.project_id == project.id))
-    for credit in result.scalars().all():
-        credit.status = "AVAILABLE"
-        credit.quantity_available = credit.quantity_total - credit.quantity_retired
-
-
-async def _block_credits(session: AsyncSession, project: Project) -> None:
-    result = await session.execute(select(EnvironmentalCredit).where(EnvironmentalCredit.project_id == project.id))
-    for credit in result.scalars().all():
-        credit.status = "SUSPENDED"
-        credit.quantity_available = Decimal("0")
 
 
 def _audit_title(status: str) -> str:
