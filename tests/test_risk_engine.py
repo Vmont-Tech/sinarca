@@ -8,6 +8,7 @@ from backend_app.core.config import Settings
 from backend_app.modules.integrity.risk_engine import (
     ClaimSnapshot,
     ConflictSnapshot,
+    ProjectEventSnapshot,
     RiskSignalDTO,
     compute_signals,
     integrity_status_for,
@@ -34,6 +35,15 @@ def _conflict(
     overlap_percentage: float = 80.0,
 ) -> ConflictSnapshot:
     return ConflictSnapshot(type=type, severity=severity, status=status, overlap_percentage=overlap_percentage)
+
+
+def _event(
+    status: str = "CONFIRMED",
+    severity: str = "CRITICAL",
+    type: str = "VEGETATION_LOSS",
+    cleared: bool = False,
+) -> ProjectEventSnapshot:
+    return ProjectEventSnapshot(type=type, status=status, severity=severity, cleared=cleared)
 
 
 def test_no_claims_no_conflicts_yields_no_signals_score_zero_class_low() -> None:
@@ -206,3 +216,92 @@ def test_risk_signal_dto_is_a_plain_dataclass_without_db_types() -> None:
     signal = RiskSignalDTO(code="OVERLAP_CRITICAL", weight=50.0, reason="+50 teste", public_safe=True)
     assert signal.code == "OVERLAP_CRITICAL"
     assert signal.metadata == {}
+
+
+# ---------------------------------------------------------------------------
+# Phase 05 / D-20: sinal de anomalia satelital confirmada (Auto Hold existente)
+# ---------------------------------------------------------------------------
+
+
+def test_satellite_confirmed_critical_produces_signal() -> None:
+    signals = compute_signals([], [], satellite_events=[_event(severity="CRITICAL")])
+    matches = [s for s in signals if s.code == "SATELLITE_ANOMALY_CONFIRMED_CRITICAL"]
+    assert len(matches) == 1
+    assert matches[0].weight == 50.0
+
+
+def test_satellite_two_confirmed_criticals_produce_one_signal_with_count() -> None:
+    events = [_event(severity="CRITICAL"), _event(severity="CRITICAL")]
+    signals = compute_signals([], [], satellite_events=events)
+    matches = [s for s in signals if s.code == "SATELLITE_ANOMALY_CONFIRMED_CRITICAL"]
+    assert len(matches) == 1
+    assert matches[0].weight == 50.0
+    assert matches[0].metadata["count"] == 2
+
+
+def test_satellite_high_confirmed_produces_lower_weight_signal() -> None:
+    signals = compute_signals([], [], satellite_events=[_event(severity="HIGH")])
+    matches = [s for s in signals if s.code == "SATELLITE_ANOMALY_CONFIRMED_HIGH"]
+    assert len(matches) == 1
+    assert matches[0].weight == 30.0
+
+
+def test_satellite_medium_confirmed_produces_no_signal() -> None:
+    signals = compute_signals([], [], satellite_events=[_event(severity="MEDIUM")])
+    assert not [s for s in signals if s.code.startswith("SATELLITE_ANOMALY_CONFIRMED")]
+
+    signals_low = compute_signals([], [], satellite_events=[_event(severity="LOW")])
+    assert not [s for s in signals_low if s.code.startswith("SATELLITE_ANOMALY_CONFIRMED")]
+
+
+def test_satellite_non_confirmed_events_are_ignored() -> None:
+    events = [
+        _event(status="DETECTED", severity="CRITICAL"),
+        _event(status="ANALYZED", severity="CRITICAL"),
+        _event(status="DISMISSED", severity="CRITICAL"),
+    ]
+    signals = compute_signals([], [], satellite_events=events)
+    assert not [s for s in signals if s.code.startswith("SATELLITE_ANOMALY_CONFIRMED")]
+
+
+def test_satellite_cleared_event_stops_counting() -> None:
+    signals = compute_signals([], [], satellite_events=[_event(severity="CRITICAL", cleared=True)])
+    assert not [s for s in signals if s.code.startswith("SATELLITE_ANOMALY_CONFIRMED")]
+
+
+def test_satellite_confirmed_critical_can_reach_auto_hold() -> None:
+    signals = compute_signals(
+        [],
+        [_conflict(type="DOUBLE_CLAIM", severity="CRITICAL")],
+        satellite_events=[_event(severity="CRITICAL")],
+    )
+    score = score_from_signals(signals)
+    assert score == 100
+    assert risk_class_for_score(score) == "CRITICAL"
+    assert integrity_status_for([], risk_class="CRITICAL") == "ON_HOLD"
+
+
+def test_satellite_signal_weight_comes_from_settings_not_hardcoded() -> None:
+    custom_settings = Settings(integrity_risk_weight_satellite_anomaly_critical=99.0)
+    signals = compute_signals([], [], satellite_events=[_event(severity="CRITICAL")], settings=custom_settings)
+    matches = [s for s in signals if s.code == "SATELLITE_ANOMALY_CONFIRMED_CRITICAL"]
+    assert len(matches) == 1
+    assert matches[0].weight == 99.0
+
+
+def test_satellite_signal_reasons_never_mention_other_projects() -> None:
+    events = [_event(severity="CRITICAL"), _event(severity="HIGH")]
+    signals = compute_signals([], [], satellite_events=events)
+    satellite_signals = [s for s in signals if s.code.startswith("SATELLITE_ANOMALY_CONFIRMED")]
+    assert satellite_signals
+    for signal in satellite_signals:
+        assert "PRC-" not in signal.reason
+        assert "projeto " not in signal.reason.lower()
+
+
+def test_compute_signals_backwards_compatible_without_satellite_events() -> None:
+    claims = [_claim(type="LAND_POSSESSION", status="DECLARED", has_evidence=False, has_verified_evidence=False)]
+    conflicts = [_conflict(severity="HIGH"), _conflict(type="DOUBLE_CLAIM", severity="HIGH")]
+    with_two_args = compute_signals(claims, conflicts)
+    with_empty_satellite = compute_signals(claims, conflicts, satellite_events=[])
+    assert with_two_args == with_empty_satellite

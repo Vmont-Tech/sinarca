@@ -44,6 +44,21 @@ class ConflictSnapshot:
 
 
 @dataclass(frozen=True)
+class ProjectEventSnapshot:
+    """Evento ambiental satelital (Phase 05 / D-20).
+
+    `cleared` reflete project_events.cleared_at: uma anomalia confirmada que
+    ja passou por revisao humana auditavel (D-22) deixa de pesar no risco. O
+    Auto Hold sai sozinho no proximo recalculo -- ninguem escreve
+    integrity_status na mao para "desbloquear".
+    """
+    type: str
+    status: str
+    severity: str
+    cleared: bool = False
+
+
+@dataclass(frozen=True)
 class RiskSignalDTO:
     code: str
     weight: float
@@ -55,6 +70,7 @@ class RiskSignalDTO:
 def compute_signals(
     claims: Sequence[ClaimSnapshot],
     conflicts: Sequence[ConflictSnapshot],
+    satellite_events: Sequence[ProjectEventSnapshot] = (),
     settings: Settings | None = None,
 ) -> list[RiskSignalDTO]:
     """Transforma o estado de Claim/Conflict em sinais explicaveis com peso.
@@ -183,6 +199,34 @@ def compute_signals(
                 metadata={"count": len(possession_claims)},
             )
         )
+
+    # D-20: so evento CONFIRMED, de severidade HIGH/CRITICAL e ainda NAO
+    # revisado (cleared=False) vira sinal. Nao existe segundo mecanismo de
+    # bloqueio: o Auto Hold ja existente dispara sozinho se o score chegar a
+    # classe CRITICAL.
+    active_confirmed = [
+        e for e in satellite_events if e.status == "CONFIRMED" and not e.cleared
+    ]
+    satellite_specs = (
+        ("CRITICAL", "SATELLITE_ANOMALY_CONFIRMED_CRITICAL",
+         config.integrity_risk_weight_satellite_anomaly_critical, "crítica"),
+        ("HIGH", "SATELLITE_ANOMALY_CONFIRMED_HIGH",
+         config.integrity_risk_weight_satellite_anomaly_high, "alta"),
+    )
+    for severity, code, weight, rotulo in satellite_specs:
+        matches = [e for e in active_confirmed if e.severity == severity]
+        if matches:
+            n = len(matches)
+            noun = "anomalia satelital confirmada" if n == 1 else "anomalias satelitais confirmadas"
+            signals.append(
+                RiskSignalDTO(
+                    code=code,
+                    weight=float(weight),
+                    reason=f"+{weight:.0f} {n} {noun} de severidade {rotulo}",
+                    public_safe=code in PUBLIC_RISK_SIGNAL_CODES,
+                    metadata={"count": n, "types": sorted({e.type for e in matches})},
+                )
+            )
 
     signals.sort(key=lambda s: (-s.weight, _SIGNAL_ORDER.get(s.code, len(_SIGNAL_ORDER))))
     return signals
