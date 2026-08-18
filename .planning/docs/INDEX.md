@@ -13,6 +13,7 @@ Esta pasta concentra a documentação do projeto dentro de `.planning`, mantendo
 - [Fluxo Operacional Completo](./Fluxo_Operacional_Completo.pdf)
 - [Lifecycle e Onboarding de Projetos](./PROJECT_LIFECYCLE_ONBOARDING.md)
 - [Manifesto SINARCA](./SINARCA_MANIFESTO.md)
+- [PRD — QID e Selo Sinarca de Integridade](./PRD_QID_SELO_SINARCA_INTEGRIDADE.md)
 
 ## Planejamento de Fases
 
