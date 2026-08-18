@@ -61,16 +61,16 @@ Requisitos do milestone v1.0. Cada um mapeia para exatamente uma fase do roadmap
 
 ### Monitoramento Satelital e Auditoria de Campo (Phase 5 — satellite-monitoring-and-field-audit) *(expandida 2026-08-14)*
 
-- [ ] **SATM-01**: Auditoria aceita fotos, vídeos, geolocalização, observações e laudo com upload real em experiência de campo.
-- [ ] **SATM-02**: Assinatura digital/biométrica ou stub verificável é registrada pelo backend.
-- [ ] **SATM-03**: Laudo e evidências aparecem no projeto interno e no dossiê público conforme regra de visibilidade.
-- [ ] **SATM-04**: Auditoria pode reler QTAGs/NFC para validar integridade física da demarcação quando o ambiente/hardware permitir.
-- [ ] **SATM-05**: `CopernicusProvider` reconstrói ao menos 5 anos de histórico NDVI mensal para a AOI (`project_boundaries.active_boundary`) e persiste `SatelliteObservation`.
-- [ ] **SATM-06**: Anomalias (`SatelliteAnomaly`) são detectadas por queda significativa de NDVI, nunca rotuladas automaticamente como `DEFORESTATION`, e geram `ProjectEvent` com estado `DETECTED → ANALYZED → CONFIRMED/DISMISSED`.
-- [ ] **SATM-07**: Monitoramento exibe baseline Sentinel-2 real, NDVI médio, pontos analisados e hash de referência — sem nenhum campo derivado de `deterministic_baseline()`.
-- [ ] **SATM-08**: Anomalias confirmadas bloqueiam projeto automaticamente, notificam papéis envolvidos e liberam desbloqueio após auditoria aprovada.
-- [ ] **SATM-09**: Recálculo de créditos após incidente ajusta disponibilidade e prepara ajuste de tokens quando aplicável.
-- [ ] **SATM-10**: Job de monitoramento roda periodicamente sem bloquear requests HTTP, respeita `maxCloudCoverage` configurável e é idempotente por `projectId + satellite + sceneId + processingVersion`.
+- [x] **SATM-01**: Auditoria aceita fotos, vídeos, geolocalização, observações e laudo com upload real em experiência de campo.
+- [x] **SATM-02**: Assinatura digital/biométrica ou stub verificável é registrada pelo backend.
+- [x] **SATM-03**: Laudo e evidências aparecem no projeto interno e no dossiê público conforme regra de visibilidade.
+- [x] **SATM-04**: Auditoria pode reler QTAGs/NFC para validar integridade física da demarcação quando o ambiente/hardware permitir.
+- [x] **SATM-05**: `CopernicusProvider` reconstrói ao menos 5 anos de histórico NDVI mensal para a AOI (`project_boundaries.active_boundary`) e persiste `SatelliteObservation`.
+- [x] **SATM-06**: Anomalias (`SatelliteAnomaly`) são detectadas por queda significativa de NDVI, nunca rotuladas automaticamente como `DEFORESTATION`, e geram `ProjectEvent` com estado `DETECTED → ANALYZED → CONFIRMED/DISMISSED`.
+- [x] **SATM-07**: Monitoramento exibe baseline Sentinel-2 real, NDVI médio, pontos analisados e hash de referência — sem nenhum campo derivado de `deterministic_baseline()`.
+- [x] **SATM-08**: Anomalias confirmadas bloqueiam projeto automaticamente, notificam papéis envolvidos e liberam desbloqueio após auditoria aprovada.
+- [x] **SATM-09**: Recálculo de créditos após incidente ajusta disponibilidade e prepara ajuste de tokens quando aplicável.
+- [x] **SATM-10**: Job de monitoramento roda periodicamente sem bloquear requests HTTP, respeita `maxCloudCoverage` configurável e é idempotente por `projectId + satellite + sceneId + processingVersion`.
 
 ### Revisão de Integridade e Registros Externos (Phase 5.1 — integrity-review-and-external-registries) *(inserida 2026-08-14)*
 
@@ -138,9 +138,9 @@ Nenhuma exclusão explícita documentada até o momento. Itens adiados para uma 
 | PUBL-01..06 | Phase 2 | Complete |
 | ORIG-01..06 | Phase 3 | Complete |
 | CERT-01..05 | Phase 4 | Complete |
-| GEOF-01..05 | Phase 4.1 | Pending |
-| INTG-01..05 | Phase 4.2 | Pending |
-| SATM-01..10 | Phase 5 | Pending |
+| GEOF-01..05 | Phase 4.1 | Complete |
+| INTG-01..05 | Phase 4.2 | Complete |
+| SATM-01..10 | Phase 5 | Complete |
 | REVW-01..05 | Phase 5.1 | Pending |
 | MKTP-01..06 | Phase 6 | Pending |
 | INVT-01..05 | Phase 7 | Pending |
@@ -152,9 +152,9 @@ Nenhuma exclusão explícita documentada até o momento. Itens adiados para uma 
 - v1 requirements: 74 total
 - Mapped to phases: 74
 - Unmapped: 0 ✓
-- Completos (Phases 1-3): 17
-- Pendentes (Phases 4-10): 57
+- Completos (Phases 1-5, incluindo 4.1 e 4.2): 42
+- Pendentes (Phases 5.1-10): 32
 
 ---
 *Requirements defined: 2026-08-14*
-*Last updated: 2026-08-14 — consolidação retroativa a partir de ROADMAP.md, FLOW_SCREEN_CHECKLIST_AUDIT.md e PROJECT.md; Phases 1-3 marcadas Complete após auditoria Nyquist (01-VALIDATION.md, 02-VALIDATION.md, 03-VALIDATION.md) do mesmo dia.*
+*Last updated: 2026-08-18 — SATM-01..10 marcados Complete após verificação formal da Phase 05; Traceability alinhada a ROADMAP.md e STATE.md.*
