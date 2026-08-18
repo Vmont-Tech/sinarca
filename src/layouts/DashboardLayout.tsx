@@ -19,6 +19,7 @@ import {
     Bell,
     ChevronDown,
     Menu,
+    CircleGauge,
     FileText,
     BarChart3,
     Settings,
@@ -100,6 +101,7 @@ export default function DashboardLayout() {
         const path = location.pathname;
         if (path.includes('calculadora')) return 'Calculadora de Emissões';
         if (path.includes('marketplace') || path.includes('comprar-creditos')) return 'Marketplace de Créditos';
+        if (path.includes('selo-sinarca') || path.includes('score-risco')) return 'Selo Sinarca';
         if (path.includes('certificadora')) return 'Fluxo da Certificadora';
         if (path.includes('auditoria')) return 'Fila de Auditoria';
         if (path.includes('mapa')) return 'Inteligência Geográfica';
@@ -131,6 +133,13 @@ export default function DashboardLayout() {
                             icon={LayoutDashboard} 
                             label="Dashboard" 
                             active={location.pathname === '/painel' || location.pathname === '/painel/visao-geral'} 
+                            theme={sidebarTheme}
+                        />
+                        <SidebarItem
+                            to="/painel/selo-sinarca"
+                            icon={CircleGauge}
+                            label="Selo Sinarca"
+                            active={location.pathname.startsWith('/painel/selo-sinarca') || location.pathname.startsWith('/painel/score-risco')}
                             theme={sidebarTheme}
                         />
 

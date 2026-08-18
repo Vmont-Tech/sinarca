@@ -31,6 +31,7 @@ import Calculator from './pages/Dashboard/Calculator';
 import RegisterInventory from './pages/Dashboard/RegisterInventory';
 import { Feed } from './pages/Dashboard/Feed'; // CONSULTA MRCA / EXPLORER
 import MonitoringNDVI from './pages/Dashboard/MonitoringNDVI';
+import RiskScoreMethodology from './pages/Dashboard/RiskScoreMethodology';
 
 import CertifierProfile from './pages/Dashboard/CertifierProfile';
 import AuditorProfile from './pages/Dashboard/AuditorProfile';
@@ -133,6 +134,8 @@ function App() {
               <Route path="auditoria/registro" element={<AuditRegistration />} />
               <Route path="monitoramento" element={<MonitoringNDVI />} />
               <Route path="monitoramento/:projectId" element={<MonitoringNDVI />} />
+              <Route path="selo-sinarca" element={<RiskScoreMethodology />} />
+              <Route path="score-risco" element={<RiskScoreMethodology />} />
 
               {/* Visualização Interna (Restored for Dashboard Functionality) */}
               <Route path="mrca/:id/editar" element={<AddProject mode="edit" />} />

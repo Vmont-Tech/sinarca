@@ -496,3 +496,37 @@ def test_database_service_types_public_integrity() -> None:
 
     assert "ProjectIntegrityPayload" in database_service
     assert "integrity: ProjectIntegrityPayload | null;" in database_service
+
+
+def test_dashboard_exposes_project_independent_risk_score_methodology_page() -> None:
+    page = read("src/pages/Dashboard/RiskScoreMethodology.tsx")
+    app = read("src/App.tsx")
+    dashboard_layout = read("src/layouts/DashboardLayout.tsx")
+
+    assert "Selo Sinarca de Integridade" in page
+    assert "Como o score de risco é calculado" in page
+    assert "Não depende de selecionar um projeto" in page
+    assert "não substitui certificação independente" in page
+    assert "score = min(100, round(soma dos pesos dos sinais ativos))" in page
+    assert "LOW" in page and "MODERATE" in page and "HIGH" in page and "VERY_HIGH" in page and "CRITICAL" in page
+    for code in (
+        "OVERLAP_CRITICAL",
+        "OVERLAP_HIGH",
+        "OVERLAP_MEDIUM",
+        "OVERLAP_LOW",
+        "DOUBLE_CLAIM",
+        "LAND_CLAIM_UNVERIFIED",
+        "CLAIM_EVIDENCE_PENDING",
+        "POSSESSION_WITHOUT_TITLE",
+        "SATELLITE_ANOMALY_CONFIRMED_CRITICAL",
+        "SATELLITE_ANOMALY_CONFIRMED_HIGH",
+    ):
+        assert code in page
+    assert "riskSignals.map" in page
+    assert "riskClasses.map" in page
+    assert "auto-hold" in page.lower()
+    assert "RiskScoreMethodology" in app
+    assert '<Route path="selo-sinarca" element={<RiskScoreMethodology />} />' in app
+    assert '<Route path="score-risco" element={<RiskScoreMethodology />} />' in app
+    assert 'to="/painel/selo-sinarca"' in dashboard_layout
+    assert "Selo Sinarca" in dashboard_layout
