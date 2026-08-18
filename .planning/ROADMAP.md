@@ -23,10 +23,10 @@ A ingestão de `.planning/docs/bible/14_Novos_requisitos.md` (Sinarca Integrity 
 - [x] **Phase 2: public-transparency-and-profiles** - Fechar experiência pública, dossiê público de projeto, explorer, perfis públicos, cadastro por perfil e edição de perfil.
 - [x] **Phase 3: project-origination-and-documents** - Completar originação do projeto com produtor, localização, metodologia, QTAGs/NFC, geofence, documentos e timeline canônica.
 - [x] **Phase 4: certification-workbench** - Completar revisão da certificadora, decisão técnica, certificado/documento, histórico e orquestração para lastro/mint bloqueado.
-- [x] **Phase 4.1: geospatial-foundation** *(inserida)* - Introduzir PostGIS e perímetro real (geometry), backfill dos QTAGs e overlap interno — pré-requisito comum do Integrity Layer e do Satellite Monitoring.
-- [ ] **Phase 4.2: integrity-layer-foundation** *(inserida)* - Claim/Evidence/Conflict, estados de confiança, Risk Score e detecção de duplicidade — P0 do Sinarca Integrity Layer.
-- [ ] **Phase 5: satellite-monitoring-and-field-audit** *(expandida)* - Completar auditoria de campo e monitoramento via Copernicus Sentinel-2 real (NDVI/NDMI/NBR, reconstrução histórica, anomalias), substituindo o baseline determinístico atual.
-- [ ] **Phase 5.1: integrity-review-and-external-registries** *(inserida)* - Four-eyes review e verificação de registros oficiais (ONR/SIGEF/CAR) — começa pela decisão de build vs. buy, sem fornecedor definido hoje.
+- [x] **Phase 04.1: geospatial-foundation** *(inserida)* - Introduzir PostGIS e perímetro real (geometry), backfill dos QTAGs e overlap interno — pré-requisito comum do Integrity Layer e do Satellite Monitoring.
+- [x] **Phase 04.2: integrity-layer-foundation** *(inserida)* - Claim/Evidence/Conflict, estados de confiança, Risk Score e detecção de duplicidade — P0 do Sinarca Integrity Layer.
+- [x] **Phase 5: satellite-monitoring-and-field-audit** *(expandida)* - Completar auditoria de campo e monitoramento via Copernicus Sentinel-2 real (NDVI/NDMI/NBR, reconstrução histórica, anomalias), substituindo o baseline determinístico atual.
+- [ ] **Phase 05.1: integrity-review-and-external-registries** *(inserida)* - Four-eyes review e verificação de registros oficiais (ONR/SIGEF/CAR) — começa pela decisão de build vs. buy, sem fornecedor definido hoje.
 - [ ] **Phase 6: marketplace-wallet-and-retirement** - Completar checkout, carteira off-chain, histórico/exportação, recibos, aposentadoria real e certificado de impacto.
 - [ ] **Phase 7: emissions-inventory-and-compensation** - Completar inventário de emissões, upload seguro pela UI, vínculo com compensação e dashboard emissões versus créditos.
 - [ ] **Phase 8: treasury-blockchain-and-interoperability** - Criar consoles operacionais para tesouraria, providers, Soroban/Stellar, mint/unlock/transfer/burn e lock-and-mint Polygon.
@@ -322,10 +322,10 @@ Plans:
 | 1. backend-rebuild | 6/6 | Complete | 2026-05-22 |
 | 2. public-transparency-and-profiles | 5/5 | Complete | 2026-05-26 |
 | 3. project-origination-and-documents | 5/5 | Complete | 2026-05-26 |
-| 4. certification-workbench | 0/0 | Not planned | - |
-| 4.1. geospatial-foundation | 0/0 | Not planned | - |
-| 4.2. integrity-layer-foundation | 5/5 | Complete | 2026-08-16 |
-| 5. satellite-monitoring-and-field-audit | 0/9 | Planned | - |
+| 4. certification-workbench | 7/7 | Complete | 2026-08-15 |
+| 4.1. geospatial-foundation | 5/5 | Complete | 2026-08-18 |
+| 4.2. integrity-layer-foundation | 5/5 | Complete | 2026-08-18 |
+| 5. satellite-monitoring-and-field-audit | 9/9 | Complete | 2026-08-18 |
 | 5.1. integrity-review-and-external-registries | 0/0 | Not planned | - |
 | 6. marketplace-wallet-and-retirement | 0/0 | Not planned | - |
 | 7. emissions-inventory-and-compensation | 0/0 | Not planned | - |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 05 planned: 9 plans/6 waves, plan-checker 0 blockers/3 warnings fixed"
-last_updated: "2026-08-17T15:28:01.761Z"
-last_activity: 2026-08-17 -- Phase 05 execution started
+stopped_at: "Phase 05 verified complete; next phase is 05.1 integrity-review-and-external-registries"
+last_updated: "2026-08-18T00:00:56Z"
+last_activity: 2026-08-17 -- Phase 05 verified complete
 progress:
   total_phases: 13
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 42
-  completed_plans: 41
-  percent: 98
+  completed_plans: 42
+  percent: 54
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-05-26)
 
 **Core value:** Sustentar os fluxos operacionais de créditos ambientais com base persistente, segura, implantável e experiências completas por papel.
-**Current focus:** Phase 05 — satellite-monitoring-and-field-audit
+**Current focus:** Phase 05.1 — integrity-review-and-external-registries
 
 ## Current Position
 
-Phase: 05 (satellite-monitoring-and-field-audit) — EXECUTING
-Plan: 1 of 9
-Status: Executing Phase 05
-Last activity: 2026-08-17 -- Phase 05 execution started
+Phase: 05.1 (integrity-review-and-external-registries) — NOT STARTED
+Plan: not planned
+Status: Phase 05 verified complete; ready to discuss/plan Phase 05.1
+Last activity: 2026-08-17 -- Phase 05 verified complete
 
-Progress: [███████░░░] 74%
+Progress: [█████░░░░░] 54%
 
 ## Performance Metrics
 
