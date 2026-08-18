@@ -13,7 +13,11 @@ Esta pasta concentra a documentação do projeto dentro de `.planning`, mantendo
 - [Fluxo Operacional Completo](./Fluxo_Operacional_Completo.pdf)
 - [Lifecycle e Onboarding de Projetos](./PROJECT_LIFECYCLE_ONBOARDING.md)
 - [Manifesto SINARCA](./SINARCA_MANIFESTO.md)
+- [Workflow Operacional Sintético — SINARCA](./SINARCA_WORKFLOW_OPERACIONAL_SINTETICO.md)
+- [Workflow Operacional Analítico — SINARCA](./SINARCA_WORKFLOW_OPERACIONAL_ANALITICO.md)
 - [PRD — QID e Selo Sinarca de Integridade](./PRD_QID_SELO_SINARCA_INTEGRIDADE.md)
+- [Workflow Sintético — QID e Selo Sinarca](./QID_SELO_SINARCA_WORKFLOW_SINTETICO.md)
+- [Workflow Analítico — QID, Selo Sinarca e Score de Risco](./QID_SELO_SINARCA_WORKFLOW_ANALITICO.md)
 
 ## Planejamento de Fases
 
